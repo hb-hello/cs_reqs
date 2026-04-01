@@ -114,9 +114,9 @@ def run_clingo_backend(history, attrs=None):
 
     planned_courses = {}
     for sem, courses in schedule.items():
-        when = clingo_sem_to_when(sem)
+        # when = clingo_sem_to_when(sem)
         for cid in courses:
-            planned_courses[cid] = when
+            planned_courses[cid] = sem
 
     checker_result, checker_ok = validate_with_checker(history, planned_courses)
     failed = [k for k, v in checker_result.items() if not v[0]]

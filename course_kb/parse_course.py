@@ -1,6 +1,9 @@
-import re
+import re, json
 from bs4 import BeautifulSoup, NavigableString, Tag
-from .course_kb import Permission, Requirement, Taken, Passed, Major, Standing, And, Or, UnsupportedRequirement
+from .course_kb import *
+from openai import OpenAI
+
+USE_LLM_TO_PARSE = False
 
 PAT_COURSE_ID = r'[A-Z]{3}\s[0-9]{3}'  ## course id: 3 uppercase letters followed by 3 digits.
 PAT_MAJOR = r'\b[A-Z]{3}\b'            ## major code: 3 uppercase letters
@@ -180,8 +183,47 @@ def parse_course_list_text(text: str) -> And | Or | str:
     if re.fullmatch(pattern, text):
       return parser_func(text)
   
-  print("unsupported course list format in parse_course_list_text:", text)
   return None
+
+def parse_mixed_or_list(text: str) -> list[str | UnsupportedRequirement] | None:
+  """
+  Parse disjunctions that may mix course ids (including omitted department code)
+  with unsupported text, e.g.
+    - "AMS 161 or MAT 127 or 132 or MPE level 9"
+    - "MAT 127 or 132 or 142 or AMS 161 or level 9 on the mathematics placement examination"
+  Returns a list of either course-id strings or UnsupportedRequirement nodes.
+  Returns None if no course-like token is found.
+  """
+  if re.search(r'\bor\s+higher\b', text, re.IGNORECASE) or re.search(r'\bor\b[^;,.]*\bequivalent\b', text, re.IGNORECASE):
+    return [UnsupportedRequirement(text)]
+
+  parts = [p.strip(" ,.") for p in re.split(r'\s+or\s+', text, flags=re.IGNORECASE) if p.strip(" ,.")]
+  if not parts:
+    return None
+
+  items = []
+  current_dept = None
+  found_course = False
+
+  for part in parts:
+    m_full = re.fullmatch(r'([A-Z]{3})\s+(\d{3})', part, re.IGNORECASE)
+    if m_full:
+      dept = m_full.group(1).upper()
+      num = m_full.group(2)
+      current_dept = dept
+      items.append(f'{dept} {num}')
+      found_course = True
+      continue
+
+    m_num = re.fullmatch(r'(\d{3})', part)
+    if m_num and current_dept:
+      items.append(f'{current_dept} {m_num.group(1)}')
+      found_course = True
+      continue
+
+    items.append(UnsupportedRequirement(part))
+
+  return items if found_course else None
 
 def apply_requirement_recursive(node: And | Or, requirement: Requirement) -> And | Or:
   ## apply the requirement (e.g. Taken or Passed) to each course in the course list recursively.
@@ -195,6 +237,81 @@ def apply_requirement_recursive(node: And | Or, requirement: Requirement) -> And
     return And([apply_requirement_recursive(child, requirement) for child in node.subexprs])
   if isinstance(node, Or):
     return Or([apply_requirement_recursive(child, requirement) for child in node.subexprs])
+
+client = OpenAI()
+
+def parse_with_llm(text: str) -> dict:
+  """Sends unsupported text to OpenAI and returns a dictionary matching the AST schema."""
+  
+  system_prompt = """
+    You are an expert course requirement parser. Your job is to convert natural language 
+    university prerequisites into a strict JSON Abstract Syntax Tree (AST).
+    
+    SUPPORTED KEYS:
+    - "Taken": ["COURSE_ID"] (e.g. "CSE 334")
+    - "Passed": ["COURSE_ID", "GRADE"] (e.g. "CSE 214", "c")
+    - "Major": ["MAJOR_CODE"] (e.g. "CSE")
+    - "Standing": ["U1"|"U2"|"U3"|"U4"]
+    - "Permission": ["permission text"]
+    
+    LOGICAL KEYS (Can contain other keys):
+    - "And": [ ... ]
+    - "Or": [ ... ]
+    
+    UNSUPPORTED KEY:
+    If the text contains rules about honors colleges, placement exams, high school equivalents, 
+    or anything not listed above, wrap the exact original text in:
+    - "UnsupportedRequirement": ["original text"]
+    
+    CRITICAL PARSING RULES:
+    1. STRICT COURSE IDs: "Taken" and "Passed" should ONLY take the clean Course ID (e.g., "PHY 131"). Strip out words like "in", "corequisite", or "grade of".
+    2. INFER MISSING DEPARTMENTS: If a course number appears without a department code (e.g., "PHY 125 or 131" or "MAT 131 or 141"), infer the department code from the preceding course (e.g., "PHY 131", "MAT 141").
+    3. GRADE DISTRIBUTION: If a grade requirement precedes a list (e.g., "C or higher in MAT 126 or 132 or 142"), apply the "Passed" object and the grade to ALL courses in that grouping. Standardize grades to lowercase (e.g., "c", "b+").
+    4. PUNCTUATION LOGIC: 
+      - Semicolons (;) usually act as top-level "And" separators. 
+      - Commas (,) can act as "And" or "Or" depending on the trailing conjunction (e.g., "A, B, or C" is Or; "A, B, and C" is And). 
+      - Slashes (/) between course numbers (e.g., "PHY 122/124") mean "And" (e.g., PHY 122 AND PHY 124).
+      - Slashes (/) between department codes (e.g., "CSE/ISE 214") mean "Or" (e.g., CSE 214 OR ISE 214).
+    5. MIXED SUPPORT: You can mix supported and unsupported keys inside logical operators. (e.g., "MAT 123 or Level 4 on math placement" becomes an "Or" containing a "Taken" and an "UnsupportedRequirement").
+    6. SINGLE ROOT: The JSON must have exactly ONE root object. If there are multiple distinct requirements, wrap them in an "And".
+    
+    EXAMPLES:
+    - "CSE 334 or ISE 334" -> {"Or": [{"Taken": ["CSE 334"]}, {"Taken": ["ISE 334"]}]}
+    - "Level 3 on math exam" -> {"UnsupportedRequirement": ["Level 3 on math exam"]}
+    - "PHY 126 and 127; or PHY 132" -> {"Or": [{"And": [{"Taken": ["PHY 126"]}, {"Taken": ["PHY 127"]}]}, {"Taken": ["PHY 132"]}]}
+    """
+
+  response = client.chat.completions.create(
+    model="gpt-4o-mini",  ## fast and cheap
+    response_format={ "type": "json_object" },
+    messages=[
+      {"role": "system", "content": system_prompt},
+      {"role": "user", "content": f"Parse this requirement into JSON: {text}"}
+    ],
+    temperature=0.0       ## Keep it deterministic and strictly factual
+  )
+
+  return json.loads(response.choices[0].message.content)
+
+def dict_to_ast(d: dict):
+  """Recursively converts the LLM's compact JSON dictionary into Python AST objects."""
+  if not isinstance(d, dict) or len(d) != 1:
+    return UnsupportedRequirement(str(d))
+    
+  key, value = list(d.items())[0]
+  
+  if key == "And": return And([dict_to_ast(child) for child in value])
+  if key == "Or": return Or([dict_to_ast(child) for child in value])
+  
+  if key == "Taken": return Taken(*value)
+  if key == "Passed": return Passed(*value)
+  if key == "Major": return Major(*value)
+  if key == "Standing": return Standing(*value)
+  if key == "Permission": return Permission(*value)
+  
+  if key == "UnsupportedRequirement": return UnsupportedRequirement(*value)
+  
+  return UnsupportedRequirement(str(d))
 
 
 def parse_req_text(text: str) -> And | Or | Requirement:
@@ -285,6 +402,8 @@ def parse_req_text(text: str) -> And | Or | Requirement:
   pass_with_grade = lambda cid: Passed(cid, grade_required)
 
   for part in parts:            ## match each part with supported formats. each case is a full match
+    part = part.strip()
+
     if m := re.fullmatch(re_grade_or_higher_prefix, part):    ## course list with c or higher prefix
       need_passed = True
       grade_required = m.group("grade").upper()  ## C, B, B+, etc.
@@ -293,8 +412,13 @@ def parse_req_text(text: str) -> And | Or | Requirement:
       if course_list_ast is not None:
         requirements.append(apply_requirement_recursive(course_list_ast, pass_with_grade))
       else:
-        print("unsupported format for C or higher:", part)
-        requirements.append(UnsupportedRequirement(part))
+        mixed_items = parse_mixed_or_list(rest)
+        if mixed_items is not None:
+          converted = [pass_with_grade(item) if isinstance(item, str) else item for item in mixed_items]
+          requirements.append(build_node(Or, converted))
+        else:
+          print("unsupported course list format in parse_course_list_text:", text)
+          requirements.append(UnsupportedRequirement(part))
     elif m := re.fullmatch(re_any_course_list, part): ## course list
       req = pass_with_grade if need_passed else Taken
       requirements.append(apply_requirement_recursive(parse_course_list_text(part), req))
@@ -319,9 +443,25 @@ def parse_req_text(text: str) -> And | Or | Requirement:
     elif m := re.fullmatch(re_permission, part):
       requirements.append(Permission(part))
     else:
-      print("unsupported requirement:", part)
-      requirements.append(UnsupportedRequirement(part))
-      continue
+      mixed_items = parse_mixed_or_list(part)
+      if mixed_items is not None:
+        req = pass_with_grade if need_passed else Taken
+        converted = [req(item) if isinstance(item, str) else item for item in mixed_items]
+        requirements.append(build_node(Or, converted))
+        continue
+
+      if USE_LLM_TO_PARSE:
+        print(f"Regex failed, asking LLM to parse: '{part}'")
+        try:
+          llm_dict = parse_with_llm(part)
+          ast_node = dict_to_ast(llm_dict)
+          requirements.append(ast_node)
+        except Exception as e:
+          print(f"LLM failed gracefully ({e}), falling back to UnsupportedRequirement")
+          requirements.append(UnsupportedRequirement(part))
+      else:
+        print("unsupported format for requisite part:", part)
+        requirements.append(UnsupportedRequirement(part))
 
   return build_node(And, requirements)
 

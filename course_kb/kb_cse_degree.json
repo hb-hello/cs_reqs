@@ -3195,8 +3195,27 @@
     "title": "Applied Linear Algebra",
     "desc": "An introduction to the theory and use of vectors and matrices. Matrix theory including systems of linear equations. Theory of Euclidean and abstract vector spaces. Eigenvectors and eigenvalues. Linear transformations. May not be taken for credit in addition to MAT 211.",
     "prereq": {
-      "UnsupportedRequirement": [
-        "AMS 151 or MAT 131 or corequisite MAT 126 or level 7 or higher on the mathematics placement exam"
+      "Or": [
+        {
+          "Taken": [
+            "AMS 151"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 131"
+          ]
+        },
+        {
+          "Coregister": [
+            "MAT 126"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "level 7 or higher on the mathematics placement exam"
+          ]
+        }
       ]
     },
     "coreq": null,
@@ -3335,11 +3354,31 @@
     "__type__": "Course"
   },
   {
+    "id": "MAT 123",
+    "title": "Precalculus",
+    "desc": "Comprehensive preparation for the regular calculus sequences. Careful development of rational, exponential, logarithmic, and trigonometric functions, and their applications. Asymptotics and curve sketching. General modeling examples. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
+    "prereq": {
+      "UnsupportedRequirement": [
+        "C or better in MAP 103 or level 3 on the mathematics placement exam or corequisite MAT 119 (Prerequisite must be met within one year prior to beginning the course.)"
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "3",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
     "id": "MAT 125",
     "title": "Calculus A",
     "desc": "Differential calculus, emphasizing conceptual understanding, computations and applications, for students who have the necessary background from 12th-year high school mathematics. Limits and continuous functions. Differentiation of elementary algebraic, trigonometric, exponential and logarithmic functions; graphing; modeling; and maximization. L'Hospital's rule.  May not be taken for credit in addition to MAT 131 or 141 or AMS 151. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
-      "And": [
+      "Or": [
         {
           "Passed": [
             "MAT 123",
@@ -3348,12 +3387,12 @@
         },
         {
           "UnsupportedRequirement": [
-            "or level 4 on the mathematics placement examination"
+            "level 4 on the mathematics placement examination"
           ]
         },
         {
-          "UnsupportedRequirement": [
-            "or corequisite MAT 130"
+          "Coregister": [
+            "MAT 130"
           ]
         }
       ]
@@ -3524,8 +3563,35 @@
     "title": "Introduction to Linear Algebra",
     "desc": "Introduction to the theory of linear algebra with some applications; vectors, vector spaces, bases and dimension, applications to geometry, linear transformations and rank, eigenvalues and eigenvectors, determinants and inner products. May not be taken for credit in addition to AMS 210.",
     "prereq": {
-      "UnsupportedRequirement": [
-        "C or higher in  AMS 151 or MAT 131 or 141 or coregistration in MAT 126 or level 7 on the mathematics placement examination"
+      "Or": [
+        {
+          "Passed": [
+            "AMS 151",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "MAT 131",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "MAT 141",
+            "C"
+          ]
+        },
+        {
+          "Coregister": [
+            "MAT 126"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "level 7 on the mathematics placement examination"
+          ]
+        }
       ]
     },
     "coreq": null,
@@ -3568,8 +3634,24 @@
     "title": "Fundamentals of Biology: Molecular and Cellular Biology",
     "desc": "The fundamentals of cell biology, biochemistry, and genetics. The biochemical and molecular bases of cell structure, energy metabolism, gene regulation, heredity, and development in living organisms from bacteria to man are discussed. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
-      "UnsupportedRequirement": [
-        "C or higher in CHE 129 or CHE 131 or Corequisite CHE 152"
+      "Or": [
+        {
+          "Passed": [
+            "CHE 129",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "CHE 131",
+            "C"
+          ]
+        },
+        {
+          "Coregister": [
+            "CHE 152"
+          ]
+        }
       ]
     },
     "coreq": null,
@@ -3588,8 +3670,22 @@
     "title": "Fundamentals of Biology: Cellular and Organ Physiology",
     "desc": "The fundamentals of cell and organ physiology in mammalian and non-mammalian organisms. The structure and function of cell membranes and the physiology of cell to cell signaling, cellular respiration, and homeostasis of organs and organisms are examined with an emphasis on the comparative physiology of vertebrates and invertebrates. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
-      "UnsupportedRequirement": [
-        "C or higher in CHE 129 or CHE 131 or Corequisite CHE 152"
+      "Or": [
+        {
+          "Taken": [
+            "CHE 129"
+          ]
+        },
+        {
+          "Taken": [
+            "CHE 131"
+          ]
+        },
+        {
+          "Coregister": [
+            "CHE 152"
+          ]
+        }
       ]
     },
     "coreq": null,
@@ -3608,8 +3704,26 @@
     "title": "Fundamentals of Scientific Inquiry in the Biological Sciences I",
     "desc": "First course in the foundational laboratory sequence for all biology students, and students in related fields.  Students will experience the laboratory process, research process, a wide range of laboratory tools, methods, skills, learn to read and write scientific presentations, and collaborate in formal inquiry. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information. This course includes assignments that can be used to satisfy the SBC objective SPK if co-registered for BIO 458.",
     "prereq": {
-      "UnsupportedRequirement": [
-        "C or higher in CHE 129, CHE 131, or Corequisite: CHE 152"
+      "Or": [
+        {
+          "And": [
+            {
+              "Taken": [
+                "CHE 129"
+              ]
+            },
+            {
+              "Taken": [
+                "CHE 131"
+              ]
+            }
+          ]
+        },
+        {
+          "Coregister": [
+            "CHE 152"
+          ]
+        }
       ]
     },
     "coreq": null,
@@ -3629,10 +3743,14 @@
     "desc": "This is the initial course in the four-semester General-Chemistry/Organic-Chemistry sequence CHE 131/132/321/322. This sequence provides the necessary foundation for students who wish to pursue further coursework in Chemistry. The General Chemistry courses provide a broad introduction to the fundamental principles of chemistry, including substantial illustrative material drawn from the chemistry of inorganic, organic, and biochemical systems. The emphasis is on basic concepts, problem-solving, and factual material. The principal topics covered are stoichiometry, the states of matter, chemical equilibrium and introductory thermodynamics, electrochemistry, chemical kinetics, electron structure and chemical bonding, and chemical periodicity. Students will be placed into CHE 131 based on their performance in an Online Chemistry Placement and Preparation (OCPP) process. The four-semester sequence is inappropriate for students who have completed an AP course in chemistry and received a score of 4 or 5; these students are placed into CHE 152. Three lecture hours and one 80-minute workshop per week. May not be taken for credit in addition to CHE 129 or CHE 152. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "UnsupportedRequirement": [
-        "Online Chemistry Placement and Preparation (OCPP) Process. For information on the OCPP, copy and paste the following link into your browser. go.stonybrook.edu/ocpp Corequisite: MAT 125 or higher"
+        "Online Chemistry Placement and Preparation (OCPP) Process. For information on the OCPP, copy and paste the following link into your browser. go.stonybrook.edu/ocpp"
       ]
     },
-    "coreq": null,
+    "coreq": {
+      "UnsupportedRequirement": [
+        "Corequisite: MAT 125 or higher"
+      ]
+    },
     "anti_req": null,
     "pre_or_coreq": null,
     "advisory_prereq": null,
@@ -3648,10 +3766,28 @@
     "title": "General Chemistry II",
     "desc": "A continuation of either CHE 129 or 131, introducing the fundamental principles of chemistry, including substantial illustrative material drawn from the chemistry of inorganic, organic, and biochemical systems. The principal topics covered are stoichiometry, the states of matter, chemical equilibrium and introductory thermodynamics, electrochemistry, chemical kinetics, electron structure and chemical bonding, and chemical periodicity. The sequence emphasizes basic concepts, problem solving, and factual material. It provides the necessary foundation for students who wish to pursue further coursework in chemistry.  Three lecture hours and one 80-minute workshop per week. May not be taken for credit in addition to CHE 152. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
+      "Or": [
+        {
+          "Passed": [
+            "CHE 129",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "CHE 131",
+            "C"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": {
       "And": [
         {
           "UnsupportedRequirement": [
-            "C or higher in CHE 129 or CHE 131.  Pre/Corequisite: MAT 125 for those who took CHE 129 or 130 or BA BIO majors"
+            "MAT 125 for those who took CHE 129 or 130 or BA BIO majors"
           ]
         },
         {
@@ -3661,9 +3797,6 @@
         }
       ]
     },
-    "coreq": null,
-    "anti_req": null,
-    "pre_or_coreq": null,
     "advisory_prereq": null,
     "advisory_coreq": null,
     "advisory_pre_or_coreq": null,
@@ -3830,8 +3963,17 @@
     "title": "Classical Physics A",
     "desc": "First of a three-part sequence intended for physical-sciences or engineering majors. It focuses on the mechanics of point particles and simple oscillators, and emphasizes motion in one and two dimensions and the concepts",
     "prereq": {
-      "UnsupportedRequirement": [
-        "MAT 123 or Level 4 on the mathematics placement examination"
+      "Or": [
+        {
+          "Taken": [
+            "MAT 125"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "level 4 on the mathematics placement examination"
+          ]
+        }
       ]
     },
     "coreq": null,
@@ -4005,7 +4147,7 @@
                 "PHY 141"
               ]
             }
-           ]
+          ]
         }
       ]
     },
@@ -4059,8 +4201,18 @@
     "title": "Classical Physics II: Honors",
     "desc": "Second part of a demanding two-semester sequence for students with the strongest background, interests and abilities in science and mathematics. The topics covered in PHY 142 are similar to those in PHY 132, but are treated in more depth in a small-class setting. Students may transfer to PHY 132 at any time during the first half of each semester without penalty. Three lecture hours and one recitation hour per week. PHY 142 may not be taken for credit in addition to PHY 122, PHY 127, or PHY 132. This course has an associated fee.  Please see www.stonybrook.edu/coursefees for more information.",
     "prereq": {
-      "UnsupportedRequirement": [
-        "C or higher in PHY 141 or permission of department"
+      "Or": [
+        {
+          "Passed": [
+            "PHY 141",
+            "C"
+          ]
+        },
+        {
+          "Permission": [
+            "permission of department"
+          ]
+        }
       ]
     },
     "coreq": null,
@@ -4081,13 +4233,50 @@
     "prereq": {
       "And": [
         {
-          "UnsupportedRequirement": [
-            "PHY 122/124, or PHY 126 and 127, or PHY 132 or PHY 142"
+          "Or": [
+            {
+              "And": [
+                {
+                  "Taken": [
+                    "PHY 122"
+                  ]
+                },
+                {
+                  "Taken": [
+                    "PHY 124"
+                  ]
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Taken": [
+                    "PHY 126"
+                  ]
+                },
+                {
+                  "Taken": [
+                    "PHY 127"
+                  ]
+                }
+              ]
+            },
+            {
+              "Taken": [
+                "PHY 132"
+              ]
+            },
+            {
+              "Taken": [
+                "PHY 142"
+              ]
+            }
           ]
         },
         {
-          "UnsupportedRequirement": [
-            "and PHY 134"
+          "Taken": [
+            "PHY 134"
           ]
         },
         {
@@ -4128,7 +4317,30 @@
     },
     "coreq": null,
     "anti_req": null,
-    "pre_or_coreq": null,
+    "pre_or_coreq": {
+      "Or": [
+        {
+          "Taken": [
+            "MAT 203"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 205"
+          ]
+        },
+        {
+          "Taken": [
+            "AMS 261"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 307"
+          ]
+        }
+      ]
+    },
     "advisory_prereq": null,
     "advisory_coreq": null,
     "advisory_pre_or_coreq": null,
@@ -4320,6 +4532,525 @@
     "advisory_pre_or_coreq": null,
     "category": null,
     "credits": "3",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "WRT 101",
+    "title": "Introductory Writing Workshop",
+    "desc": "An introduction to the foundations of writing, offering students a variety of rhetorical strategies and helping them develop creative and critical thinking, fluency, and correctness. Coursework creates ample opportunities for significant practice in reading, writing, and critical analysis. Emphasis on writing as a revision-based process. WRT 101 prepares students for WRT 102 and postsecondary academic writing. This course may be repeated until a satisfactory grade is achieved.",
+    "prereq": {
+      "UnsupportedRequirement": [
+        "Writing Placement Score of 3 or WAE 194 with a C or higher"
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "3",
+    "grading": "ABC/U grading",
+    "__type__": "Course"
+  },
+  {
+    "id": "WRT 102",
+    "title": "Intermediate Writing Workshop",
+    "desc": "A study of strategies for extended academic writing assignments including critical analysis, argument or point of view, and multi-source, college-level research essays. Students continue to develop rhetorical awareness, analytical proficiency, and academic research skills. At the end of the course students create a multimodal ePortfolio of final revised essays to be evaluated by their instructor and at least one outside reader. This course may be repeated until a satisfactory grade is achieved.",
+    "prereq": {
+      "Or": [
+        {
+          "UnsupportedRequirement": [
+            "Writing Placement Score of 4"
+          ]
+        },
+        {
+          "Passed": [
+            "WRT 101",
+            "C"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "WRT 101 transfer equivalent"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "SAT EBRW >= 580"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "ACT ELA >=23"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "AP ELC or AP ELGC >=3"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "3",
+    "grading": "ABC/U grading",
+    "__type__": "Course"
+  },
+  {
+    "id": "AMS 110",
+    "title": "Probability and Statistics in the Life Sciences",
+    "desc": "A survey of probability theory and statistical techniques with applications to biological and biomedical situations. Topics covered include Markov chain models; binomial, Poisson, normal, exponential, and chi square random variables; tests of hypotheses; confidence intervals; tests; and analysis of variance, regression, and contingency tables. May not be taken for credit in addition to AMS 310. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
+    "prereq": {
+      "Or": [
+        {
+          "Taken": [
+            "AMS 151"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 125"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 131"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": {
+      "Or": [
+        {
+          "Taken": [
+            "MAT 203"
+          ]
+        },
+        {
+          "Taken": [
+            "AMS 310"
+          ]
+        }
+      ]
+    },
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "3",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "AMS 261",
+    "title": "Applied Calculus III",
+    "desc": "Vector algebra and analytic geometry in two and three dimensions; multivariable differential calculus and tangent planes; multivariable integral calculus; optimization and Lagrange multipliers; vector calculus including Green's and Stokes's theorems. May not be taken for credit in addition to MAT 203 or 205.",
+    "prereq": {
+      "Or": [
+        {
+          "Taken": [
+            "AMS 161"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 127"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 132"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "MPE level 9"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "4",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "AMS 361",
+    "title": "Applied Calculus IV: Differential Equations",
+    "desc": "Homogeneous and inhomogeneous linear differential equations; systems of linear differential equations; solution with power series and Laplace transforms; partial differential equations and Fourier series. May not be taken for credit in addition to the equivalent MAT 303.",
+    "prereq": {
+      "Or": [
+        {
+          "Taken": [
+            "AMS 161"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 127"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 132"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "MPE level 9"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "4",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "AMS 412",
+    "title": "Mathematical Statistics",
+    "desc": "Estimation, confidence intervals, Neyman Pearson lemma, likelihood ratio test, hypothesis testing, chi square test, regression, analysis of variance, nonparametric methods.",
+    "prereq": {
+      "Taken": [
+        "AMS 311"
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "3",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 130",
+    "title": "Trigonometry and Logarithms",
+    "desc": "Inverse functions, exponential and logarithmic functions, radian measure of angles and trigonometric functions. Taught as a companion to MAT 125.",
+    "prereq": {
+      "Or": [
+        {
+          "Taken": [
+            "MAT 122"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "level 3 or higher on the mathematics placement examination"
+          ]
+        },
+        {
+          "Permission": [
+            "permission of instructor"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "1",
+    "grading": "S/U grading",
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 200",
+    "title": "Logic, Language and Proof",
+    "desc": "A basic course in the logic of mathematics, the construction of proofs and the writing of proofs. The mathematical content is primarily logic and proofs, set theory,  combinatorics, functions and relations. There is considerable focus on writing. May not be taken for credit in addition to MAT 250.",
+    "prereq": {
+      "UnsupportedRequirement": [
+        "Level 4 on the mathematics placement examination or equivalent course or permission of the instructor"
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "3",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 203",
+    "title": "Calculus III with Applications",
+    "desc": "Vector algebra in two and three dimensions, multivariate differential and integral calculus, optimization, vector calculus including the theorems of Green, Gauss, and Stokes. Applications to economics, engineering, and all sciences, with emphasis on numerical and graphical solutions; use of graphing calculators or computers. May not be taken for credit in addition to AMS 261.",
+    "prereq": {
+      "Or": [
+        {
+          "Passed": [
+            "MAT 127",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "MAT 132",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "MAT 142",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "AMS 161",
+            "C"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "level 9 on the mathematics placement examination"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "4",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 250",
+    "title": "Introduction to Advanced Mathematics",
+    "desc": "An introduction to the Advanced Track mathematics program. Provides the core of basic of propositional logic, quantifiers, proofs, sets, functions, cardinality, relations, equivalence relations and quotient sets, order relations, combinatorics. Number systems: natural numbers, integers, rational, real and complex numbers. MAT 250 is primarily intended for students in the Advanced Track program. It serves as an alternative to MAT 200 and may not be taken for credit in addition to MAT 200. Students wishing to enroll in MAT 250 should instead enroll in a corresponding section of MAT 200. In approximately the 3rd week, an assessment will be held and qualified students will be offered the option of moving to MAT 250. Formerly offered as MAT 150; not for credit in addition to MAT 150.",
+    "prereq": {
+      "Or": [
+        {
+          "Taken": [
+            "MAT 131"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "MAT 131 equivalent"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "level 7 or higher on mathematics placement examination"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "4",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 303",
+    "title": "Calculus IV with Applications",
+    "desc": "Homogeneous and inhomogeneous linear differential equations; systems of linear differential equations; series solutions; Laplace transforms; Fourier series. Applications to economics, engineering, and all sciences with emphasis on numerical and graphical solutions; use of computers. May not be taken for credit in addition to AMS 361 or MAT 308.",
+    "prereq": {
+      "Or": [
+        {
+          "Passed": [
+            "MAT 127",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "MAT 132",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "MAT 142",
+            "C"
+          ]
+        },
+        {
+          "Passed": [
+            "AMS 161",
+            "C"
+          ]
+        },
+        {
+          "UnsupportedRequirement": [
+            "level 9 on the mathematics placement examination"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "4",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 307",
+    "title": "Multivariable Calculus with Linear Algebra",
+    "desc": "Introduction to linear algebra: vectors, matrices, systems of linear equations,  bases and dimension, dot product, determinants. Multivariate differential and integral calculus, divergence and curl, line and surface integrals, theorems of Green, Gauss, and Stokes. More theoretical and intensive than MAT 203, this course is primarily intended for math majors. Together with MAT 308, it forms a 2-semester sequence covering the same material as the 3-semester sequence of MAT 203, MAT 211 and MAT 303. May not be taken for credit in addition to MAT 203 or AMS 261.",
+    "prereq": {
+      "Or": [
+        {
+          "Taken": [
+            "MAT 127"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 132"
+          ]
+        }
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "4",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "CHE 129",
+    "title": "General Chemistry IA",
+    "desc": "This is the initial course of the four-semester General-Chemistry/Organic-Chemistry sequence CHE 129/132/321/322. This sequence provides the necessary foundation for students who wish to pursue further coursework in chemistry. The General Chemistry Courses provide a broad introduction to the fundamental principles of chemistry, including substantial illustrative material drawn from the chemistry of inorganic, organic, and biochemical systems. The emphasis is on basic concepts, problem-solving, and factual material. Students will be placed into CHE 129 based on their performance in the Online Chemistry Placement and Preparation (OCPP) process. Specifically, CHE 129 is for students with chemistry knowledge above the required OCPP minimum but who do not meet the math corequisite of CHE 131. The level and content of CHE 129 match that of CHE 131, but since the corequisite differs, students must also attend a CHE 130 session each week. CHE 130 builds essential skills in information processing, critical and analytical thinking, quantitative reasoning, and problem solving. The CHE 129 four-semester sequence is inappropriate for students who satisfy the corequisites of CHE 131. It is also inappropriate for students who have completed an AP course in chemistry and received a score of 4 or 5; such students must enroll in CHE 152. Three lecture hours, one 80-minute workshop, and one CHE 130 session per week. CHE 129 may not be taken for credit in addition to CHE 131 or CHE 152. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
+    "prereq": {
+      "UnsupportedRequirement": [
+        "Online Chemistry Placement and Preparation (OCPP) Process. For information on the OCPP, copy and paste the following link into your browser. go.stonybrook.edu/ocpp"
+      ]
+    },
+    "coreq": {
+      "And": [
+        {
+          "Taken": [
+            "CHE 129"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 123"
+          ]
+        }
+      ]
+    },
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "4",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "CHE 383",
+    "title": "Introductory Synthetic and Spectroscopic Laboratory Techniques",
+    "desc": "Fundamental laboratory techniques including methods of separation, purification, synthesis, and analysis. Emphasis is on organic with an introduction to inorganic problems. For students in the Molecular Sciences sequence. Not for credit in addition to CHE 327. Three lecture hours and one 80-minute workshop per week. The lecture component, CHE 331, must be taken the same semester as the CHE 383 laboratory. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
+    "prereq": {
+      "Taken": [
+        "CHE 154"
+      ]
+    },
+    "coreq": {
+      "Taken": [
+        "CHE 331"
+      ]
+    },
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "2",
+    "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "PHY 122",
+    "title": "Physics for the Life Sciences II",
+    "desc": "Second part of an introduction to physics with applications to biology, primarily for students majoring in biological sciences or pre-clinical programs. Topics include electromagnetism, optics, acoustics, and radiation phenomena. Strong algebra skills and knowledge of the ideas of calculus are required. Three lecture hours and two laboratory hours per week. PHY 122 may not be taken for credit in addition to PHY 127, 132, or 142. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
+    "prereq": {
+      "Passed": [
+        "PHY 121",
+        "C"
+      ]
+    },
+    "coreq": null,
+    "anti_req": null,
+    "pre_or_coreq": {
+      "Or": [
+        {
+          "Taken": [
+            "CHE 132"
+          ]
+        },
+        {
+          "Taken": [
+            "CHE 152"
+          ]
+        }
+      ]
+    },
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "4",
     "grading": null,
     "__type__": "Course"
   }
