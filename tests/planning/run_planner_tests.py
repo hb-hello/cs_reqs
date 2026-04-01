@@ -86,7 +86,6 @@ def run_ortools(history, attrs=None):
             history,
             Major('CSE'),
             Standing('U4'),
-            schedule=True,
             starting_semester=start_sem,
             must_include=must_include,
             must_exclude=must_exclude,

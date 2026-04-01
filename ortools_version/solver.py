@@ -73,8 +73,15 @@ class Solver:
 
     def implies(self, a, b):
         c = self.constraint(b)
-        if c is not None:
-            self.model.add_implication(self._var(a), c)
+        if c is None: return
+        if isinstance(c, int):  # 1 = trivially true, 0 = a must be false
+            if c == 0: self.model.add(self._var(a) == 0)
+            return
+        bv = self._var(a)
+        if isinstance(c, cp_model.IntVar):
+            self.model.add_implication(bv, c)
+        else:
+            self.model.add(c).only_enforce_if(bv)
 
     # a → NOT b
     def forbids(self, a, b):

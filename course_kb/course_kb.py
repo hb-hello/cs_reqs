@@ -99,3 +99,20 @@ def get_reqs(expr):
 ## retrieve all CourseReq argument values (course IDs) from an And-Or expression
 def get_courses(expr):
     return {arg for req in get_reqs(expr) for arg in req.arguments}
+
+# common constants
+
+MAX_SEM = 40       # upper bound on future semesters
+CREDIT_LIMIT = 15  # max credits per semester
+
+SEM_NAMES = {1: 'Fall', 2: 'Winter', 3: 'Spring', 4: 'Summer'}
+
+# For the purpose of determining grade point average, grades are assigned
+# point values as follows:
+grade_to_points = {
+  'A': 4.00, 'A-': 3.67,
+  'B+': 3.33, 'B': 3.00, 'B-': 2.67,
+  'C+': 2.33, 'C': 2.00, 'C-': 1.67,
+  'D+': 1.33, 'D': 1.00,
+  'F': 0.00, 'I/F': 0.00, 'Q': 0.00
+}

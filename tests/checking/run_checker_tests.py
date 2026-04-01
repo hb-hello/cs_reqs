@@ -14,9 +14,9 @@ def check_python(taken):
     return degree_reqs(taken)
 
 def check_ortools(taken):
-    from ortools_version.planner import plan_courses
+    from ortools_version.planner import plan_courses, best_attempts
     from ortools_version.course_catalog import Major, Standing, History
-    history = [History(t.id, t.credits, t.grade, t.when, t.where) for t in taken]
+    history = best_attempts([History(t.id, t.credits, t.grade, t.when, t.where) for t in taken])
     checked, _, _ = plan_courses(history, Major("CSE"), Standing("U4"), check=True)
     return checked
 

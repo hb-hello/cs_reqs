@@ -38,11 +38,9 @@ def test_multi_attempt_passes():
     }
     return taken, dict(_ALL_PASS)
 
-def test_multi_attempt_drags_sci_gpa():
-    """PHY 131 taken twice (F then C). All other sci grades C.
-    All-attempts sci GPA: (0*3 + 200*3 + 200*3 + 200*1 + 200*3) / (3+3+3+1+3) = 2000/13 ≈ 1.54 < 2.0
-    Best-only sci GPA:    (200*3 + 200*3 + 200*1 + 200*3) / (3+3+1+3)          = 2000/10 = 2.0
-    So all-attempts causes sci to fail."""
+def test_multi_attempt_best_only_sci_gpa():
+    """PHY 131 taken twice (F then C). With best-attempt pre-processing, only C is used.
+    Best-only sci GPA: (200*3 + 200*3 + 200*1 + 200*3) / (3+3+1+3) = 2000/10 = 2.0 — passes."""
     taken = _full_taken()
     taken = {t for t in taken if t.id not in {'PHY 131', 'PHY 132', 'PHY 133', 'AST 203'}}
     taken |= {
@@ -53,8 +51,7 @@ def test_multi_attempt_drags_sci_gpa():
         Taken('AST 203', 3, 'C',  (2024, 2), 'SB'),
     }
     checked = dict(_ALL_PASS)
-    checked['sci'] = (False, [])
-    checked['degree'] = (False, [])
+    checked['sci'] = (True, ['AST 203', 'PHY 131', 'PHY 132', 'PHY 133'])
     return taken, checked
 
 if __name__ == '__main__':

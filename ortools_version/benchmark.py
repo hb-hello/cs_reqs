@@ -230,8 +230,6 @@ def run_benchmark(func, history, runs=3, **kwargs):
     sig = inspect.signature(func)
     accepts = set(sig.parameters.keys())
     common_kwargs = {}
-    if 'schedule' in accepts:
-        common_kwargs['schedule'] = True
     if 'starting_semester' in accepts:
         common_kwargs['starting_semester'] = min((h.when for h in history), default=(1, 1))
 
@@ -248,7 +246,7 @@ def run_benchmark(func, history, runs=3, **kwargs):
                 else:
                     res = func(history, **{**common_kwargs, **kwargs})
             except TypeError:
-                res = func(history, **{**common_kwargs, **kwargs})
+                res = func(history, **kwargs)
         t1 = time.perf_counter()
         elapsed = t1 - t0
         out = parse_metrics_from_stdout(buf.getvalue())

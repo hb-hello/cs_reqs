@@ -3,20 +3,11 @@ from collections import namedtuple
 from course_kb.course_kb import (
     Taken, Passed, Major, Standing, Permission, UnsupportedRequirement,
     StudentReq, CourseReq, And, Or, get_courses, get_reqs, Requirement,
+    MAX_SEM, SEM_NAMES, CREDIT_LIMIT, grade_to_points
 )
 from course_kb.build_kb import ASTDecoder
 
 # ── Course record & catalog ────────────────────────────────────
-
-# For the purpose of determining grade point average, grades are assigned
-# point values as follows:
-grade_to_points = {
-  'A': 4.00, 'A-': 3.67,
-  'B+': 3.33, 'B': 3.00, 'B-': 2.67,
-  'C+': 2.33, 'C': 2.00, 'C-': 1.67,
-  'D+': 1.33, 'D': 1.00,
-  'F': 0.00, 'I/F': 0.00, 'Q': 0.00
-}
 
 ## a course taken, e.g., History('CSE 114', 4, 'A', (2024, 2), 'SB')
 History = namedtuple('History', ['id', 'credits', 'grade', 'when', 'where'])
