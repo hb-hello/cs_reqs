@@ -65,6 +65,12 @@ class Standing(StudentReq):   ## e.g. u3_standing
 class Permission(StudentReq):
     pass
 
+class Coregister(Requirement):
+    ## a course needs to be taken together with another course. 
+    ### 'hack' to represent prereq OR coreq logic such as: "prereq: C1 or coreq C2"
+    ###    which is represented as prereq: Or([Taken("C1"), Coregister("C2")])
+    pass
+
 class UnsupportedRequirement(StudentReq):    ## to wrap all unsupported formats
     name = "unsupported"   ## override: "unsupportedrequirement" would be wrong
 
@@ -88,6 +94,7 @@ class And(LogicalExpr): pass
 
 ## Represent a list of disjuncts.
 class Or(LogicalExpr):  pass
+class Not(LogicalExpr): pass
 
 ## retrieve all leaf CourseReq predicates from an And-Or expression
 def get_reqs(expr):
