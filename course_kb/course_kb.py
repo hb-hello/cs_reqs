@@ -41,14 +41,11 @@ class Requirement(Expr):
         arg_str = ",".join(repr(arg) for arg in self.arguments)
         return f'{self.name}({arg_str})'
 
-class StudentReq(Requirement): pass   ## Major, Standing — not decided by solver; pinned by planner
-class CourseReq(Requirement):  pass   ## Taken, Passed — free BoolVars decided by solver
-
-class Taken(CourseReq):     ## e.g. taken_id("CSE 303"), taken_id("CSE 350")
+class Taken(Requirement):     ## e.g. taken_id("CSE 303"), taken_id("CSE 350")
                                ###    named taken_id to avoid clash with taken/5 in prolog and clingo.
     pass                       ###    TODO: better name?
 
-class Passed(CourseReq):    ## e.g. passed("CSE 101"), passed("AMS 210", "B")
+class Passed(Requirement):    ## e.g. passed("CSE 101"), passed("AMS 210", "B")
     ## by default, we assume passing means C or higher because that's the only case in cse courses.
     ## other programs may have 'passed with B or higher'.
     def __init__(self, *arguments):
@@ -56,22 +53,22 @@ class Passed(CourseReq):    ## e.g. passed("CSE 101"), passed("AMS 210", "B")
             arguments = (arguments[0], 'C')
         super().__init__(*arguments)
 
-class Major(StudentReq):     ## e.g. cse_major
+class Major(Requirement):     ## e.g. cse_major
     pass
 
-class Standing(StudentReq):   ## e.g. u3_standing
+class Standing(Requirement):   ## e.g. u3_standing
     pass
 
-class Permission(StudentReq):
+class Permission(Requirement):
     pass
 
 class Coregister(Requirement):
-    ## a course needs to be taken together with another course. 
+    ## a course needs to be taken together with another course.
     ### 'hack' to represent prereq OR coreq logic such as: "prereq: C1 or coreq C2"
     ###    which is represented as prereq: Or([Taken("C1"), Coregister("C2")])
     pass
 
-class UnsupportedRequirement(StudentReq):    ## to wrap all unsupported formats
+class UnsupportedRequirement(Requirement):    ## to wrap all unsupported formats
     name = "unsupported"   ## override: "unsupportedrequirement" would be wrong
 
     def __repr__(self):
@@ -96,14 +93,17 @@ class And(LogicalExpr): pass
 class Or(LogicalExpr):  pass
 class Not(LogicalExpr): pass
 
-## retrieve all leaf CourseReq predicates from an And-Or expression
+## requirements that appear as witnesses (course-level predicates, not student attributes)
+witness_types = (Taken, Passed, Coregister)
+
+## retrieve all witness predicates from an And-Or expression
 def get_reqs(expr):
-    if isinstance(expr, CourseReq):   return {expr}
-    if isinstance(expr, Requirement): return set()
-    if isinstance(expr, LogicalExpr): return set().union(*(get_reqs(op) for op in expr.operands))
+    if isinstance(expr, witness_types): return {expr}
+    if isinstance(expr, Requirement):   return set()
+    if isinstance(expr, LogicalExpr):   return set().union(*(get_reqs(op) for op in expr.operands))
     return set()
 
-## retrieve all CourseReq argument values (course IDs) from an And-Or expression
+## retrieve all witness argument values (course IDs) from an And-Or expression
 def get_courses(expr):
     return {arg for req in get_reqs(expr) for arg in req.arguments}
 

@@ -95,7 +95,7 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
             model.add_at_most_one(solver[Taken(c, g, s)] for g in GRADES for s in all_sems)
 
     # Passed(c, gr) is true if the course was taken with grade >= gr
-    solver[Passed] = lambda c, gr: solver.constraint(Or(*[Taken(c, g, s) for g in GRADES if grade_to_points[g] >= grade_to_points[gr] for s in all_sems]))
+    solver[Passed] = lambda c, gr: solver.resolve(Or(*[Taken(c, g, s) for g in GRADES if grade_to_points[g] >= grade_to_points[gr] for s in all_sems]))
 
     reqs = {}
     witnesses = {}
@@ -137,7 +137,7 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
         and c not in adv_courses | elect_exclude
     }
 
-    reqs["elect"] = solver.at_least(sum(solver.constraint(Passed(c)) for c in electives), 4)
+    reqs["elect"] = solver.at_least(sum(solver.resolve(Passed(c)) for c in electives), 4)
     witnesses["elect"] = {Passed(c) for c in electives}
 
     # 4. AMS 151, AMS 161 Applied Calculus I, II
@@ -227,7 +227,7 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
         solver.at_least(sum(solver[Passed(c)] * credits(c) for c in items23_courses), 18))
 
     grades = {h.id: h.grade for h in history}
-    req_vars = {name: solver.constraint(expr) for name, expr in reqs.items()}
+    req_vars = {name: solver.resolve(expr) for name, expr in reqs.items()}
 
     to_plan_from = catalog.keys() - (history_ids.keys() | must_exclude)
 

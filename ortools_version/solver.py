@@ -1,5 +1,5 @@
 from ortools.sat.python import cp_model
-from course_kb.course_kb import Requirement, LogicalExpr, Or
+from course_kb.course_kb import Expr, Requirement, Or
 
 # stores, indexes and adds variables to the CP-SAT model
 class Solver:
@@ -16,9 +16,6 @@ class Solver:
         if cls not in self._encoders and isinstance(cls.domain, list):
             self._encoders[cls] = {v: i + 1 for i, v in enumerate(cls.domain)} | {None: 0}
         return self._encoders.get(cls)
-
-    def encode(self, pred_class, value):
-        return self._encoder(pred_class)[value]
 
     # allows Python's default indexing -> solver[key]
     # automatically identifies the type of model variable needed from the domain
@@ -51,28 +48,30 @@ class Solver:
     def __contains__(self, pred):
         return pred in self._vars
 
-    # hardcode a variable value; auto-encodes if pred's class has a registered domain
-    def ensure(self, pred, value):
-        iv, value = self._resolve(pred, value)
-        self.model.add(iv == value)
-
     # return the BoolVar for a predicate, caching so each predicate maps to exactly one var
     def val(self, pred):
         return self[pred]
 
-    # allows solver[pred] = expr to store a constraint result
-    # also allows solver[PredClass] = lambda *args: ... to register a query
+    # solver[PredClass] = lambda  → register query
+    # solver[pred] = model_var    → store computed result
+    # solver[pred] = Expr         → store resolved constraint
+    # solver[pred] = scalar       → pin value (replaces ensure)
     def __setitem__(self, pred, expr):
         if isinstance(pred, type) and callable(expr):
             self._vars[pred] = expr
+        elif isinstance(expr, Expr):
+            self._vars[pred] = self.resolve(expr)
+        elif isinstance(expr, cp_model.IntVar):
+            self._vars[pred] = expr
         else:
-            self._vars[pred] = self.constraint(expr) if isinstance(expr, (LogicalExpr, Requirement)) else expr
+            iv, n = self._encode(pred, expr)  # scalar → pin
+            self.model.add(iv == n)
 
     def _var(self, expr):
         return self[expr] if isinstance(expr, Requirement) else expr
 
     def implies(self, a, b):
-        c = self.constraint(b)
+        c = self.resolve(b)
         if c is None: return
         if isinstance(c, int):  # 1 = trivially true, 0 = a must be false
             if c == 0: self.model.add(self._var(a) == 0)
@@ -85,7 +84,7 @@ class Solver:
 
     # a → NOT b
     def forbids(self, a, b):
-        c = self.constraint(b)
+        c = self.resolve(b)
         if c is None: return
         if isinstance(c, int):
             if c: self.model.add(self._var(a) == 0)  # b always true → a must be 0
@@ -99,7 +98,7 @@ class Solver:
         self.model.add(iv == 0).only_enforce_if(bv.negated())
 
     # auto-resolves Requirements and encodes domain values for n
-    def _resolve(self, expr, n):
+    def _encode(self, expr, n):
         if isinstance(expr, Requirement):
             cls = type(expr)
             enc = self._encoder(cls)
@@ -108,21 +107,21 @@ class Solver:
         return expr, n  # already a model variable or linear expression
 
     def exactly(self, expr, n):
-        expr, n = self._resolve(expr, n)
+        expr, n = self._encode(expr, n)
         v = self.model.new_bool_var(f"eq_{n}_{id(expr)}")
         self.model.add(expr == n).only_enforce_if(v)
         self.model.add(expr != n).only_enforce_if(v.negated())
         return v
 
     def at_least(self, expr, n):
-        expr, n = self._resolve(expr, n)
+        expr, n = self._encode(expr, n)
         v = self.model.new_bool_var(f"geq_{n}_{id(expr)}")
         self.model.add(expr >= n).only_enforce_if(v)
         self.model.add(expr <  n).only_enforce_if(v.negated())
         return v
 
     def at_most(self, expr, n):
-        expr, n = self._resolve(expr, n)
+        expr, n = self._encode(expr, n)
         v = self.model.new_bool_var(f"leq_{n}_{id(expr)}")
         self.model.add(expr <= n).only_enforce_if(v)
         self.model.add(expr >  n).only_enforce_if(v.negated())
@@ -130,22 +129,21 @@ class Solver:
 
     # make a constraint unconditionally mandatory
     def require(self, expr):
-        c = self.constraint(expr)
+        c = self.resolve(expr)
         if c is not None:
             self.model.add(c == 1)
 
-    # recursively walk an And-Or expression and set up constraints in the model
-    def constraint(self, expr):
+    # recursively walk an And-Or expression and set up boolvars in the model
+    def resolve(self, expr):
         if isinstance(expr, self.ignore):
             return None
-
+        if not isinstance(expr, Expr):
+            return expr  # raw BoolVar or linear expression
         if isinstance(expr, Requirement):
             return self.val(expr)
-        if not isinstance(expr, LogicalExpr):
-            return expr  # raw BoolVar
 
         # recursively add constraints for operands
-        ops = [self.constraint(op) for op in expr.operands]
+        ops = [self.resolve(op) for op in expr.operands]
 
         # check if operands are to be ignored
         ops = [o for o in ops if o is not None]
