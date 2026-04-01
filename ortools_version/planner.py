@@ -67,9 +67,10 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     # setting up the domain of the grade variable, order is important to enable comparisons below
     Grade.domain = sorted(grade_to_points.keys(), key=grade_to_points.get)
 
-    # setting up the domain for semesters
+    # setting up the domain for semesters; base anchors the domain, starting_semester clamped within it
     base = min((h.when for h in history), default=starting_semester)
     Semester.domain = list(semester_range(base, MAX_SEM))
+    starting_semester = max(starting_semester, base)
 
     history_ids = {h.id: h for h in history}
     excluded = history_ids.keys() | must_exclude
@@ -206,22 +207,9 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     for cid in sci_ids:     # used is a subset of taken
         solver.implies(UsedInSci(cid), Taken(cid))
 
-    # gpa_exprs: returns (weighted_sum, gpa_credits) linear expressions
-    def gpa_exprs(course_ids, pred):
-        w_sum, c_total = 0, 0
-        for cid in course_ids:
-            pv = solver[pred(cid)]
-            cr = credits(cid)
-            if cid in history_ids:
-                grade = history_ids[cid].grade
-                w_sum   += pv * int(grade_to_points[grade] * 100) * cr
-            else:
-                w_sum   += solver.apply(Grade(cid), lambda g, cr=cr: int(grade_to_points[g] * 100) * cr, iff=pred(cid))
-            c_total += pv * cr
-        return w_sum, c_total
-
-    used_weighted_sum, gpa_credit_total = gpa_exprs(sci_ids, pred=UsedInSci)
-    # unique-course credits for the 9-credit minimum (counts each course once, not each attempt)
+    # Grade(cid) is pinned for history courses, decision variable for future ones — apply works for both
+    used_weighted_sum = sum(solver.apply(Grade(cid), lambda g, cr=credits(cid): int(grade_to_points[g] * 100) * cr, iff=UsedInSci(cid)) for cid in sci_ids)
+    # unique_credit_total: counts each sci course once (for 9-credit min and GPA denominator)
     unique_credit_total = sum(solver[UsedInSci(cid)] * credits(cid) for cid in sci_ids)
 
     # The grade point average for the courses in Requirements 7 and 8 must be
@@ -229,7 +217,7 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     # GPA >= 2.0  i.e.,  weighted_sum >= 200 * total_credits  (scaled by 100)
     reqs["sci"] = And(reqs["sci_combo"],
                       solver.at_least(unique_credit_total, 9),
-                      solver.at_least(used_weighted_sum, 200 * gpa_credit_total))
+                      solver.at_least(used_weighted_sum, 200 * unique_credit_total))
     witnesses["sci"] = {UsedInSci(cid) for cid in sci_ids}
 
     # 9. Professional Ethics

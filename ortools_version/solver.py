@@ -78,9 +78,9 @@ class Solver:
             if c == 0: self.model.add(self._var(a) == 0)
             return
         bv = self._var(a)
-        if isinstance(c, cp_model.IntVar):
+        if hasattr(c, 'negated'):   # BoolVar: use native implication
             self.model.add_implication(bv, c)
-        else:
+        else:                        # BoundedLinearExpression (e.g. a > b)
             self.model.add(c).only_enforce_if(bv)
 
     # a → NOT b

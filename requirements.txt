@@ -8,7 +8,7 @@ cffi==2.0.0
 charset-normalizer==3.4.6
 clingo==5.8.0
 contourpy==1.3.3
--e git+https://github.com/hb-hello/cs_reqs.git@7ee655560754b46b3f9a299f86822ce4d8456710#egg=cs_reqs
+-e git+https://github.com/hb-hello/cs_reqs.git@0193dc8bbfd2ecc1f5f69b08639b4908038d27f8#egg=cs_reqs
 cycler==0.12.1
 distro==1.9.0
 fonttools==4.62.1
