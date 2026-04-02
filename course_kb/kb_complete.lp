@@ -2,11 +2,11 @@
 unsupported_prereq.     %%% assume unsupported prereqs are satisfied
 unsupported_coreq.      %%% assume unsupported coreqs are satisfied
 course("CSE 101", 4).
-has_prereq("CSE 101").
-prereq("CSE 101", Sem) :- semester(Sem),unsupported_prereq.
 has_anti_req("CSE 101").
 anti_req("CSE 101", Sem) :- semester(Sem), taken_before("CSE 114", Sem).
 anti_req("CSE 101", Sem) :- semester(Sem), taken_before("CSE 160", Sem).
+has_prereq("CSE 101").
+prereq("CSE 101", Sem) :- semester(Sem),unsupported_prereq.
 course("CSE 102", 3).
 course("CSE 110", 3).
 has_prereq("CSE 110").
@@ -26,10 +26,10 @@ course("CSE 150", 4).
 has_prereq("CSE 150").
 prereq("CSE 150", Sem) :- semester(Sem),unsupported_prereq,unsupported_prereq.
 course("CSE 160", 3).
-has_prereq("CSE 160").
-prereq("CSE 160", Sem) :- semester(Sem),unsupported_prereq.
 has_coreq("CSE 160").
 coreq("CSE 160", Sem) :- semester(Sem),taken_same("CSE 161", Sem).
+has_prereq("CSE 160").
+prereq("CSE 160", Sem) :- semester(Sem),unsupported_prereq.
 course("CSE 161", 1).
 has_coreq("CSE 161").
 coreq("CSE 161", Sem) :- semester(Sem),taken_same("CSE 160", Sem).
@@ -59,10 +59,10 @@ prereq("CSE 230", Sem) :- semester(Sem), taken_before("ESG 111", Sem).
 prereq("CSE 230", Sem) :- semester(Sem), taken_before("BME 120", Sem).
 prereq("CSE 230", Sem) :- semester(Sem), taken_before("MEC 102", Sem).
 course("CSE 260", 3).
-has_prereq("CSE 260").
-prereq("CSE 260", Sem) :- semester(Sem),taken_before("CSE 160", Sem).
 has_coreq("CSE 260").
 coreq("CSE 260", Sem) :- semester(Sem),taken_same("CSE 261", Sem).
+has_prereq("CSE 260").
+prereq("CSE 260", Sem) :- semester(Sem),taken_before("CSE 160", Sem).
 course("CSE 261", 1).
 has_coreq("CSE 261").
 coreq("CSE 261", Sem) :- semester(Sem),taken_same("CSE 260", Sem).
@@ -149,12 +149,12 @@ course("CSE 352", 3).
 has_prereq("CSE 352").
 prereq("CSE 352", Sem) :- semester(Sem),taken_before(("CSE 316"; "CSE 351"), Sem),major("CSE"; "DAS").
 course("CSE 353", 3).
+has_prereq("CSE 353").
+prereq("CSE 353", Sem) :- semester(Sem),taken_before(("CSE 316"; "CSE 351"), Sem),major("CSE"; "DAS").
 has_pre_or_coreq("CSE 353").
 pre_or_coreq("CSE 353", Sem) :- semester(Sem), taken_before_or_same("AMS 310", Sem).
 pre_or_coreq("CSE 353", Sem) :- semester(Sem), taken_before_or_same("AMS 311", Sem).
 pre_or_coreq("CSE 353", Sem) :- semester(Sem), taken_before_or_same("AMS 412", Sem).
-has_prereq("CSE 353").
-prereq("CSE 353", Sem) :- semester(Sem),taken_before(("CSE 316"; "CSE 351"), Sem),major("CSE"; "DAS").
 course("CSE 354", 3).
 has_prereq("CSE 354").
 prereq("CSE 354", Sem) :- semester(Sem),taken_before(("CSE 316"; "CSE 351"), Sem),major("CSE"; "DAS").
@@ -277,12 +277,12 @@ prereq("AMS 310", Sem) :- semester(Sem), taken_before("AMS 161", Sem).
 prereq("AMS 310", Sem) :- semester(Sem), taken_before("MAT 132", Sem).
 prereq("AMS 310", Sem) :- semester(Sem), taken_before("MAT 127", Sem).
 course("AMS 311", 3).
-has_prereq("AMS 311").
-prereq("AMS 311", Sem) :- semester(Sem), taken_before("AMS 301", Sem),taken_before("AMS 310", Sem).
-prereq("AMS 311", Sem) :- semester(Sem), permission.
 has_coreq("AMS 311").
 coreq("AMS 311", Sem) :- semester(Sem), taken_same("MAT 203", Sem).
 coreq("AMS 311", Sem) :- semester(Sem), taken_same("AMS 261", Sem).
+has_prereq("AMS 311").
+prereq("AMS 311", Sem) :- semester(Sem), taken_before("AMS 301", Sem),taken_before("AMS 310", Sem).
+prereq("AMS 311", Sem) :- semester(Sem), permission.
 course("MAT 123", 3).
 has_prereq("MAT 123").
 prereq("MAT 123", Sem) :- semester(Sem),unsupported_prereq.
@@ -331,16 +331,16 @@ has_prereq("BIO 204").
 prereq("BIO 204", Sem) :- semester(Sem), taken_before("CHE 129", Sem),taken_before("CHE 131", Sem).
 prereq("BIO 204", Sem) :- semester(Sem), taken_same("CHE 152").
 course("CHE 131", 4).
-has_prereq("CHE 131").
-prereq("CHE 131", Sem) :- semester(Sem),unsupported_prereq.
 has_coreq("CHE 131").
 coreq("CHE 131", Sem) :- semester(Sem),unsupported_coreq.
+has_prereq("CHE 131").
+prereq("CHE 131", Sem) :- semester(Sem),unsupported_prereq.
 course("CHE 132", 4).
-has_pre_or_coreq("CHE 132").
-pre_or_coreq("CHE 132", Sem) :- semester(Sem),unsupported_pre_or_coreq,unsupported_pre_or_coreq.
 has_prereq("CHE 132").
 prereq("CHE 132", Sem) :- semester(Sem), passed_before(("CHE 129","C"), Sem).
 prereq("CHE 132", Sem) :- semester(Sem), passed_before(("CHE 131","C"), Sem).
+has_pre_or_coreq("CHE 132").
+pre_or_coreq("CHE 132", Sem) :- semester(Sem),unsupported_pre_or_coreq,unsupported_pre_or_coreq.
 course("CHE 133", 1).
 course("CHE 152", 4).
 has_prereq("CHE 152").
@@ -355,10 +355,10 @@ course("CHE 322", 4).
 has_prereq("CHE 322").
 prereq("CHE 322", Sem) :- semester(Sem),passed_before(("CHE 321","C"), Sem).
 course("CHE 331", 4).
-has_prereq("CHE 331").
-prereq("CHE 331", Sem) :- semester(Sem),passed_before(("CHE 152","C"), Sem).
 has_coreq("CHE 331").
 coreq("CHE 331", Sem) :- semester(Sem),taken_same("CHE 383", Sem).
+has_prereq("CHE 331").
+prereq("CHE 331", Sem) :- semester(Sem),passed_before(("CHE 152","C"), Sem).
 course("CHE 332", 4).
 has_prereq("CHE 332").
 prereq("CHE 332", Sem) :- semester(Sem),passed_before(("CHE 331","C"), Sem).
@@ -384,7 +384,9 @@ prereq("PHY 132", Sem) :- semester(Sem), passed_before(("PHY 131","C"), Sem).
 prereq("PHY 132", Sem) :- semester(Sem), passed_before(("PHY 141","C"), Sem).
 course("PHY 133", 1).
 has_pre_or_coreq("PHY 133").
-pre_or_coreq("PHY 133", Sem) :- semester(Sem),taken_before_or_same("PHY 125", Sem),taken_before_or_same("PHY 126", Sem),taken_before_or_same(("PHY 131"; "PHY 141"), Sem).
+pre_or_coreq("PHY 133", Sem) :- semester(Sem), taken_before_or_same("PHY 125", Sem),taken_before_or_same("PHY 126", Sem).
+pre_or_coreq("PHY 133", Sem) :- semester(Sem), taken_before_or_same("PHY 131", Sem).
+pre_or_coreq("PHY 133", Sem) :- semester(Sem), taken_before_or_same("PHY 141", Sem).
 course("PHY 134", 1).
 has_prereq("PHY 134").
 prereq("PHY 134", Sem) :- semester(Sem),passed_before(("PHY 133","C"), Sem).
@@ -394,13 +396,13 @@ has_prereq("PHY 142").
 prereq("PHY 142", Sem) :- semester(Sem), passed_before(("PHY 141","C"), Sem).
 prereq("PHY 142", Sem) :- semester(Sem), permission.
 course("PHY 251", 3).
+has_prereq("PHY 251").
+prereq("PHY 251", Sem) :- semester(Sem),aux_or_1(Sem),taken_before("PHY 134", Sem),passed_before(("MAT 126","C"; "MAT 132","C"; "MAT 142","C"; "MAT 171","C"; "AMS 161","C"), Sem).
 has_pre_or_coreq("PHY 251").
 pre_or_coreq("PHY 251", Sem) :- semester(Sem), taken_before_or_same("MAT 203", Sem).
 pre_or_coreq("PHY 251", Sem) :- semester(Sem), taken_before_or_same("MAT 205", Sem).
 pre_or_coreq("PHY 251", Sem) :- semester(Sem), taken_before_or_same("AMS 261", Sem).
 pre_or_coreq("PHY 251", Sem) :- semester(Sem), taken_before_or_same("MAT 307", Sem).
-has_prereq("PHY 251").
-prereq("PHY 251", Sem) :- semester(Sem),aux_or_1(Sem),taken_before("PHY 134", Sem),passed_before(("MAT 126","C"; "MAT 132","C"; "MAT 142","C"; "MAT 171","C"; "AMS 161","C"), Sem).
 course("PHY 252", 1).
 has_pre_or_coreq("PHY 252").
 pre_or_coreq("PHY 252", Sem) :- semester(Sem),taken_before_or_same("PHY 251", Sem).
@@ -427,13 +429,13 @@ course("WRT 102", 3).
 has_prereq("WRT 102").
 prereq("WRT 102", Sem) :- semester(Sem), passed_before(("WRT 101","C"), Sem).
 course("AMS 110", 3).
+has_anti_req("AMS 110").
+anti_req("AMS 110", Sem) :- semester(Sem), taken_before("MAT 203", Sem).
+anti_req("AMS 110", Sem) :- semester(Sem), taken_before("AMS 310", Sem).
 has_prereq("AMS 110").
 prereq("AMS 110", Sem) :- semester(Sem), taken_before("AMS 151", Sem).
 prereq("AMS 110", Sem) :- semester(Sem), taken_before("MAT 125", Sem).
 prereq("AMS 110", Sem) :- semester(Sem), taken_before("MAT 131", Sem).
-has_anti_req("AMS 110").
-anti_req("AMS 110", Sem) :- semester(Sem), taken_before("MAT 203", Sem).
-anti_req("AMS 110", Sem) :- semester(Sem), taken_before("AMS 310", Sem).
 course("AMS 261", 4).
 has_prereq("AMS 261").
 prereq("AMS 261", Sem) :- semester(Sem), taken_before("AMS 161", Sem).
@@ -474,21 +476,21 @@ has_prereq("MAT 307").
 prereq("MAT 307", Sem) :- semester(Sem), taken_before("MAT 127", Sem).
 prereq("MAT 307", Sem) :- semester(Sem), taken_before("MAT 132", Sem).
 course("CHE 129", 4).
-has_prereq("CHE 129").
-prereq("CHE 129", Sem) :- semester(Sem),unsupported_prereq.
 has_coreq("CHE 129").
 coreq("CHE 129", Sem) :- semester(Sem),taken_same("CHE 129", Sem),taken_same("MAT 123", Sem).
+has_prereq("CHE 129").
+prereq("CHE 129", Sem) :- semester(Sem),unsupported_prereq.
 course("CHE 383", 2).
-has_prereq("CHE 383").
-prereq("CHE 383", Sem) :- semester(Sem),taken_before("CHE 154", Sem).
 has_coreq("CHE 383").
 coreq("CHE 383", Sem) :- semester(Sem),taken_same("CHE 331", Sem).
+has_prereq("CHE 383").
+prereq("CHE 383", Sem) :- semester(Sem),taken_before("CHE 154", Sem).
 course("PHY 122", 4).
+has_prereq("PHY 122").
+prereq("PHY 122", Sem) :- semester(Sem),passed_before(("PHY 121","C"), Sem).
 has_pre_or_coreq("PHY 122").
 pre_or_coreq("PHY 122", Sem) :- semester(Sem), taken_before_or_same("CHE 132", Sem).
 pre_or_coreq("PHY 122", Sem) :- semester(Sem), taken_before_or_same("CHE 152", Sem).
-has_prereq("PHY 122").
-prereq("PHY 122", Sem) :- semester(Sem),passed_before(("PHY 121","C"), Sem).
 aux_or_1(Sem) :- semester(Sem), taken_before("PHY 122", Sem),taken_before("PHY 124", Sem).
 aux_or_1(Sem) :- semester(Sem), taken_before("PHY 126", Sem),taken_before("PHY 127", Sem).
 aux_or_1(Sem) :- semester(Sem), taken_before("PHY 132", Sem).

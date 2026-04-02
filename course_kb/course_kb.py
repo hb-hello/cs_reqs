@@ -1,4 +1,6 @@
 from collections import namedtuple
+import csv
+from pathlib import Path
 
 ## Representation for course
 ## Each course: id, desc, prereqs, antireqs, coreqs, SBC, credits, ...
@@ -112,7 +114,28 @@ def get_courses(expr):
 MAX_SEM = 40       # upper bound on future semesters
 CREDIT_LIMIT = 15  # max credits per semester
 
-SEM_NAMES = {1: 'Fall', 2: 'Winter', 3: 'Spring', 4: 'Summer'}
+SEM_NAMES = {1: 'Winter', 2: 'Spring', 3: 'Summer', 4: 'Fall'}
+
+def read_course_offered(csv_path='course_offered.csv'):
+    base_dir = Path(__file__).resolve().parent
+    path = Path(csv_path)
+    if not path.is_absolute():
+        path = base_dir / path
+
+    with path.open(newline='', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        next(reader, None)  # skip header
+        return {
+            row[0].strip(): {           # row[0] is course ID
+                int(term.strip())
+                for term in (row[1].strip() if len(row) > 1 else '').split(',')
+                if term.strip().isdigit() and int(term.strip()) in {1, 2, 3, 4}
+            }
+            for row in reader
+            if row and row[0].strip()
+        }
+
+COURSE_OFFERED = read_course_offered('course_offered.csv')
 
 # For the purpose of determining grade point average, grades are assigned
 # point values as follows:
@@ -123,3 +146,6 @@ grade_to_points = {
   'D+': 1.33, 'D': 1.00,
   'F': 0.00, 'I/F': 0.00, 'Q': 0.00
 }
+
+if __name__ == "__main__":
+    print(COURSE_OFFERED)
