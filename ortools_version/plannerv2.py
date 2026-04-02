@@ -1,4 +1,4 @@
-from .solver import Solver
+from .solver import ORModel
 from .course_catalog import (
     catalog, upper_division, COURSE_OFFERED_TERMS,
     Passed, Taken, Major, Standing, UnsupportedRequirement, Permission,
@@ -48,7 +48,7 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     if must_include & must_exclude:
         return None # infeasible
 
-    solver = Solver(ignore=(UnsupportedRequirement, Permission))
+    solver = ORModel(ignore=(UnsupportedRequirement, Permission))
     model = solver.model
 
     # set up student requirements (Major, Standing, etc.) in the model

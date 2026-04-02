@@ -109,14 +109,14 @@ def get_courses(expr):
 
 # common constants
 
-MAX_SEM = 40       # upper bound on future semesters
+MAX_SEMS_ALLOWED = 40       # upper bound on future semesters
 CREDIT_LIMIT = 15  # max credits per semester
 
-SEM_NAMES = {1: 'Fall', 2: 'Winter', 3: 'Spring', 4: 'Summer'}
+SEM_NAMES = {1: 'Winter', 2: 'Spring', 3: 'Summer', 4: 'Fall'}
 
 # For the purpose of determining grade point average, grades are assigned
 # point values as follows:
-grade_to_points = {
+grade_points = {
   'A': 4.00, 'A-': 3.67,
   'B+': 3.33, 'B': 3.00, 'B-': 2.67,
   'C+': 2.33, 'C': 2.00, 'C-': 1.67,

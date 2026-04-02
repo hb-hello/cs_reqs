@@ -2,7 +2,7 @@ from ortools.sat.python import cp_model
 from course_kb.course_kb import Expr, Requirement, Or
 
 # stores, indexes and adds variables to the CP-SAT model
-class Solver:
+class ORModel:
     def __init__(self, ignore=()):
         self.model   = cp_model.CpModel()
         self._solver = None         # created on solve()
@@ -175,6 +175,9 @@ class Solver:
             scale *= 100_000
         self.model.minimize(expr)
 
+    def maximize(self, expr):
+        self.model.maximize(expr)
+
     # map a domain predicate through func via element lookup; iff= holds only when bv is true
     def apply(self, pred, func, iff=None):
         values = [0] + [func(v) for v in type(pred).domain]
@@ -186,41 +189,42 @@ class Solver:
             self.model.add(result == 0).only_enforce_if(bv.negated())
         return result
 
-    # find a solution for given constraints using the CP-SAT solver
+    # run the solver and return an ORSolver with the results
     def solve(self):
-        self._solver = cp_model.CpSolver()
-        status = self._solver.solve(self.model)
-        name   = self._solver.status_name(status)
-        obj    = (int(self._solver.objective_value)
-                  if status in (cp_model.OPTIMAL, cp_model.FEASIBLE) else None)
-        return name, obj
+        return ORSolver(self)
 
-    def print_metrics(self):
-        assert self._solver, "call solve() first"
-        s = self._solver
 
-        metrics = []
-        if hasattr(s, 'NumConflicts'):
-            metrics.append(f"conflicts={s.NumConflicts()}")
-        if hasattr(s, 'NumBranches'):
-            # branches are a practical proxy for search iterations in CP-SAT
-            metrics.append(f"branches={s.NumBranches()}")
-        if hasattr(s, 'NumBooleans'):
-            metrics.append(f"booleans={s.NumBooleans()}")
-        if hasattr(s, 'WallTime'):
-            metrics.append(f"wall_time_s={s.WallTime():.3f}")
-        if hasattr(s, 'UserTime'):
-            metrics.append(f"user_time_s={s.UserTime():.3f}")
-        if hasattr(s, 'ResponseProto'):
-            metrics.append(f"det_time={s.ResponseProto().deterministic_time:.6f}")
-
-        print('Solver metrics: ' + (', '.join(metrics) if metrics else 'n/a'))
+class ORSolver:
+    def __init__(self, model):
+        self._model = model
+        self._cp    = cp_model.CpSolver()
+        status      = self._cp.solve(model.model)
+        self.status = self._cp.status_name(status)
+        self.obj    = (int(self._cp.objective_value)
+                       if status in (cp_model.OPTIMAL, cp_model.FEASIBLE) else None)
 
     # helper to read solution variable values; auto-decodes categorical domains
     def value(self, v):
-        assert self._solver, "call solve() first"
-        raw = self._solver.value(self[v] if isinstance(v, Requirement) else v)
+        var = self._model[v] if isinstance(v, Requirement) else v
+        raw = self._cp.value(var)
         domain = getattr(v, 'domain', None)
         if isinstance(domain, list):
             return None if raw == 0 else domain[raw - 1]
         return raw
+
+    def metrics(self):
+        s = self._cp
+        out = {}
+        if hasattr(s, 'NumConflicts'): out['conflicts']   = s.NumConflicts()
+        if hasattr(s, 'NumBranches'):  out['branches']    = s.NumBranches()
+        if hasattr(s, 'NumBooleans'):  out['booleans']    = s.NumBooleans()
+        if hasattr(s, 'WallTime'):     out['wall_time_s'] = round(s.WallTime(), 3)
+        if hasattr(s, 'UserTime'):     out['user_time_s'] = round(s.UserTime(), 3)
+        if hasattr(s, 'ResponseProto'):
+            out['det_time'] = s.ResponseProto().deterministic_time
+        return out
+
+    def print_metrics(self):
+        m = self.metrics()
+        parts = [f"{k}={v}" for k, v in m.items()]
+        print('Solver metrics: ' + (', '.join(parts) if parts else 'n/a'))
