@@ -51,7 +51,7 @@ def print_schedule(planned, grades, credits_fn):
 # starting semester indicates the starting semester from which to start planning
 # course_offered_terms is a dict of course ID : {sem names}, e.g., 'CSE 114': {'Fall', 'Spring'}
 # debug_print enables verbose solver output
-def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(), check=False, starting_semester=(1, 1), course_offered_terms=None, debug_print=False):
+def plan_courses(already_taken, *student_reqs, must_exclude=set(), must_include=set(), check=False, starting_semester=(1, 1), course_offered_terms=None, debug_print=False):
 
     if must_include & must_exclude:
         return None # infeasible
@@ -68,11 +68,11 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     Grade.domain = sorted(grade_to_points.keys(), key=grade_to_points.get)
 
     # setting up the domain for semesters; base anchors the domain, starting_semester clamped within it
-    base = min((h.when for h in history), default=starting_semester)
+    base = min((h.when for h in already_taken), default=starting_semester)
     Semester.domain = list(semester_range(base, MAX_SEM))
     starting_semester = max(starting_semester, base)
 
-    history_ids = {h.id: h for h in history}
+    history_ids = {h.id: h for h in already_taken}
     excluded = history_ids.keys() | must_exclude
 
     to_plan_from = catalog.keys() - excluded
@@ -91,13 +91,13 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
         for cid in to_plan_from:
             # course has semester assigned if and only if we take the course
             solver.iff(Taken(cid), Semester(cid))
-            allowed_terms = course_offered_terms.get(cid)
-            if allowed_terms:
+            offered_terms = course_offered_terms.get(cid)
+            if offered_terms:
                 # term-restricted: must land in one of the valid allowed slots
-                allowed_slots = [sem for sem in Semester.domain[1:] if sem >= starting_semester and SEM_NAMES[sem[1]] in allowed_terms]
-                if allowed_slots:
+                offered_sems = [sem for sem in Semester.domain[1:] if sem >= starting_semester and SEM_NAMES[sem[1]] in offered_terms]
+                if offered_sems:
                     # if we take the course, it has to be in one of the allowed semesters
-                    solver.implies(Taken(cid), Or(*[solver.exactly(Semester(cid), sem) for sem in allowed_slots]))
+                    solver.implies(Taken(cid), Or(*[solver.exactly(Semester(cid), sem) for sem in offered_sems]))
                 else: # can't take the course if it is not offered in any of the semesters
                     solver[Taken(cid)] = 0
             else:
@@ -231,13 +231,13 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     witnesses["writing"] = get_reqs(reqs["writing"])
 
     # At least 24 credits from items 1 to 3, and at least 18 from 2 and 3, at Stony Brook
-    transfer_ids = {h.id for h in history if h.where != 'SB'}
+    transfer_ids = {h.id for h in already_taken if h.where != 'SB'}
     items123_courses = (intro_courses | adv_courses | electives) - transfer_ids
     items23_courses  = (adv_courses | electives) - transfer_ids
     reqs['credits_at_SB'] = And(solver.at_least(sum(solver[Passed(c)] * credits(c) for c in items123_courses), 24),
         solver.at_least(sum(solver[Passed(c)] * credits(c) for c in items23_courses), 18))
 
-    grades = {h.id: h.grade for h in history}
+    grades = {h.id: h.grade for h in already_taken}
     req_vars = {name: solver.resolve(expr) for name, expr in reqs.items()}
 
     if check:

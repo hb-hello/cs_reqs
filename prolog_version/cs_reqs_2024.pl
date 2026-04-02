@@ -1,3 +1,5 @@
+:- import memberchk/2 from lists.
+
 c_or_higher(Grade) :- memberchk(Grade, ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C']).
 
 % upper_division() :- 
