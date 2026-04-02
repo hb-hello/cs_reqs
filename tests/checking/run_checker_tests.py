@@ -20,6 +20,10 @@ def check_ortools(taken):
     checked, _, _ = plan_courses(history, Major("CSE"), Standing("U4"), check=True)
     return checked
 
+def check_prolog(taken):
+    from prolog_version.run_prolog import run_prolog
+    return run_prolog(taken)
+
 def check_clingo(taken):
     from clingo_version.run_clingo import run_clingo
     checked, _, _ = run_clingo(
@@ -55,6 +59,7 @@ APPROACHES = [
     ('python_version',  check_python),
     ('ortools_version', check_ortools),
     ('clingo_version',  check_clingo),
+    ('prolog_version',  check_prolog),
 ]
 
 def run_one(label, check_fn):
