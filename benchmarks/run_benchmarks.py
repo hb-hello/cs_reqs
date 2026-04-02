@@ -26,7 +26,7 @@ MAIN_LP = str(ROOT / 'clingo_version' / 'cse_req_clingo.lp')
 KB_LP   = str(ROOT / 'course_kb' / 'kb_complete.lp')
 
 
-def run_once(func, extract_booleans):
+def run_once(func, extract_metrics=None):
     # fork so SIGKILL can terminate blocking C extensions (SIGALRM can't)
     r_fd, w_fd = os.pipe()
     pid = os.fork()
@@ -38,11 +38,13 @@ def run_once(func, extract_booleans):
                 t0 = time.perf_counter()
                 result = func()
                 elapsed = time.perf_counter() - t0
-            booleans = extract_booleans(buf.getvalue(), result) if extract_booleans else None
-            data = json.dumps({'elapsed': elapsed, 'booleans': booleans}).encode()
+            metrics = extract_metrics(buf.getvalue(), result) if extract_metrics else {}
+            data = json.dumps({'elapsed': elapsed, 'metrics': metrics}).encode()
             os.write(w_fd, data)
         except Exception:
-            pass
+            import traceback
+            err = json.dumps({'error': traceback.format_exc()}).encode()
+            os.write(w_fd, err)
         finally:
             os.close(w_fd)
             os._exit(0)
@@ -65,39 +67,84 @@ def run_once(func, extract_booleans):
             return None
 
 
-def timed_runs(func, n, extract_booleans=None, label=''):
+def run_once_direct(func, extract_metrics=None):
+    # no fork — used when the callee manages its own timeout (clingo async solve)
+    buf = io.StringIO()
+    try:
+        with redirect_stdout(buf), redirect_stderr(io.StringIO()):
+            t0 = time.perf_counter()
+            result = func()
+            elapsed = time.perf_counter() - t0
+        metrics = extract_metrics(buf.getvalue(), result) if extract_metrics else {}
+        return {'elapsed': elapsed, 'metrics': metrics}
+    except Exception:
+        import traceback
+        return {'error': traceback.format_exc()}
+
+
+def timed_runs(func, n, extract_metrics=None, label='', direct=False):
     if label:
         print(f'  {label} ', end='', flush=True)
-    times, booleans = [], []
+    times = []
+    numeric = {}   # key -> [values]  aggregated as min/max/mean
+    lists   = {}   # key -> last seen list  (e.g. partial_reqs_sat)
+    any_timed_out = False
 
     for _ in range(n):
-        result = run_once(func, extract_booleans)
-        if result is None:
+        run = run_once_direct(func, extract_metrics) if direct else run_once(func, extract_metrics)
+        if run is None:
             print('T', end='', flush=True)
             continue
-        times.append(result['elapsed'])
-        if result.get('booleans') is not None:
-            booleans.append(result['booleans'])
+        if 'error' in run:
+            print(f'\n  ERROR: {run["error"]}', flush=True)
+            continue
+        times.append(run['elapsed'])
+        for k, v in run.get('metrics', {}).items():
+            if isinstance(v, bool):
+                if v: any_timed_out = True
+            elif isinstance(v, list):
+                lists[k] = v
+            elif v is not None:
+                numeric.setdefault(k, []).append(v)
         print('.', end='', flush=True)
 
     if not times:
-        print('  all runs timed out')
+        print('  all runs killed (SIGKILL)')
         return {'runs': 0, 'timed_out': True}
+
     out = {'runs': len(times), 'min_s': min(times), 'max_s': max(times), 'mean_s': statistics.mean(times)}
-    if booleans:
-        out['booleans'] = {'min': min(booleans), 'max': max(booleans), 'mean': statistics.mean(booleans)}
-    print(f'  mean={out["mean_s"]:.3f}s')
+    for k, vals in numeric.items():
+        out[k] = {'min': min(vals), 'max': max(vals), 'mean': statistics.mean(vals)}
+    out['timed_out'] = any_timed_out
+    out.update(lists)
+    print(f'  mean={out["mean_s"]:.3f}s' + (' [TIMEOUT]' if any_timed_out else ''))
     return out
 
 
-def ortools_booleans(_stdout, result):
-    _, _, metrics = result
-    return metrics.get('booleans')
+def ortools_metrics(_stdout, result):
+    _, _, m = result
+    return {k: m.get(k) for k in ('booleans', 'branches', 'conflicts')}
 
 
-def clingo_booleans(_stdout, result):
+def clingo_metrics(_stdout, result):
     _, _, stats = result
-    return int(stats.get('problem', {}).get('lp', {}).get('atoms', 0)) or None
+    lp      = stats.get('problem', {}).get('lp', {})
+    solvers = stats.get('solving', {}).get('solvers', {})
+    times   = stats.get('summary', {}).get('times', {})
+    total_t = float(times.get('total', 0))
+    solve_t = float(times.get('solve', 0))
+    m = {
+        'booleans':    int(lp.get('atoms', 0)) or None,
+        'choices':     int(solvers.get('choices', 0)),
+        'conflicts':   int(solvers.get('conflicts', 0)),
+        'grounding_s': round(total_t - solve_t, 4),
+        'solving_s':   round(solve_t, 4),
+        'timed_out':   bool(stats.get('timed_out', False)),
+    }
+    if stats.get('timed_out'):
+        m['partial_reqs_sat']   = stats.get('partial_reqs_sat', [])
+        m['partial_reqs_unsat'] = stats.get('partial_reqs_unsat', [])
+    return m
 
 
 def python_check(taken):
@@ -153,12 +200,16 @@ def run_planning_benchmarks():
         results[size] = {
             'ortools': timed_runs(
                 lambda h=hist, s=start: plan_courses(h, Major('CSE'), Standing('U4'), starting_semester=s),
-                2, extract_booleans=ortools_booleans, label='ortools'),
+                2, extract_metrics=ortools_metrics, label='ortools'),
         }
-        if size not in {'empty', 'small'}:
+        if size in {'empty', 'small'}:
             results[size]['clingo'] = timed_runs(
-                lambda t=taken: run_clingo(taken_set=t, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP),
-                2, extract_booleans=clingo_booleans, label='clingo')
+                lambda t=taken: run_clingo(taken_set=t, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, ground_only=True),
+                1, extract_metrics=clingo_metrics, label='clingo (ground only)', direct=True)
+        else:
+            results[size]['clingo'] = timed_runs(
+                lambda t=taken: run_clingo(taken_set=t, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, timeout=TIMEOUT),
+                2, extract_metrics=clingo_metrics, label='clingo', direct=True)
     return results
 
 
@@ -174,8 +225,10 @@ def main():
         'planning': planning,
     }
 
-    out_dir = Path(__file__).resolve().parent
-    path = out_dir / f"benchmark-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+    stamp   = datetime.now().strftime('%Y%m%d-%H%M%S')
+    out_dir = Path(__file__).resolve().parent / f'benchmark-{stamp}'
+    out_dir.mkdir(exist_ok=True)
+    path = out_dir / 'benchmark.json'
     with open(path, 'w') as f:
         json.dump(results, f, indent=2)
     print(f'Wrote {path}')

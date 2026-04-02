@@ -45,9 +45,11 @@ def print_clingo_stats(stats):
     print(f"Restarts:  {restarts:,}")
   print("======================")
 
-def run_clingo(mode, main_lp, kb_lp, taken_set = set()):
+def run_clingo(mode, main_lp, kb_lp, taken_set=set(), timeout=None, ground_only=False):
   ## runs Clingo, injects the taken courses, and returns the checked dict and schedule.
-  
+  ## timeout (seconds): if given, cancels solving after that many seconds (grounding still completes)
+  ## ground_only: skip solving entirely — useful to cheaply measure atom count
+
   ## find optimal solution and supress warnings about undefined atoms
   ctrl = clingo.Control(["0", "-Wno-atom-undefined"])
   
@@ -133,15 +135,46 @@ def run_clingo(mode, main_lp, kb_lp, taken_set = set()):
     if not checked['sci'][0]:
       checked['sci'][1].append('need a lec/lab combo and more, with >=9 credits and >=2.0 GPA')
 
-  ctrl.solve(on_model=on_model)
+  if ground_only:
+    with ctrl.solve(on_model=on_model, async_=True) as handle:
+      handle.cancel()
+    timed_out = False
+  elif timeout:
+    with ctrl.solve(on_model=on_model, async_=True) as handle:
+      finished = handle.wait(timeout)
+      if not finished:
+        handle.cancel()
+    timed_out = not finished
+  else:
+    ctrl.solve(on_model=on_model)
+    timed_out = False
 
   ## sort witness, same as test in python
   checked = {item: (check, sorted(wits)) for item, (check, wits) in checked.items()}
 
   for sem in schedule:
     schedule[sem].sort()
-      
-  return checked, schedule, ctrl.statistics
+
+  ## build a plain dict from clingo statistics for easy access and JSON serialisation
+  lp       = ctrl.statistics.get('problem', {}).get('lp', {})
+  solvers  = ctrl.statistics.get('solving', {}).get('solvers', {})
+  times    = ctrl.statistics.get('summary', {}).get('times', {})
+  total_t  = float(times.get('total', 0))
+  solve_t  = float(times.get('solve', 0))
+  stats = {
+    'problem': {'lp': {'atoms': int(lp.get('atoms', 0)), 'rules': int(lp.get('rules', 0)),
+                       'bodies': int(lp.get('bodies', 0)), 'eqs': int(lp.get('eqs', 0))}},
+    'solving': {'solvers': {'choices':   int(solvers.get('choices', 0)),
+                            'conflicts': int(solvers.get('conflicts', 0)),
+                            'restarts':  int(solvers.get('restarts', 0))}},
+    'summary': {'times': {'total': total_t, 'solve': solve_t}},
+    'timed_out': timed_out,
+  }
+  if timed_out and checked:
+    stats['partial_reqs_sat']   = [k for k, (ok, _) in checked.items() if ok]
+    stats['partial_reqs_unsat'] = [k for k, (ok, _) in checked.items() if not ok]
+
+  return checked, schedule, stats
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Run the Degree Checker and Planner.")
