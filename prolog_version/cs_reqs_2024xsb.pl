@@ -139,9 +139,9 @@ sci_req(ReqData) :-
 sci_acc([], f(0.0,0.0)).
 sci_acc([f(_, Creds, Grade)|T], f(CSum, GSum)) :-
   sci_acc(T, f(SubCSum, SubGSum)),
-  SubCSum + Creds == CSum,
+  CSum is SubCSum + Creds,
   grade_toPoints(Grade, Points),
-  SubGSum + (Points*Creds) == GSum.
+  GSum is SubGSum + (Points*Creds).
 
 subset([], []).
 subset([_|T], Sub) :- subset(T, Sub).
