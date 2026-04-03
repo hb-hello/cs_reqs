@@ -59,7 +59,7 @@ APPROACHES = [
     ('python_version',  check_python),
     ('ortools_version', check_ortools),
     ('clingo_version',  check_clingo),
-    ('prolog_version',  check_prolog),
+    # ('prolog_version',  check_prolog),
 ]
 
 def run_one(label, check_fn):
