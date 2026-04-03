@@ -1,6 +1,6 @@
 import inspect
 from pprint import pprint
-from run_clingo import DEFAULT_KB_LP, DEFAULT_MAIN_LP, print_clingo_stats, run_clingo
+from run_clingo import print_clingo_stats, run_clingo
 import python_version.tests as tests                ## tests.py in cs_reqs
 
 def run_case(test_func, mode='check', checks_witness=False):
@@ -17,8 +17,6 @@ def run_case(test_func, mode='check', checks_witness=False):
   print('---- other inputs: ', extra_inputs)
   clingo_checked, schedule, stats = run_clingo(
     mode=mode, 
-    main_lp=DEFAULT_MAIN_LP, 
-    kb_lp=DEFAULT_KB_LP,
     taken_set=taken,
     **extra_inputs,
   )
@@ -126,6 +124,6 @@ if __name__ == "__main__":
   # test_clingo_planning(test_plan_05)
   
   # test_clingo_planning(test_plan_06) 
-  # test_clingo_planning(test_plan_must_take_phy)
-  # for test_func in tests_courses_less_than_x():
-  #   test_clingo_planning(test_func)
+  test_clingo_planning(test_plan_must_take_phy)
+  for test_func in tests_courses_less_than_x():
+    test_clingo_planning(test_func)

@@ -12,6 +12,7 @@ from pathlib import Path
 
 TIMEOUT = 300  # seconds per run
 
+from configs import KB_LP, MAIN_LP
 import python_version.cs_reqs_2024 as py_checker
 from clingo_version.run_clingo import run_clingo
 from ortools_version.course_catalog import History, Major, Standing, catalog
@@ -20,10 +21,6 @@ from prolog_version.run_prolog import run_prolog
 from python_version.cs_reqs_2024 import Taken, degree_reqs
 from tests.checking.checker_test_cases_a import test_0, test_01
 from tests.planning.planner_test_cases import FULL
-
-ROOT = Path(__file__).resolve().parents[1]
-MAIN_LP = str(ROOT / 'clingo_version' / 'cse_req_clingo.lp')
-KB_LP   = str(ROOT / 'course_kb' / 'kb_complete.lp')
 
 
 def run_once(func, extract_metrics=None):
