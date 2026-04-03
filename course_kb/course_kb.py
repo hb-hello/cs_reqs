@@ -1,4 +1,6 @@
 from collections import namedtuple
+import csv
+from pathlib import Path
 
 ## Representation for course
 ## Each course: id, desc, prereqs, antireqs, coreqs, SBC, credits, ...
@@ -114,6 +116,27 @@ CREDIT_LIMIT = 15  # max credits per semester
 
 SEM_NAMES = {1: 'Winter', 2: 'Spring', 3: 'Summer', 4: 'Fall'}
 
+def read_course_offered(csv_path='course_offered.csv'):
+    base_dir = Path(__file__).resolve().parent
+    path = Path(csv_path)
+    if not path.is_absolute():
+        path = base_dir / path
+
+    with path.open(newline='', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        next(reader, None)  # skip header
+        return {
+            row[0].strip(): {           # row[0] is course ID
+                int(term.strip())
+                for term in (row[1].strip() if len(row) > 1 else '').split(',')
+                if term.strip().isdigit() and int(term.strip()) in {1, 2, 3, 4}
+            }
+            for row in reader
+            if row and row[0].strip()
+        }
+
+COURSE_OFFERED = read_course_offered('course_offered.csv')
+
 # For the purpose of determining grade point average, grades are assigned
 # point values as follows:
 grade_points = {
@@ -123,3 +146,22 @@ grade_points = {
   'D+': 1.33, 'D': 1.00,
   'F': 0.00, 'I/F': 0.00, 'Q': 0.00
 }
+
+def get_sem_distance(sem_before: tuple, sem_after: tuple): ## sem1, sem2 are (year, term) tuples
+  return (sem_after[0] - sem_before[0]) * 4 + (sem_after[1] - sem_before[1])
+
+def sem_to_int(sem: tuple, min_sem: tuple):
+  return get_sem_distance(min_sem, sem) + 1
+
+def int_to_sem(sem_int: int, min_sem: tuple):
+  distance = sem_int - 1
+  year = min_sem[0] + (min_sem[1] - 1 + distance) // 4
+  term = (min_sem[1] - 1 + distance) % 4 + 1
+  return (year, term)
+
+def rel_sem_to_term(sem_int: int, min_sem: tuple) -> int:
+  # sem_int is relative semester index (1..N)
+  return ((min_sem[1] - 1) + (sem_int - 1)) % 4 + 1
+
+if __name__ == "__main__":
+    print(COURSE_OFFERED)

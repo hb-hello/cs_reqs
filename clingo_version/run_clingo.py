@@ -1,13 +1,12 @@
 from collections import defaultdict
-
 import clingo
 import argparse
 from pprint import pprint
+from course_kb.course_kb import *
+from configs import MAIN_LP, KB_LP
 
-DEFAULT_MAIN_LP = './cse_req_clingo.lp'
-DEFAULT_KB_LP = '../course_kb/kb_complete.lp'
 MIN_SEM = (2024, 2)
-NUM_SEMS = 8
+NUM_SEMS = 16
 NUM_CREDITS_PER_SEM = 18
 
 class ClingoContext:
@@ -45,16 +44,20 @@ def print_clingo_stats(stats):
     print(f"Restarts:  {restarts:,}")
   print("======================")
 
-def run_clingo(mode, main_lp, kb_lp, taken_set=set(), timeout=None, ground_only=False):
-  ## runs Clingo, injects the taken courses, and returns the checked dict and schedule.
-  ## timeout (seconds): if given, cancels solving after that many seconds (grounding still completes)
-  ## ground_only: skip solving entirely — useful to cheaply measure atom count
-
-  ## find optimal solution and supress warnings about undefined atoms
-  ctrl = clingo.Control(["0", "-Wno-atom-undefined"])
+def run_clingo(
+    mode,               ## one of 'check' or 'plan'
+    main_lp=MAIN_LP,    ## relative path to main lp file
+    kb_lp=KB_LP,        ## relative path to kb lp file
+    timeout=10 * 60,    ## timeout in seconds
+    ground_only=False,  ## skip solving
+    **inputs            ## taken_set, must_include, must_exclude
+    ):
   
-  ctrl.load(main_lp)
-  ctrl.load(kb_lp)
+  taken_set = inputs.get('taken_set', set())
+  must_include = inputs.get('must_include', set())
+  must_exclude = inputs.get('must_exclude', set())
+
+  ctrl_args = ["0", "-Wno-atom-undefined"]  ## find optimal solution and suppress warnings about undefined atoms
   
   items = ('intro', 'adv', 'elect', 'calc', 'alg', 'sta', 
           'sci', 'ethics', 'writing', 'credits_at_SB',
@@ -63,34 +66,36 @@ def run_clingo(mode, main_lp, kb_lp, taken_set=set(), timeout=None, ground_only=
   min_sem = min(c.when for c in taken_set) if taken_set else MIN_SEM
   max_sem = max(c.when for c in taken_set) if taken_set else MIN_SEM
 
-  def get_sem_distance(sem1: tuple, sem2: tuple): ## sem1, sem2 are (year, term) tuples
-    return (sem1[0] - sem2[0]) * 4 + (sem1[1] - sem2[1])
-
-  def sem_to_int(sem: tuple):
-    nonlocal min_sem
-    return get_sem_distance(sem, min_sem) + 1
-
-  def int_to_sem(sem_int: int):
-    nonlocal min_sem
-    distance = sem_int - 1
-    year = min_sem[0] + (min_sem[1] - 1 + distance) // 4
-    term = (min_sem[1] - 1 + distance) % 4 + 1
-    return (year, term)
-
-  test_facts = ""
-  for c in taken_set:
-    ## get taken facts from test.
-    test_facts += f'taken("{c.id}", {c.credits}, "{c.grade}", {sem_to_int(c.when)}, "{c.where}").\n'
-    if mode == 'plan':
-      test_facts += f'taken_id("{c.id}").\n'  ## taken_id is only for planning, not needed in checking
+  test_facts = []
   
-  ctrl.add("input", [], test_facts)
+  test_facts.extend([f'taken("{c.id}", {c.credits}, "{c.grade}", {sem_to_int(c.when, min_sem)}, "{c.where}").' for c in taken_set])
+
+  if mode == 'plan':  ## needed only for planning
+    test_facts.extend([f'taken_id("{c.id}").' for c in taken_set])
+    test_facts.extend([f'must_include("{cid}").' for cid in must_include])
+    test_facts.extend([f'must_exclude("{cid}").' for cid in must_exclude])
+
+    start_sem = sem_to_int(max_sem, min_sem) + 1
+    finish_sem = start_sem + NUM_SEMS - 1
+    ctrl_args.append(f"-c start_sem={start_sem}")
+    ctrl_args.append(f"-c finish_sem={finish_sem}")
+    ctrl_args.append(f"-c max_credits_per_semester={NUM_CREDITS_PER_SEM}")  
   
+    for cid, terms in COURSE_OFFERED.items():
+      # terms is a set like {2,3,4}; blank CSV entry is set()
+      for sem in range(start_sem, finish_sem + 1):
+        if rel_sem_to_term(sem, min_sem) in terms:
+          test_facts.append(f'offered("{cid}", {sem}).')
+
+  ctrl = clingo.Control(ctrl_args)
+  
+  ctrl.load(main_lp)
+  ctrl.load(kb_lp)
+
+  ctrl.add("input", [], "\n".join(test_facts))
+
   to_ground = [("base", []), ("input", []), ("check", [])]
-  if mode == 'plan': 
-    start_sem = sem_to_int(max_sem) + 1
-    finish_sem = start_sem + NUM_SEMS
-    to_ground.append(("plan", [clingo.Number(start_sem), clingo.Number(finish_sem), clingo.Number(NUM_CREDITS_PER_SEM)]))
+  if mode == 'plan': to_ground.append(("plan", []))
 
   ctrl.ground(to_ground, context=ClingoContext())
   
@@ -104,6 +109,8 @@ def run_clingo(mode, main_lp, kb_lp, taken_set=set(), timeout=None, ground_only=
     checked = {item: [False, []] for item in items}  ## initialize all items to not passed
     planned_courses = {}
     schedule = defaultdict(list)
+    cost = model.cost if model.cost is not None else None
+    # print(f"Model found with cost: {cost}")
     
     for sym in model.symbols(atoms=True):     ## collect check for each requirement
       if sym.name == "degree":
@@ -114,14 +121,14 @@ def run_clingo(mode, main_lp, kb_lp, taken_set=set(), timeout=None, ground_only=
       elif sym.name == "planned":             ## planning mode
         cid_sym, semester_sym = sym.arguments
         cid = str(cid_sym).strip('"')
-        sem = int_to_sem(semester_sym.number)
+        sem = int_to_sem(semester_sym.number, min_sem)
         planned_courses[cid] = sem            ## record planned semester
         schedule[sem].append(cid)             ## add course to schedule
 
     for sym in model.symbols(atoms=True):     ## collect witness
       if sym.name == "wit":
         item, val = str(sym.arguments[0]), sym.arguments[1]
-        if item == "credits_at_SB":  ## val.name is items123 or items23. matches python witness for credits_at_SB
+        if item == "credits_at_SB" and val.type == clingo.SymbolType.Function and val.name in {"items123", "items23"}:
           checked[item][1].append(f"{val.name} = {val.arguments[0].number}")
           continue
         course = str(val).strip('"')
@@ -134,21 +141,21 @@ def run_clingo(mode, main_lp, kb_lp, taken_set=set(), timeout=None, ground_only=
       checked['elect'][1].append('need 4 total')
     if not checked['sci'][0]:
       checked['sci'][1].append('need a lec/lab combo and more, with >=9 credits and >=2.0 GPA')
-
-  if ground_only:
+  timed_out = False
+  if not ground_only:
     with ctrl.solve(on_model=on_model, async_=True) as handle:
-      handle.cancel()
-    timed_out = False
-  elif timeout:
-    with ctrl.solve(on_model=on_model, async_=True) as handle:
-      finished = handle.wait(timeout)
-      if not finished:
+      try:
+        finished = handle.wait(timeout)
+        if not finished:
+          print(f'timeout {timeout} reached.'); timed_out = True
+          handle.cancel()
+      except KeyboardInterrupt:
+        print('interrupted by user')
         handle.cancel()
-    timed_out = not finished
-  else:
-    ctrl.solve(on_model=on_model)
-    timed_out = False
-
+      finally:
+        handle.wait()  ## wait for solver to finish after canceling
+        result = handle.get()
+ 
   ## sort witness, same as test in python
   checked = {item: (check, sorted(wits)) for item, (check, wits) in checked.items()}
 
@@ -168,7 +175,7 @@ def run_clingo(mode, main_lp, kb_lp, taken_set=set(), timeout=None, ground_only=
                             'conflicts': int(solvers.get('conflicts', 0)),
                             'restarts':  int(solvers.get('restarts', 0))}},
     'summary': {'times': {'total': total_t, 'solve': solve_t}},
-    'timed_out': timed_out,
+    'timed_out': timed_out
   }
   if timed_out and checked:
     stats['partial_reqs_sat']   = [k for k, (ok, _) in checked.items() if ok]
@@ -179,17 +186,17 @@ def run_clingo(mode, main_lp, kb_lp, taken_set=set(), timeout=None, ground_only=
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Run the Degree Checker and Planner.")
   parser.add_argument('-m', '--mode', choices=['check', 'plan'], default='check', help="Run mode.")
-  parser.add_argument('-f', '--file', default=DEFAULT_MAIN_LP, help="Path to the main .lp file that encodes the logic.")
-  parser.add_argument('-k', '--kb', default=DEFAULT_KB_LP, help="Path to the KB .lp file.")
+  parser.add_argument('-f', '--file', default=MAIN_LP, help="Path to the main .lp file that encodes the logic.")
+  parser.add_argument('-k', '--kb', default=KB_LP, help="Path to the KB .lp file.")
   
-  args = parser.parse_args()
+  ctrl_args = parser.parse_args()
   
-  print(f"--- Running in {args.mode.upper()} mode ---")
-  checked, schedule, stats = run_clingo(mode=args.mode, main_lp=args.file, kb_lp=args.kb)
+  print(f"--- Running in {ctrl_args.mode.upper()} mode ---")
+  checked, schedule, stats = run_clingo(mode=ctrl_args.mode, main_lp=ctrl_args.file, kb_lp=ctrl_args.kb)
   
-  if args.mode == 'check':
+  if ctrl_args.mode == 'check':
     pprint(checked)
-  elif args.mode == 'plan':
+  elif ctrl_args.mode == 'plan':
     print(f"Degree Passed: {checked['degree'][0]}")
     print("\n---- planned schedule:")
     for sem in sorted(schedule):
