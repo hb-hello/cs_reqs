@@ -35,18 +35,19 @@ def _rules():
 # ── check infrastructure (appended to the extracted rules) ───────────────────
 
 _CHECK_INFRA = """
-
+wit(intro, Q).
+wit(intro, Q).
 """
 
 # ── public API ────────────────────────────────────────────────────────────────
 
-def run_prolog(taken, engine='xsb'):
+def run_prolog(taken, engine='swi'):
     cfg = _ENGINES[engine]
     facts = '\n'.join(
         f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{t.where}')."
         for t in taken
     )
-    query = cfg['preamble'] + '\n' + facts + '\n' + _CHECK_INFRA
+    query = cfg['preamble'] + '\n' + facts + '\n' + _CHECK_INFRA + '\n'
     with tempfile.NamedTemporaryFile(mode='w', suffix='.pl', delete=False) as f:
         f.write(query)
         tmp = f.name
@@ -73,10 +74,44 @@ def _parse(output):
             checked[line[:-6]] = (False, [])
         elif line.startswith('wit:'):
             wits.append(line[4:])
+        elif line.startswith('Q = '):
+            wits.append(wits[4:])
     if current:
         checked[current] = (True, sorted(wits))
     checked['degree'] = (all(checked.get(r, (False,))[0] for r in _REQS), [])
     return checked
+
+
+def run_swi(taken):
+    facts = (
+        f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{t.where}')."
+        for t in taken
+    )
+
+    import janus_swi as janus
+    janus.consult(_PL_FILE)
+    reqs = ('intro', 'adv', 'elect', 'sci')
+    queries = [('wit', req, 'Q') for req in reqs]
+    queries.append(('all_requirements', None, None))
+    checked = {}
+    for f in facts:
+        janus.query_once(f)
+    for pred, first, second in queries:
+        arg = (first if first else '') + (f', {second}' if second else '')
+        result = janus.query(f"{pred}({arg})")
+        sat = False
+        courses = []
+        for d in result:
+            sat = d['truth']
+            courses.append(d[second])
+        checked.setdefault(first if second else pred, []).append((sat, courses))
+    checked['degree'] = checked['all_requirements'].pop()
+    print(checked)
+    return checked
+
+
+# def collect_wit
+    
 
 if __name__ == '__main__':
     import sys
@@ -91,5 +126,6 @@ if __name__ == '__main__':
         Taken('CSE 220', 3, 'A', (2024,2), 'SBU'),
     ]
     engine = sys.argv[1] if len(sys.argv) > 1 else 'xsb'
-    pprint(run_prolog(taken, engine))
+    # pprint(run_prolog(taken, engine))
+    run_swi(taken)
 

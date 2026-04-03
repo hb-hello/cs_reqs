@@ -77,7 +77,7 @@ upperdivCS(Id) :- atom_concat('CSE', CourseNumstr, Id),
     atom_number(CourseNumstr, CourseNumInt), 
     CourseNumInt >= 300.
 
-wit(elective, Id) :- elective_req(), passed(Id), elective(Id).
+wit(elect, Id) :- elective_req(), passed(Id), elective(Id).
 
 % 4-6 Math requirements
 c('AMS 151', calc). c('AMS 161', calc). 
@@ -145,7 +145,7 @@ subset([], []).
 subset([_|T], Sub) :- subset(T, Sub).
 subset([H|T], [H|Sub]) :- subset(T, Sub).
 
-wit(science, Id) :- sci_subset_req(), sci_courses(Id), taken(Id, _, _, _, _).
+wit(sci, Id) :- sci_subset_req(), sci_courses(Id), taken(Id, _, _, _, _).
 
 course_in_cat123(Id) :- intro_courses(Id) ; advanced_courses(Id) ; upperdivCS(Id).
 credits_at_sb_cat123(Total) :-
@@ -181,12 +181,12 @@ all_requirements() :-
     passed_all(ethics_comm).
 
 
-taken('CSE 215', 3, 'A', (2024,2), 'SBU').
-taken('CSE 214', 3, 'A', (2024,2), 'SBU').
-taken('CSE 114', 3, 'A', (2024,2), 'SBU').
-taken('CSE 216', 3, 'A', (2024,2), 'SBU').
-taken('CSE 220', 3, 'A', (2024,2), 'SBU').
-taken('CSE 4', 3, 'A', (2024,2), 'SBU').
-taken('CSE 0', 3, 'A', (2024,2), 'SBU').
-taken('CSE 20', 3, 'A', (2024,2), 'SBU').
-taken('CSE 2330', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 215', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 214', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 114', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 216', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 220', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 4', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 0', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 20', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 2330', 3, 'A', (2024,2), 'SBU').
