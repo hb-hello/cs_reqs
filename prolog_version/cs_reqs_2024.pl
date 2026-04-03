@@ -1,4 +1,4 @@
-is_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
+is_higher(Grade, Grade2) :- grade_toPoints(Grade, Points), grade_toPoints(Grade2, Points2), Points >= Points2.
 c_or_higher(Grade) :- is_higher(Grade, 'C').
 
 %% mapping letter grade to points for GPA calculation
@@ -17,11 +17,12 @@ passed_all(Subject) :- forall(c(Id, Subject), passed(Id)).
 % passed all courses with course Id in Subject
 passed_all(Subject, ReqData) :- forall(c(Id, Subject), memberchk(f(Id, _, _), ReqData)).
 
+:- discontiguous wit/2.
 % course C is witness for passing all courses in a subject in requirement Item
 wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Id, Subj).
 
 
-:- discontiguous c/1.
+:- discontiguous c/2.
 :- discontiguous s/2.
 % 1. Required Introductory Courses
 c('CSE 114', prog). c('CSE 214', prog). c('CSE 216', prog). 
@@ -76,18 +77,9 @@ upperdivCS(Id) :- atom_concat('CSE', CourseNumstr, Id),
     atom_number(CourseNumstr, CourseNumInt), 
     CourseNumInt >= 300.
 
+wit(elective, Id) :- elective_req(), passed(Id), elective(Id).
 
-
-
-% 4. AMS 151, AMS 161 Applied Calculus I, II
-% Note: The following alternate calculus course sequences may be substituted for AMS 151, AMS 161 in major 
-% requirements or prerequisites: MAT 125, MAT 126, MAT 127, or MAT 131, MAT 132. Equivalency for MAT courses achieved through the Mathematics Placement Examination is accepted to meet MAT course requirements.
-% 5. One of the following:
-% MAT 211 Introduction to Linear Algebra
-% AMS 210 Applied Linear Algebra
-% 6. Both of the following:
-% AMS 301 Finite Mathematical Structures
-% AMS 310 Survey of Probability and Statistics or AMS 311 Probability Theory 
+% 4-6 Math requirements
 c('AMS 151', calc). c('AMS 161', calc). 
 c('MAT 125', calc2). c('MAT 126', calc2). c('MAT 127', calc2). 
 c('MAT 131', calc3). c('MAT 132', calc3). 
@@ -96,6 +88,9 @@ c('AMS 210', linalg2).
 c('AMS 301', finite).
 c('AMS 310', prob). 
 c('AMS 311', prob2).
+s(math, calc). s(math, calc2). s(math, calc3). 
+s(math, linalg). s(math, linalg2). s(math, finite). 
+s(math, prob). s(math, prob2). 
 
 math_req() :-
   (passed_all(calc); passed_all(calc2); passed_all(calc3)),
@@ -150,7 +145,7 @@ subset([], []).
 subset([_|T], Sub) :- subset(T, Sub).
 subset([H|T], [H|Sub]) :- subset(T, Sub).
 
-
+wit(science, Id) :- sci_subset_req(), sci_courses(Id), taken(Id, _, _, _, _).
 
 course_in_cat123(Id) :- intro_courses(Id) ; advanced_courses(Id) ; upperdivCS(Id).
 credits_at_sb_cat123(Total) :-
@@ -160,6 +155,7 @@ credits_at_sb_cat123(Total) :-
          course_in_cat123(Id)),
         Total).
 satisfied_residency_123() :- credits_at_sb_cat123(Total), Total >= 24.
+wit(res123, Id) :- satisfied_residency_123, taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
 course_in_cat23(Id) :- advanced_courses(Id) ; upperdivCS(Id).
 credits_at_sb_cat23(Total) :-
@@ -169,10 +165,11 @@ credits_at_sb_cat23(Total) :-
          course_in_cat23(Id)),
         Total).
 satisfied_residency_23() :- credits_at_sb_cat23(Total), Total >= 18.
+wit(res23, Id) :- satisfied_residency_23, taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
 % ethics and communication courses
 c('CSE 312', ethics_comm). c('CSE 300', ethics_comm).
-
+s(ethics, ethics_comm). 
 all_requirements() :-
     intro_req(),
     advanced_req(),
@@ -182,55 +179,6 @@ all_requirements() :-
     math_req(),
     sci_subset_req(),
     passed_all(ethics_comm).
-
-all_requirements(w(W1,W2,W3,W4,W5,W6,W7,W8)) :-
-    intro_req(W1),
-    advanced_req(W2),
-    elective_req(W3),
-    satisfied_residency_123(W4),
-    satisfied_residency_23(W5),
-    math_req(W6),
-    sci_subset_req(W7),
-    passed_all_witness(ethics_comm, W8).
-
-intro_req(Witness) :-
-    (passed_all_witness(prog, W1) ; passed_all_witness(prog2, W1)),
-    (passed_all_witness(dmath, W2) ; passed_all_witness(dmath2, W2)),
-    passed_all_witness(sys, W3),
-    append([W1, W2, W3], Witness).
-
-advanced_req(Witness) :-
-    (passed_all_witness(algs, W1) ; passed_all_witness(algs2, W1)),
-    (passed_all_witness(theory, W2) ; passed_all_witness(theory2, W2)),
-    passed_all_witness(other, W3),
-    append([W1, W2, W3], Witness).
-
-elective_req(Witness) :-
-    findall(Id, (passed(Id), elective(Id)), Witness),
-    length(Witness, Count),
-    Count > 3.
-
-satisfied_residency_123(Witness) :-
-    credits_at_sb_cat123(Total), Total >= 24,
-    findall(Id, (taken(Id, _, _, _, 'SBU'), passed(Id), course_in_cat123(Id)), Witness).
-
-satisfied_residency_23(Witness) :-
-    credits_at_sb_cat23(Total), Total >= 18,
-    findall(Id, (taken(Id, _, _, _, 'SBU'), passed(Id), course_in_cat23(Id)), Witness).
-
-math_req(Witness) :-
-    (passed_all_witness(calc, W1) ; passed_all_witness(calc2, W1) ; passed_all_witness(calc3, W1)),
-    (passed_all_witness(linalg, W2) ; passed_all_witness(linalg2, W2)),
-    passed_all_witness(finite, W3),
-    (passed_all_witness(prob, W4) ; passed_all_witness(prob2, W4)),
-    append([W1, W2, W3, W4], Witness).
-
-sci_subset_req(Witness) :-
-    findall(f(Id, Creds, Grade), (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_toPoints(Grade, _)), SciData),
-    subset(SciData, Witness),
-    lab_req(Witness),
-    sci_req(Witness).
-
 
 
 taken('CSE 215', 3, 'A', (2024,2), 'SBU').
