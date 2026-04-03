@@ -1,4 +1,5 @@
-:- use_module(library(lists)).
+:- import(library(lists)).
+:- dynamic taken/5.
 
 is_higher(Grade, Grade2) :- grade_toPoints(Grade, Points), grade_toPoints(Grade2, Points2), Points >= Points2.
 c_or_higher(Grade) :- is_higher(Grade, 'C').
@@ -19,13 +20,13 @@ passed_all(Subject) :- forall(c(Id, Subject), passed(Id)).
 % passed all courses with course Id in Subject
 passed_all(Subject, ReqData) :- forall(c(Id, Subject), memberchk(f(Id, _, _), ReqData)).
 
-:- discontiguous wit/2.
+:- dynamic(wit/2).
 % course C is witness for passing all courses in a subject in requirement Item
 wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Id, Subj).
 
 
-:- discontiguous c/2.
-:- discontiguous s/2.
+:- dynamic(c/2).
+:- dynamic(s/2).
 % 1. Required Introductory Courses
 c('CSE 114', prog). c('CSE 214', prog). c('CSE 216', prog).
 c('CSE 160', prog2). c('CSE 161', prog2).
@@ -193,12 +194,12 @@ all_requirements :-
     passed_all(ethics_comm).
 
 
-taken('CSE 215', 3, 'A', (2024,2), 'SBU').
-taken('CSE 214', 3, 'A', (2024,2), 'SBU').
-taken('CSE 114', 3, 'A', (2024,2), 'SBU').
-taken('CSE 216', 3, 'A', (2024,2), 'SBU').
-taken('CSE 220', 3, 'A', (2024,2), 'SBU').
-taken('CSE 4', 3, 'A', (2024,2), 'SBU').
-taken('CSE 0', 3, 'A', (2024,2), 'SBU').
-taken('CSE 20', 3, 'A', (2024,2), 'SBU').
-taken('CSE 2330', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 215', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 214', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 114', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 216', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 220', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 4', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 0', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 20', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 2330', 3, 'A', (2024,2), 'SBU').

@@ -3,7 +3,7 @@ import clingo
 import argparse
 from pprint import pprint
 from course_kb.course_kb import *
-from configs import MAIN_LP, KB_LP
+from clingo_version.configs import MAIN_LP, KB_LP
 
 MIN_SEM = (2024, 2)
 NUM_SEMS = 16
@@ -38,10 +38,12 @@ def print_clingo_stats(stats):
     choices = int(solving_stats.get('choices', 0))
     conflicts = int(solving_stats.get('conflicts', 0))
     restarts = int(solving_stats.get('restarts', 0))
-    
+    min_cost = stats.get('min_cost')
     print(f"Choices:   {choices:,}")
     print(f"Conflicts: {conflicts:,}")
     print(f"Restarts:  {restarts:,}")
+    if min_cost is not None:
+      print(f"Min Cost:  {min_cost}")
   print("======================")
 
 def run_clingo(
@@ -53,6 +55,8 @@ def run_clingo(
     **inputs            ## taken_set, must_include, must_exclude
     ):
   
+  assert mode in {'check', 'plan'}, f"mode must be 'check' or 'plan', got {mode}"
+
   taken_set = inputs.get('taken_set', set())
   must_include = inputs.get('must_include', set())
   must_exclude = inputs.get('must_exclude', set())
@@ -94,22 +98,33 @@ def run_clingo(
 
   ctrl.add("input", [], "\n".join(test_facts))
 
-  to_ground = [("base", []), ("input", []), ("check", [])]
-  if mode == 'plan': to_ground.append(("plan", []))
+  to_ground = [("base", []), ("input", [])]
+
+  if mode == 'check':
+    to_ground.append(("check", []))
+  else:
+    to_ground.append(("plan", []))
 
   ctrl.ground(to_ground, context=ClingoContext())
   
   checked = {}  ## initialize all items to not passed
   schedule = {}
+  min_cost = None
+  model_count = 0
   
   def on_model(model):    ## invoked for every model found
-    nonlocal checked, schedule
+    nonlocal checked, schedule, min_cost, model_count
 
     ## reset checked when there are multiple models (in planning mode)
     checked = {item: [False, []] for item in items}  ## initialize all items to not passed
     planned_courses = {}
     schedule = defaultdict(list)
-    cost = model.cost if model.cost is not None else None
+    model_count += 1
+    if model.cost is not None:
+      cost = tuple(model.cost)
+      if min_cost is None or cost < min_cost:
+        min_cost = cost
+
     # print(f"Model found with cost: {cost}")
     
     for sym in model.symbols(atoms=True):     ## collect check for each requirement
@@ -175,7 +190,9 @@ def run_clingo(
                             'conflicts': int(solvers.get('conflicts', 0)),
                             'restarts':  int(solvers.get('restarts', 0))}},
     'summary': {'times': {'total': total_t, 'solve': solve_t}},
-    'timed_out': timed_out
+    'timed_out': timed_out,
+    'model_count': model_count,
+    'min_cost': list(min_cost) if min_cost is not None else None,
   }
   if timed_out and checked:
     stats['partial_reqs_sat']   = [k for k, (ok, _) in checked.items() if ok]

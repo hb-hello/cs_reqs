@@ -1,0 +1,44 @@
+[xsb_configuration loaded]
+[sysinitrc loaded]
+[xsbbrat loaded]
+
+XSB Version 5.0.0 (Green Tea) of May 15, 2022
+[x86_64-pc-linux-gnu 64 bits; mode: optimal; engine: slg-wam; scheduling: local]
+[Build date: 2026-04-01]
+
+[Compiling /tmp/tmpt4pu0mkw]
+[tmpt4pu0mkw compiled, cpu time used: 0.006 seconds]
+[tmpt4pu0mkw loaded]
+++Error[XSB/Runtime/P]: [Syntax] Line 23 Position 17 ()
+:- discontiguous  <--- HERE? ************ 
+++                                  wit / 2 
+Forward Continuation...
+... machine:xsb_backtrace/1  From /home/leto/opt/XSB/syslib/machine.xwam
+... error_handler:syntax_error/1  From /home/leto/opt/XSB/syslib/error_handler.xwam
+... xsb_read:iso_read_syntax_error/4  From /home/leto/opt/XSB/syslib/xsb_read.xwam
+... parse:my_read/2  From /home/leto/opt/XSB/cmplib/parse.xwam
+... parse:parse_clauses/2  From /home/leto/opt/XSB/cmplib/parse.xwam
+... parse:parse1/3  From /home/leto/opt/XSB/cmplib/parse.xwam
+... parse:parse/4  From /home/leto/opt/XSB/cmplib/parse.xwam
+... standard:call/1  From /home/leto/opt/XSB/syslib/standard.xwam
+... consult:compile_f/7  From /home/leto/opt/XSB/syslib/consult.xwam
+... consult:reconsult0/3  From /home/leto/opt/XSB/syslib/consult.xwam
+... consult:reconsult/1  From /home/leto/opt/XSB/syslib/consult.xwam
+... consult:./2  From /home/leto/opt/XSB/syslib/consult.xwam
+... standard:call/1  From /home/leto/opt/XSB/syslib/standard.xwam
+... standard:catch/3  From /home/leto/opt/XSB/syslib/standard.xwam
+... standard:call/1  From /home/leto/opt/XSB/syslib/standard.xwam
+... standard:catch/3  From /home/leto/opt/XSB/syslib/standard.xwam
+... consult:reconsult0/3  From /home/leto/opt/XSB/syslib/consult.xwam
+... standard:call_c/1  From /home/leto/opt/XSB/syslib/standard.xwam
+... x_interp:_$call/1  From /home/leto/opt/XSB/syslib/x_interp.xwam
+... x_interp:call_query/1  From /home/leto/opt/XSB/syslib/x_interp.xwam
+... standard:call/1  From /home/leto/opt/XSB/syslib/standard.xwam
+... standard:catch/3  From /home/leto/opt/XSB/syslib/standard.xwam
+... x_interp:interpreter/0  From /home/leto/opt/XSB/syslib/x_interp.xwam
+... loader:ll_code_call/3  From /home/leto/opt/XSB/syslib/loader.xwam
+... loader:find_ofile_and_load/7  From /home/leto/opt/XSB/syslib/loader.xwam
+... standard:call/1  From /home/leto/opt/XSB/syslib/standard.xwam
+... standard:catch/3  From /home/leto/opt/XSB/syslib/standard.xwam
+
+End XSB (cputime 0.02 secs, elapsetime 0.03 secs)

@@ -5,8 +5,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-TIMEOUT = 300
-
 # consistent colours across all charts — index by backend name
 COLORS = {
     'python':  '#4c72b0',   # muted blue
@@ -44,25 +42,38 @@ def _stat_summary(entry, key, skip_timeout=True):
     return sub, sub - lo, hi - sub
 
 
-def _annotate_timeout(ax, bar, entry, key):
-    """Put timeout + partial req info at vertical center of the axes."""
-    if not entry or not entry.get('timed_out'):
-        return
-    x = bar.get_x() + bar.get_width() / 2
-    ylo, yhi = ax.get_ylim()
-    y = (ylo + yhi) / 2
+def _planner_cases(planning):
+    def key(label):
+        parts = label.split()
+        if len(parts) >= 3 and parts[1] == 'input' and parts[2] == 'courses' and parts[0].isdigit():
+            return int(parts[0])
+        return float('inf')
 
-    lines = [f'timeout (>{TIMEOUT}s)']
-    sat   = entry.get('partial_reqs_sat')
-    unsat = entry.get('partial_reqs_unsat')
-    if sat is not None:
-        lines.append(f'sat: {", ".join(sat) or "none"}')
-    if unsat is not None:
-        lines.append(f'unsat: {", ".join(unsat) or "none"}')
+    return sorted(planning.keys(), key=key)
 
-    ax.text(x, y, '\n'.join(lines), ha='center', va='center',
-            fontsize=6.5, color='#888', style='italic',
-            bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='#ccc', alpha=0.8))
+
+def _course_count_label(case):
+    return case.split()[0]
+
+
+def _input_count(case):
+    return int(_course_count_label(case))
+
+
+def _planner_backends(planning, sizes):
+    return sorted({b for s in sizes for b in planning[s]})
+
+
+def _planner_series(planning, sizes, backend, key, skip_timeout=True):
+    means, err_lo, err_hi = [], [], []
+    for s in sizes:
+        entry = planning[s].get(backend)
+        r = _stat_summary(entry, key, skip_timeout=skip_timeout)
+        if r:
+            means.append(r[0]); err_lo.append(r[1]); err_hi.append(r[2])
+        else:
+            means.append(0); err_lo.append(0); err_hi.append(0)
+    return means, err_lo, err_hi
 
 
 def plot_checker_times(data, out_dir):
@@ -74,6 +85,7 @@ def plot_checker_times(data, out_dir):
     fig, ax = plt.subplots(figsize=(8, 5))
 
     for i, b in enumerate(backends):
+        cases.sort(key=lambda c : checking[c][b]['mean_s'])
         means = [checking[c][b]['mean_s'] for c in cases]
         errs  = [[checking[c][b]['mean_s'] - checking[c][b]['min_s'] for c in cases],
                  [checking[c][b]['max_s']  - checking[c][b]['mean_s'] for c in cases]]
@@ -92,43 +104,157 @@ def plot_checker_times(data, out_dir):
     print(f'Wrote {out}')
 
 
-def plot_planner_times(data, out_dir):
+def plot_checker_times_pass_only(data, out_dir):
+    checking = data['checking']
+    if 'pass' not in checking:
+        return
+
+    pass_case = checking['pass']
+    backends = sorted(pass_case.keys())
+    x = np.arange(len(backends))
+
+    means = [pass_case[b]['mean_s'] for b in backends]
+    err_lo = [pass_case[b]['mean_s'] - pass_case[b]['min_s'] for b in backends]
+    err_hi = [pass_case[b]['max_s'] - pass_case[b]['mean_s'] for b in backends]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.bar(x, means, yerr=[err_lo, err_hi], capsize=3, alpha=0.85,
+           color=[color(b) for b in backends])
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(backends)
+    ax.set_ylabel('Time (s)')
+    ax.set_title('Checker: pass case by implementation')
+    ax.grid(axis='y', alpha=0.3)
+    fig.tight_layout()
+    out = out_dir / 'checker_times_pass_only.png'
+    fig.savefig(out, dpi=150)
+    print(f'Wrote {out}')
+
+
+def plot_planner_times_bar(data, out_dir):
     planning = data['planning']
-    sizes    = [s for s in ['empty', 'small', 'medium', 'large'] if s in planning]
-    backends = sorted({b for s in sizes for b in planning[s]})
+    sizes    = _planner_cases(planning)
+    backends = _planner_backends(planning, sizes)
+
+    width = 0.25
+    fig, ax = plt.subplots(figsize=(9, 5))
+
+    all_x = []
+    for i, b in enumerate(backends):
+        means, err_lo, err_hi = _planner_series(planning, sizes, b, 'mean_s')
+        x_vals = []
+        for s in sizes:
+            entry = planning[s].get(b)
+            r = _stat_summary(entry, 'planned_new_courses', skip_timeout=False)
+            x_vals.append(r[0] if r else _input_count(s))
+        offset = (i - (len(backends) - 1) / 2) * width
+        x_plot = np.array(x_vals, dtype=float) + offset
+        all_x.extend(x_vals)
+        ax.bar(x_plot, means, width, yerr=[err_lo, err_hi],
+               label=b, color=color(b), capsize=3, alpha=0.85)
+
+    ticks = sorted({int(round(v)) for v in all_x})
+    ax.set_xticks(ticks)
+    ax.set_xlabel('# new courses planned')
+    ax.set_ylabel('Time (s)')
+    ax.set_title('Planner: time comparison by output plan size')
+    ax.legend()
+    ax.grid(axis='y', alpha=0.3)
+    fig.tight_layout()
+    out = out_dir / 'planner_times_bar.png'
+    fig.savefig(out, dpi=150)
+    print(f'Wrote {out}')
+
+
+def plot_planner_times_line(data, out_dir):
+    planning = data['planning']
+    sizes    = _planner_cases(planning)
+    backends = _planner_backends(planning, sizes)
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+
+    for b in backends:
+        means, err_lo, err_hi = _planner_series(planning, sizes, b, 'mean_s')
+        x_vals = []
+        for s in sizes:
+            entry = planning[s].get(b)
+            r = _stat_summary(entry, 'planned_new_courses', skip_timeout=False)
+            x_vals.append(r[0] if r else _input_count(s))
+        points = sorted(zip(x_vals, means, err_lo, err_hi), key=lambda p: p[0])
+        x_sorted  = [p[0] for p in points]
+        y_sorted  = [p[1] for p in points]
+        lo_sorted = [p[2] for p in points]
+        hi_sorted = [p[3] for p in points]
+        ax.errorbar(x_sorted, y_sorted, yerr=[lo_sorted, hi_sorted], marker='o', linewidth=2,
+                    label=b, color=color(b), capsize=3)
+
+    ax.set_xlabel('# new courses planned')
+    ax.set_ylabel('Time (s)')
+    ax.set_title('Planner: time comparison by output plan size (line)')
+    ax.legend()
+    ax.grid(axis='y', alpha=0.3)
+    fig.tight_layout()
+    out = out_dir / 'planner_times_line.png'
+    fig.savefig(out, dpi=150)
+    print(f'Wrote {out}')
+
+
+def plot_planner_output_size_bar(data, out_dir):
+    planning = data['planning']
+    sizes    = _planner_cases(planning)
+    backends = _planner_backends(planning, sizes)
 
     x, width = np.arange(len(sizes)), 0.3
     fig, ax = plt.subplots(figsize=(9, 5))
 
     for i, b in enumerate(backends):
-        means, err_lo, err_hi = [], [], []
-        for s in sizes:
-            entry = planning[s].get(b)
-            r = _stat_summary(entry, 'mean_s')
-            if r:
-                means.append(r[0]); err_lo.append(r[1]); err_hi.append(r[2])
-            else:
-                means.append(0); err_lo.append(0); err_hi.append(0)
-        bars = ax.bar(x + i * width, means, width, yerr=[err_lo, err_hi],
-                      label=b, color=color(b), capsize=3, alpha=0.85)
-        for j, bar in enumerate(bars):
-            _annotate_timeout(ax, bar, planning[sizes[j]].get(b), 'mean_s')
+        means, err_lo, err_hi = _planner_series(planning, sizes, b, 'planned_new_courses', skip_timeout=False)
+        ax.bar(x + i * width, means, width, yerr=[err_lo, err_hi],
+               label=b, color=color(b), capsize=3, alpha=0.85)
 
     ax.set_xticks(x + width * (len(backends) - 1) / 2)
-    ax.set_xticklabels(sizes)
-    ax.set_ylabel('Time (s)')
-    ax.set_title('Planner: time comparison by input size')
+    ax.set_xticklabels([_course_count_label(s) for s in sizes])
+    ax.set_xlabel('# input courses')
+    ax.set_ylabel('# new courses planned')
+    ax.set_title('Planner: output size by number of input courses')
     ax.legend()
     ax.grid(axis='y', alpha=0.3)
     fig.tight_layout()
-    out = out_dir / 'planner_times.png'
+    out = out_dir / 'planner_output_size_bar.png'
+    fig.savefig(out, dpi=150)
+    print(f'Wrote {out}')
+
+
+def plot_planner_output_size_line(data, out_dir):
+    planning = data['planning']
+    sizes    = _planner_cases(planning)
+    backends = _planner_backends(planning, sizes)
+
+    x = np.arange(len(sizes))
+    fig, ax = plt.subplots(figsize=(9, 5))
+
+    for b in backends:
+        means, err_lo, err_hi = _planner_series(planning, sizes, b, 'planned_new_courses', skip_timeout=False)
+        ax.errorbar(x, means, yerr=[err_lo, err_hi], marker='o', linewidth=2,
+                    label=b, color=color(b), capsize=3)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([_course_count_label(s) for s in sizes])
+    ax.set_xlabel('# input courses')
+    ax.set_ylabel('# new courses planned')
+    ax.set_title('Planner: output size by number of input courses (line)')
+    ax.legend()
+    ax.grid(axis='y', alpha=0.3)
+    fig.tight_layout()
+    out = out_dir / 'planner_output_size_line.png'
     fig.savefig(out, dpi=150)
     print(f'Wrote {out}')
 
 
 def plot_planner_booleans(data, out_dir):
     planning = data['planning']
-    sizes    = [s for s in ['empty', 'small', 'medium', 'large'] if s in planning]
+    sizes    = _planner_cases(planning)
     backends = sorted({b for s in sizes for b in planning[s]})
 
     x, width = np.arange(len(sizes)), 0.3
@@ -140,12 +266,10 @@ def plot_planner_booleans(data, out_dir):
             entry = planning[s].get(b)
             r = _stat_summary(entry, 'booleans', skip_timeout=False)
             means.append(r[0] if r else 0)
-        bars = ax.bar(x + i * width, means, width, label=b, color=color(b), alpha=0.85)
-        for j, bar in enumerate(bars):
-            _annotate_timeout(ax, bar, planning[sizes[j]].get(b), 'booleans')
+        ax.bar(x + i * width, means, width, label=b, color=color(b), alpha=0.85)
 
     ax.set_xticks(x + width * (len(backends) - 1) / 2)
-    ax.set_xticklabels(sizes)
+    ax.set_xticklabels([_course_count_label(s) for s in sizes])
     ax.set_ylabel('Booleans / Atoms (log scale)')
     ax.set_yscale('log')
     ax.set_title('Planner: variables (OR-Tools booleans vs Clingo atoms)')
@@ -160,7 +284,7 @@ def plot_planner_booleans(data, out_dir):
 def plot_planner_search_effort(data, out_dir):
     """Branches/choices and conflicts side by side for OR-Tools vs Clingo."""
     planning = data['planning']
-    sizes    = [s for s in ['empty', 'small', 'medium', 'large'] if s in planning]
+    sizes    = _planner_cases(planning)
 
     # OR-Tools: branches + conflicts; Clingo: choices + conflicts
     series = [
@@ -195,7 +319,7 @@ def plot_planner_search_effort(data, out_dir):
                color=palette[(b, k)], alpha=0.85)
 
     ax.set_xticks(x + width * (len(series) - 1) / 2)
-    ax.set_xticklabels(sizes)
+    ax.set_xticklabels([_course_count_label(s) for s in sizes])
     ax.set_ylabel('Count (log scale)')
     ax.set_yscale('log')
     ax.set_title('Planner: search effort (branches/choices & conflicts)')
@@ -225,7 +349,11 @@ def main():
     out_dir = path.parent
 
     plot_checker_times(data, out_dir)
-    plot_planner_times(data, out_dir)
+    plot_checker_times_pass_only(data, out_dir)
+    plot_planner_times_bar(data, out_dir)
+    plot_planner_times_line(data, out_dir)
+    # plot_planner_output_size_bar(data, out_dir)
+    # plot_planner_output_size_line(data, out_dir)
     plot_planner_booleans(data, out_dir)
     plot_planner_search_effort(data, out_dir)
 
