@@ -11,8 +11,9 @@ from datetime import datetime
 from pathlib import Path
 
 TIMEOUT = 300  # seconds per run
+PLANNING_CASE_SIZES = (13, 17, 21, 24)
 
-from configs import KB_LP, MAIN_LP
+from clingo_version.configs import KB_LP, MAIN_LP
 import python_version.cs_reqs_2024 as py_checker
 from clingo_version.run_clingo import run_clingo
 from ortools_version.course_catalog import History, Major, Standing, catalog
@@ -22,6 +23,8 @@ from python_version.cs_reqs_2024 import Taken, degree_reqs
 from tests.checking.checker_test_cases_a import test_0, test_01
 from tests.planning.planner_test_cases import FULL
 
+MAIN_LP = 'clingo_version/cse_req_clingo.lp'
+KB_LP = 'course_kb/kb_complete.lp'
 
 def run_once(func, extract_metrics=None):
     # fork so SIGKILL can terminate blocking C extensions (SIGALRM can't)
@@ -119,23 +122,28 @@ def timed_runs(func, n, extract_metrics=None, label='', direct=False):
 
 
 def ortools_metrics(_stdout, result):
-    _, _, m = result
-    return {k: m.get(k) for k in ('booleans', 'branches', 'conflicts')}
+    _, planned, m = result
+    out = {k: m.get(k) for k in ('booleans', 'branches', 'conflicts')}
+    out['planned_new_courses'] = len(planned)
+    return out
 
 
-def clingo_metrics(_stdout, result):
-    _, _, stats = result
+def clingo_metrics(_stdout, result, input_course_ids=None):
+    _, schedule, stats = result
     lp      = stats.get('problem', {}).get('lp', {})
     solvers = stats.get('solving', {}).get('solvers', {})
     times   = stats.get('summary', {}).get('times', {})
     total_t = float(times.get('total', 0))
     solve_t = float(times.get('solve', 0))
+    planned = {cid for courses in schedule.values() for cid in courses}
+    input_ids = set(input_course_ids or ())
     m = {
         'booleans':    int(lp.get('atoms', 0)) or None,
         'choices':     int(solvers.get('choices', 0)),
         'conflicts':   int(solvers.get('conflicts', 0)),
         'grounding_s': round(total_t - solve_t, 4),
         'solving_s':   round(solve_t, 4),
+        'planned_new_courses': len(planned - input_ids),
         'timed_out':   bool(stats.get('timed_out', False)),
     }
     if stats.get('timed_out'):
@@ -161,13 +169,7 @@ def planning_inputs():
     full = sorted(FULL)
     random.seed(42)
     random.shuffle(full)
-    n = len(full)  # 28
-    return {
-        'empty':  [],
-        'small':  to_history(full[:n // 4]),
-        'medium': to_history(full[:n // 2]),
-        'large':  to_history(full[:3 * n // 4]),
-    }
+    return {f'{size} input courses': to_history(full[:size]) for size in PLANNING_CASE_SIZES}
 
 
 def run_checking_benchmarks():
@@ -180,7 +182,7 @@ def run_checking_benchmarks():
         hist = best_attempts([History(t.id, t.credits, t.grade, t.when, t.where) for t in taken])
         results[case] = {
             'python':  timed_runs(lambda t=taken: python_check(t), 5, label='python'),
-            'prolog':  timed_runs(lambda t=taken: run_prolog(t), 5, label='prolog'),
+            'prolog':  timed_runs(lambda t=taken: run_prolog(t, 'swi'), 5, label='prolog'),
             'ortools': timed_runs(lambda h=hist: plan_courses(h, Major('CSE'), Standing('U4'), check=True), 5, label='ortools'),
             'clingo':  timed_runs(lambda t=taken: run_clingo(taken_set=t, mode='check', main_lp=MAIN_LP, kb_lp=KB_LP), 5, label='clingo'),
         }
@@ -193,20 +195,16 @@ def run_planning_benchmarks():
     for size, hist in inputs.items():
         print(f'\n  planning [{size}]')
         taken = to_taken(hist)
+        input_ids = {h.id for h in hist}
         start = min((h.when for h in hist), default=(2024, 3))
         results[size] = {
             'ortools': timed_runs(
                 lambda h=hist, s=start: plan_courses(h, Major('CSE'), Standing('U4'), starting_semester=s),
                 2, extract_metrics=ortools_metrics, label='ortools'),
         }
-        if size in {'empty', 'small'}:
-            results[size]['clingo'] = timed_runs(
-                lambda t=taken: run_clingo(taken_set=t, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, ground_only=True),
-                1, extract_metrics=clingo_metrics, label='clingo (ground only)', direct=True)
-        else:
-            results[size]['clingo'] = timed_runs(
-                lambda t=taken: run_clingo(taken_set=t, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, timeout=TIMEOUT),
-                2, extract_metrics=clingo_metrics, label='clingo', direct=True)
+        results[size]['clingo'] = timed_runs(
+            lambda t=taken: run_clingo(taken_set=t, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, timeout=TIMEOUT),
+            2, extract_metrics=lambda o, r, ids=input_ids: clingo_metrics(o, r, ids), label='clingo', direct=True)
     return results
 
 

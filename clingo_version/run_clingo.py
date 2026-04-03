@@ -3,7 +3,7 @@ import clingo
 import argparse
 from pprint import pprint
 from course_kb.course_kb import *
-from configs import MAIN_LP, KB_LP
+from clingo_version.configs import MAIN_LP, KB_LP
 
 MIN_SEM = (2024, 2)
 NUM_SEMS = 16
