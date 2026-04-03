@@ -20,17 +20,16 @@ grade_points("I/F", 0). grade_points("Q", 0).
 %% gpa calculation, takes a subset (marked by the tag) and calculates the GPA = floor(weighted sum / sum of weights).
 %%   only consider letter grades in grade_points.
 %%   if a course is taken multiple times, all of them will be counted, as in python.
-gpa_x100(Tag, GPA) :-
+gpa(Tag, GPA) :-
   subset_taken(_, Tag),
-  WeightedSum = #sum { Credit*Points, Id, When : subset_taken(Id, Tag), taken(Id, Credit, Grade, When, _), grade_points(Grade, Points) },
-  SumOfWeights = #sum { Credit, Id, When : subset_taken(Id, Tag), taken(Id, Credit, Grade, When, _), grade_points(Grade, _) },
-  SumOfWeights > 0,
-  GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
+  WeightedSum = #sum { Credit*Points, Id: subset_taken(Id, Tag), taken(Id, Credit, Grade, _, _), grade_points(Grade, Points) },
+  SumOfWeights = #sum { Credit, Id : subset_taken(Id, Tag), taken(Id, Credit, Grade, _, _), grade_points(Grade, _) },
+  SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
 
 %% gpa is 0 when sum of weights is 0, as in python.
-gpa_x100(Tag, 0) :-
+gpa(Tag, 0) :-
   subset_taken(_, Tag),
-  #sum { Credit, Id, When : subset_taken(Id, Tag), taken(Id, Credit, Grade, When, _), grade_points(Grade, _) } = 0.
+  #sum { Credit, Id: subset_taken(Id, Tag), taken(Id, Credit, Grade, _, _), grade_points(Grade, _) } = 0.
 
 % taken(Id, Credits, Grade, When, Where): taken course Id with Credits, etc.
 
@@ -147,10 +146,10 @@ sci_combs_req :- sci_combs(Subj), subset_taken(Id, sci) : c(Id, Subj).
 
 % The courses selected in 7 and 8 must carry at least 9 credits.
 %% Id is needed otherwise credit will only be counted once for courses that have the same credits.
-sci_cred_req :- #sum { Credit, Id, When : subset_taken(Id, sci), taken(Id, Credit, _, When, _) } >= 9.
+sci_cred_req :- #sum { Credit, Id : subset_taken(Id, sci), taken(Id, Credit, _, _, _) } >= 9.
 
 % The grade point average for the courses in Requirements 7 and 8 must be at least 2.00.
-sci_grade_req :- gpa_x100(sci, GPA), GPA >= 2*100.
+sci_grade_req :- gpa(sci, GPA), GPA >= 2*100.
 
 sat(sci) :- sci_combs_req, sci_cred_req, sci_grade_req.
 
@@ -193,15 +192,12 @@ items123_course(Id) :- subset_taken(Id, elect_passed).
 items23_course(Id) :- courses(Id, adv).
 items23_course(Id) :- subset_taken(Id, elect_passed).
 
-items123_credits(Credits) :- Credits = #sum { Credit, Id : taken(Id, Credit, _, _, "SB"), items123_course(Id) }.
-items23_credits(Credits) :- Credits = #sum { Credit, Id : taken(Id, Credit, _, _, "SB"), items23_course(Id) }.
-
 sat(credits_at_SB) :-
-  items123_credits(Credits1), Credits1 >= 24,
-  items23_credits(Credits2), Credits2 >= 18.
+  #sum { Credit, Id : taken(Id, Credit, _, _, "SB"), items123_course(Id) } >= 24,
+  #sum { Credit, Id : taken(Id, Credit, _, _, "SB"), items23_course(Id) } >= 18.
 
-wit(credits_at_SB, items123(Total)) :- items123_credits(Total).
-wit(credits_at_SB, items23(Total)) :- items23_credits(Total).
+wit(credits_at_SB, Id) :- items123_course(Id), taken(Id, _, _, _, "SB").
+wit(credits_at_SB, Id) :- items23_course(Id), taken(Id, _, _, _, "SB").
 
 % Grading (%%% comments are copied from python)
 %
@@ -223,27 +219,35 @@ degree :- sat(Item) : item(Item).     %% degree requirement sat if all requireme
 #maximize { 1@3, Item : sat(Item) }.  %% soft constraint: maximize the number of requirements satisfied. 
                                       %%   so we have a model even when not all requirements are satisfied.
 
-#program plan(start_sem, finish_sem, max_credits_per_semester).
-% getting from python
-% #const start_sem = 1.
-% #const finish_sem = 8.
-% #const max_credits_per_semester = 18. %% max courses to take in one semester
+#program plan. 
+%% Default planning constants (can be overridden by python).
+%%  for semesters we only use small integers, instead of a (year, semester) tuple.
+%%  python maintains the mapping between integers and (year, term) tuples.
+#const start_sem = 1.
+#const finish_sem = 4*4. %% 4 years, 4 semesters per year.
+#const max_credits_per_semester = 18.
 
 semester(start_sem..finish_sem).
-%% The KB uses temporal relations (*_before, *_same) to evaluate requisites.
-%% e.g. prereq("CSE 214", Sem) :- semester(Sem), passed_before("CSE 114", Sem).
-%% e.g. coreq("CSE 161", Sem) :- semester(Sem), taken_same("CSE 160", Sem).
 
-%% course Id is taken before semester Sem. %% for prereq and antireq
+%% Temporal relations used by the KB to evaluate requisites (e.g., passed_before, taken_same). E.g.
+%%  - prereq("CSE 214", Sem) :- semester(Sem), passed_before("CSE 114", Sem).
+%%  - coreq("CSE 161", Sem) :- semester(Sem), taken_same("CSE 160", Sem).
+%% the following rules define these temporal relations based on taken.
+
+%% course is taken before semester Sem.                           %% for prereq and antireq
 taken_before(Id, Sem) :- semester(Sem), taken(Id, _, _, Sem1, _), Sem1 < Sem.
 
-%% passed course Id before Sem with grade higher than Grade %% prereq only
-passed_before((Id, Grade), Sem) :- semester(Sem), taken(Id, _, Grade1, Sem1, _), Sem1 < Sem, is_higher(Grade1, Grade).
+%% Course was passed before Sem with the required minimum Grade   %% prereq
+passed_before((Id, Grade), Sem) :- 
+  semester(Sem), 
+  taken(Id, _, Grade1, Sem1, _), 
+  Sem1 < Sem, 
+  is_higher(Grade1, Grade).
 
-%% course Id is taken at semester Sem. %% coreq only   %%% todo: rename to taken_at?
+%% course Id is taken at semester Sem.                            %% coreq %%% todo: rename to taken_at?
 taken_same(Id, Sem) :- semester(Sem), taken(Id, _, _, Sem, _).
 
-%% for prereq_or_coreq: could be taken before or at the same semester.
+%% could be taken before or at the same semester.                 %% pre_or_coreq
 taken_before_or_same(Id, Sem) :- taken_before(Id, Sem).
 taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
 
@@ -252,47 +256,48 @@ offered(Id, Sem) :- course(Id, _), semester(Sem).
 
 %%%% generate
 %% any untaken course can be planned for at most one semester.
-{ planned(Id, Sem) : semester(Sem), offered(Id, Sem) } 1 :- course(Id, _), not taken_id(Id).
+{ planned(Id, Sem) : semester(Sem), offered(Id, Sem) } 1 :- course(Id, _), not taken_id(Id), not must_exclude(Id).
 
-%% select exactly one credit option for each planned course (there could be many)
+%% must_include must be planned for exactly one semester.
+1 { planned(Id, Sem) : semester(Sem), offered(Id, Sem) } 1 :- course(Id, _), must_include(Id).
+
+%% select exactly one credit option for each planned course.
 1 { planned_credit(Id, Credit) : course(Id, Credit) } 1 :- planned(Id, _).
 
-%% assume course planned has grade A and taken in SB
+%% assume course planned has grade A and taken in SB.
+%%  we could also make grade a variable and optimize for minimum grade needed.
 taken(Id, Credit, "A", Sem, "SB") :- planned(Id, Sem), planned_credit(Id, Credit).
 
 %%%% constraints
 %% all requirements must be satisfied.
 :- item(X), not sat(X).
 
-%% prereq: if a course is planned, then the prereq must be satisfied at the same semester.
+%% requisites below are constraints on the planned courses.
+
+%% prereq: must be satisfied before the planned semester.
 :- planned(Id, Sem),
    has_prereq(Id),
    not prereq(Id, Sem).
 
-% coreq: if a course is planned, then the coreq must be satisfied at the same semester.
+% coreq: at the same semester, usually with the planned course.
 :- planned(Id, Sem),
    has_coreq(Id),
    not coreq(Id, Sem).
 
-% antireq: can not be satisfied at the same semester.
+% pre_or_coreq: either before or at the same semester.
+:- planned(Id, Sem),
+   has_pre_or_coreq(Id),
+   not pre_or_coreq(Id, Sem).
+
+% antireq: can not be satisfied at the planned semester.
 :- planned(Id, Sem),
    has_anti_req(Id), 
    anti_req(Id, Sem).      %% anti-req can not be satisfied
 
-% must avoid: must-avoid can not be planned for (ignore history).
-:- planned(Id, _),
-   must_avoid(Id).
-
-% must take: for must-take, either in history or in the plan.
-:- must_take(Id),
-   not taken_id(Id),
-   not planned(Id, _).
-
-%% do not exceed max credits per semester
+%% max credits per semester
 :- semester(Sem), #sum { Credit, Id : planned(Id, Sem), planned_credit(Id, Credit) } > max_credits_per_semester.
 
 %%%% optimization
-
 %% first, minimize the number of courses to take to satisfy all requirements.
 #minimize { 1@2, Id : planned(Id, _) }.
 
@@ -301,12 +306,14 @@ max_sem(Sem) :- semester(Sem), Sem = #max { Sem1 : planned(_, Sem1) }. %% get th
 #minimize { Sem@1 : max_sem(Sem) }.
 
 #program input.
-
 %% student facts
 standing("U1"). standing("U2"). standing("U3"). standing("U4").
 major("CSE"). permission.
-% must_avoid("CHE 322").
-% must_take("CHE 322").
+
+%% must exclude and must include are passed in from python
+% must_exclude("CHE 322").
+% must_include("CHE 322").
+
 %%%%% test (commented out to get input from python)
 %% to play around:
 %%   you can comment out more of the taken_id facts.

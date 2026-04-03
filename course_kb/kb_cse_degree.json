@@ -4120,7 +4120,7 @@
     "coreq": null,
     "anti_req": null,
     "pre_or_coreq": {
-      "And": [
+      "Or": [
         {
           "And": [
             {
@@ -4136,17 +4136,13 @@
           ]
         },
         {
-          "Or": [
-            {
-              "Taken": [
-                "PHY 131"
-              ]
-            },
-            {
-              "Taken": [
-                "PHY 141"
-              ]
-            }
+          "Taken": [
+            "PHY 131"
+          ]
+        },
+        {
+          "Taken": [
+            "PHY 141"
           ]
         }
       ]
