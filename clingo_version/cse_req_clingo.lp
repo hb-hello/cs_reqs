@@ -209,14 +209,15 @@ wit(credits_at_SB, Id) :- items23_course(Id), taken(Id, _, _, _, "SB").
 % at least 2.00.  %%% assume to be: The courses *taken to satisfy* Req...
 %% merged with 7 and 8; otherwise, not correct if as assumed.
 
-#program check.
-
 %% requirements items
 item(intro; adv; elect; calc; alg; sta; sci; ethics; writing; credits_at_SB).
 
-degree :- sat(Item) : item(Item).     %% degree requirement sat if all requirements are satisfied
+%% degree requirement sat if all requirements are satisfied
+degree :- sat(Item) : item(Item).
 
-#maximize { 1@3, Item : sat(Item) }.  %% soft constraint: maximize the number of requirements satisfied. 
+#program check.
+
+#maximize { 1, Item : sat(Item) }.    %% soft constraint: maximize the number of requirements satisfied. 
                                       %%   so we have a model even when not all requirements are satisfied.
 
 #program plan. 
@@ -251,10 +252,10 @@ taken_same(Id, Sem) :- semester(Sem), taken(Id, _, _, Sem, _).
 taken_before_or_same(Id, Sem) :- taken_before(Id, Sem).
 taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
 
-%%% TODO: assume courses are offered in all semesters, need to change it later.
-offered(Id, Sem) :- course(Id, _), semester(Sem).
+%%%% generate 
 
-%%%% generate
+%% offered(Id, Sem): course Id is offered at semester Sem. input taken from python.
+
 %% any untaken course can be planned for at most one semester.
 { planned(Id, Sem) : semester(Sem), offered(Id, Sem) } 1 :- course(Id, _), not taken_id(Id), not must_exclude(Id).
 
