@@ -61,30 +61,33 @@ def run_clingo(
   must_include = inputs.get('must_include', set())
   must_exclude = inputs.get('must_exclude', set())
 
-  ctrl_args = ["0", "-Wno-atom-undefined"]  ## find optimal solution and suppress warnings about undefined atoms
-  
-  items = ('intro', 'adv', 'elect', 'calc', 'alg', 'sta', 
-          'sci', 'ethics', 'writing', 'credits_at_SB',
-          'degree')   ## include degree as an item
+  ctrl_args = ["0", "-Wno-atom-undefined"]
+  items = (
+    'intro', 'adv', 'elect', 'calc', 'alg', 'sta',
+    'sci', 'ethics', 'writing', 'credits_at_SB', 'degree'
+  )
 
   min_sem = min(c.when for c in taken_set) if taken_set else MIN_SEM
   max_sem = max(c.when for c in taken_set) if taken_set else MIN_SEM
 
-  test_facts = []
-  
-  test_facts.extend([f'taken("{c.id}", {c.credits}, "{c.grade}", {sem_to_int(c.when, min_sem)}, "{c.where}").' for c in taken_set])
+  test_facts = [
+    f'taken("{c.id}", {c.credits}, "{c.grade}", {sem_to_int(c.when, min_sem)}, "{c.where}").'
+    for c in taken_set
+  ]
 
-  if mode == 'plan':  ## needed only for planning
-    test_facts.extend([f'taken_id("{c.id}").' for c in taken_set])
-    test_facts.extend([f'must_include("{cid}").' for cid in must_include])
-    test_facts.extend([f'must_exclude("{cid}").' for cid in must_exclude])
+  if mode == 'plan':
+    test_facts.extend(f'taken_id("{c.id}").' for c in taken_set)
+    test_facts.extend(f'must_include("{cid}").' for cid in must_include)
+    test_facts.extend(f'must_exclude("{cid}").' for cid in must_exclude)
 
     start_sem = sem_to_int(max_sem, min_sem) + 1
     finish_sem = start_sem + NUM_SEMS - 1
-    ctrl_args.append(f"-c start_sem={start_sem}")
-    ctrl_args.append(f"-c finish_sem={finish_sem}")
-    ctrl_args.append(f"-c max_credits_per_semester={NUM_CREDITS_PER_SEM}")  
-  
+    ctrl_args.extend([
+      f"-c start_sem={start_sem}",
+      f"-c finish_sem={finish_sem}",
+      f"-c max_credits_per_semester={NUM_CREDITS_PER_SEM}",
+    ])
+
     for cid, terms in COURSE_OFFERED.items():
       # terms is a set like {2,3,4}; blank CSV entry is set()
       for sem in range(start_sem, finish_sem + 1):
@@ -92,22 +95,15 @@ def run_clingo(
           test_facts.append(f'offered("{cid}", {sem}).')
 
   ctrl = clingo.Control(ctrl_args)
-  
   ctrl.load(main_lp)
   ctrl.load(kb_lp)
-
   ctrl.add("input", [], "\n".join(test_facts))
 
-  to_ground = [("base", []), ("input", [])]
-
-  if mode == 'check':
-    to_ground.append(("check", []))
-  else:
-    to_ground.append(("plan", []))
-
+  to_ground = [("base", []), ("input", []), (mode, [])]   ## mode in {'check', 'plan'}
   ctrl.ground(to_ground, context=ClingoContext())
-  
-  checked = {}  ## initialize all items to not passed
+
+  ## updated in on_model callback
+  checked = {}
   schedule = {}
   min_cost = None
   model_count = 0
@@ -162,14 +158,15 @@ def run_clingo(
       try:
         finished = handle.wait(timeout)
         if not finished:
-          print(f'timeout {timeout} reached.'); timed_out = True
+          print(f'timeout {timeout} reached.')
+          timed_out = True
           handle.cancel()
       except KeyboardInterrupt:
         print('interrupted by user')
         handle.cancel()
       finally:
-        handle.wait()  ## wait for solver to finish after canceling
-        result = handle.get()
+        handle.wait()
+        # result = handle.get()
  
   ## sort witness, same as test in python
   checked = {item: (check, sorted(wits)) for item, (check, wits) in checked.items()}

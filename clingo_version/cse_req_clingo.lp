@@ -256,14 +256,14 @@ taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
 
 %% offered(Id, Sem): course Id is offered at semester Sem. input taken from python.
 
-%% any untaken course can be planned for at most one semester.
-{ planned(Id, Sem) : semester(Sem), offered(Id, Sem) } 1 :- course(Id, _), not taken_id(Id), not must_exclude(Id).
+%% at most one semester for each planned course
+{ planned(Id, Sem) : semester(Sem), offered(Id, Sem) } <= 1 :- course(Id, _), not taken_id(Id), not must_exclude(Id).
 
-%% must_include must be planned for exactly one semester.
-1 { planned(Id, Sem) : semester(Sem), offered(Id, Sem) } 1 :- course(Id, _), must_include(Id).
+%% exactly one semester planned for must_include
+{ planned(Id, Sem) : semester(Sem), offered(Id, Sem) } == 1 :- course(Id, _), must_include(Id).
 
-%% select exactly one credit option for each planned course.
-1 { planned_credit(Id, Credit) : course(Id, Credit) } 1 :- planned(Id, _).
+%% exactly one credit option for each planned course
+{ planned_credit(Id, Credit) : course(Id, Credit) } == 1 :- planned(Id, _).
 
 %% assume course planned has grade A and taken in SB.
 %%  we could also make grade a variable and optimize for minimum grade needed.
