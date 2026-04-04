@@ -231,7 +231,7 @@ class PrologGenerator:
       max_credit = int(m.group('max_credit')) if m.group('max_credit') else min_credit
     
     for credit in range(min_credit, max_credit + 1):
-      l.append(f'course("{course.id}", {credit}).')
+      l.append(f'credits("{course.id}", {credit}).')
 
     for req_type in REQ_TYPES - REQ_TYPES_IGNORE:
       req_value = getattr(course, req_type)
