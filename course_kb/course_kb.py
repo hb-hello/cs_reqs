@@ -48,12 +48,7 @@ class Taken(Requirement):     ## e.g. taken_id("CSE 303"), taken_id("CSE 350")
     pass                       ###    TODO: better name?
 
 class Passed(Requirement):    ## e.g. passed("CSE 101"), passed("AMS 210", "B")
-    ## by default, we assume passing means C or higher because that's the only case in cse courses.
-    ## other programs may have 'passed with B or higher'.
-    def __init__(self, *arguments):
-        if len(arguments) == 1:
-            arguments = (arguments[0], 'C')
-        super().__init__(*arguments)
+    pass
 
 class Major(Requirement):     ## e.g. cse_major
     pass
@@ -96,18 +91,28 @@ class Or(LogicalExpr):  pass
 class Not(LogicalExpr): pass
 
 ## requirements that appear as witnesses (course-level predicates, not student attributes)
-witness_types = (Taken, Passed, Coregister)
+witness_types_ignore = (Major, Standing, Permission, UnsupportedRequirement)
 
 ## retrieve all witness predicates from an And-Or expression
 def get_reqs(expr):
-    if isinstance(expr, witness_types): return {expr}
-    if isinstance(expr, Requirement):   return set()
+    if isinstance(expr, witness_types_ignore): return set()
+    if isinstance(expr, Requirement):   return {expr}
     if isinstance(expr, LogicalExpr):   return set().union(*(get_reqs(op) for op in expr.operands))
     return set()
 
 ## retrieve all witness argument values (course IDs) from an And-Or expression
 def get_courses(expr):
     return {arg for req in get_reqs(expr) for arg in req.arguments}
+
+def transform_leaves(expr, fn):
+    """Apply fn to every leaf (non-And/Or) node, preserving tree structure."""
+    if isinstance(expr, (And, Or)):
+        return type(expr)(*[transform_leaves(op, fn) for op in expr.operands])
+    return fn(expr)
+
+def course_of(req):
+    """Extract the course ID from a leaf requirement (e.g. Passed, Taken)."""
+    return req.arguments[0]
 
 # common constants
 
@@ -135,7 +140,7 @@ def read_course_offered(csv_path='course_offered.csv'):
             if row and row[0].strip()
         }
 
-COURSE_OFFERED = read_course_offered('course_offered.csv')
+COURSE_OFFERED_TERMS = read_course_offered('course_offered.csv')
 
 # For the purpose of determining grade point average, grades are assigned
 # point values as follows:
@@ -164,4 +169,4 @@ def rel_sem_to_term(sem_int: int, min_sem: tuple) -> int:
   return ((min_sem[1] - 1) + (sem_int - 1)) % 4 + 1
 
 if __name__ == "__main__":
-    print(COURSE_OFFERED)
+    print(COURSE_OFFERED_TERMS)

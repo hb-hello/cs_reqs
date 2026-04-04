@@ -1,16 +1,26 @@
 import json, re
 from collections import namedtuple
 from course_kb.course_kb import (
-    Taken, Passed, Major, Standing, Permission, UnsupportedRequirement,
-    And, Or, get_courses, get_reqs, Requirement,
-    MAX_SEMS_ALLOWED, SEM_NAMES, CREDIT_LIMIT, grade_points
+    Taken as TakenReq, Passed as PassedReq, Major, Standing, Permission, UnsupportedRequirement,
+    And, Or, get_courses, get_reqs, Requirement, transform_leaves, course_of,
+    MAX_SEMS_ALLOWED, SEM_NAMES, CREDIT_LIMIT, grade_points, COURSE_OFFERED_TERMS
 )
 from course_kb.build_kb import ASTDecoder
 
 # ── Course record & catalog ────────────────────────────────────
 
-## a course taken, e.g., History('CSE 114', 4, 'A', (2024, 2), 'SB')
-History = namedtuple('History', ['id', 'credits', 'grade', 'when', 'where'])
+class TakenId(Requirement): pass
+class PassedId(Requirement):
+    ## by default, we assume passing means C or higher because that's the only case in cse courses.
+    ## other programs may have 'passed with B or higher'.
+    def __init__(self, *arguments):
+        if len(arguments) == 1:
+            arguments = (arguments[0], 'C')
+        super().__init__(*arguments)
+
+## record of a course taken by the student
+Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
+## record of relevant course information
 Course = namedtuple('Course', ['id', 'credits', 'prereq', 'coreq', 'anti_req'], defaults=[None, None, None])
 
 catalog = {}
@@ -27,10 +37,30 @@ def _load_kb(path):
         text = re.sub(r'^\s*//.*$', '', f.read(), flags=re.MULTILINE)
     return json.loads(text, cls=ASTDecoder)
 
+# convert Taken and Passed from prereqs to TakenId and PassedId to not conflict with Taken defined above
+def _rewrite_req_ids(expr):
+    if expr is None:
+        return None
+
+    def rewrite(leaf):
+        if isinstance(leaf, TakenReq):
+            return TakenId(*leaf.arguments)
+        if isinstance(leaf, PassedReq):
+            return PassedId(*leaf.arguments)
+        return leaf
+
+    return transform_leaves(expr, rewrite)
+
 import os
 _kb_path = os.path.join(os.path.dirname(__file__), '..', 'course_kb', 'kb_cse_degree.json')
 for kc in _load_kb(_kb_path):
-    catalog[kc.id] = Course(kc.id, _parse_credits(kc.credits), kc.prereq, kc.coreq, kc.anti_req)
+    catalog[kc.id] = Course(
+        kc.id,
+        _parse_credits(kc.credits),
+        _rewrite_req_ids(kc.prereq),
+        _rewrite_req_ids(kc.coreq),
+        _rewrite_req_ids(kc.anti_req),
+    )
 
 # ── Non-CSE courses used in degree requirements ────────────────
 
@@ -108,7 +138,3 @@ _stub('MEC 262', 3)
 _stub('AMS 110', 3)
 _stub('MAT 200', 3)
 _stub('MAT 250', 3)
-
-# hardcoded term offerings by course id; missing courses are treated as unrestricted
-COURSE_OFFERED_TERMS = {
-}

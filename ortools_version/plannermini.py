@@ -1,5 +1,5 @@
 from .solver import ORModel
-from .course_catalog import (catalog,upper_division,COURSE_OFFERED_TERMS,Passed,Taken,Major,Standing,UnsupportedRequirement,Permission,And,Or,get_courses,get_reqs,Requirement,History,grade_points,MAX_SEMS_ALLOWED,SEM_NAMES,CREDIT_LIMIT)
+from .course_catalog import (catalog,upper_division,COURSE_OFFERED_TERMS,Passed,Taken,Major,Standing,UnsupportedRequirement,Permission,And,Or,get_courses,get_reqs,Requirement,Taken,grade_points,MAX_SEMS_ALLOWED,SEM_NAMES,CREDIT_LIMIT)
 def C_or_higher(grade): return grade in {'A','A-','B+','B','B-','C+','C'}
 def upper_division(course): return int(course[4:])>=300
 class Semester(Requirement): pass
@@ -143,5 +143,5 @@ def plan_courses(already_taken,*student_reqs,must_exclude=set(),must_include=set
 def fmt(cid,grades): return f"{cid} ({grades[cid]})" if cid in grades else cid
 if __name__=='__main__':
     taken_ids={'CSE 114','CSE 214','CSE 216','CSE 220'}
-    history=[History(cid,catalog[cid].credits,"A",(2024,1),"SB") for cid in taken_ids]
+    history=[Taken(cid,catalog[cid].credits,"A",(2024,1),"SB") for cid in taken_ids]
     plan_courses(history,Major("CSE"),Standing("U4"),starting_semester=(2024,2),check=False,debug_print=True)

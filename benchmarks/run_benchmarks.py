@@ -16,7 +16,7 @@ PLANNING_CASE_SIZES = (13, 17, 21, 24)
 from clingo_version.configs import KB_LP, MAIN_LP
 import python_version.cs_reqs_2024 as py_checker
 from clingo_version.run_clingo import run_clingo
-from ortools_version.course_catalog import History, Major, Standing, catalog
+from ortools_version.course_catalog import Taken, Major, Standing, catalog
 from ortools_version.planner import best_attempts, plan_courses
 from prolog_version.run_prolog import run_prolog
 from python_version.cs_reqs_2024 import Taken, degree_reqs
@@ -158,7 +158,7 @@ def python_check(taken):
 
 
 def to_history(ids):
-    return [History(cid, catalog[cid].credits, 'A', (2024, 2), 'SB') for cid in sorted(ids)]
+    return [Taken(cid, catalog[cid].credits, 'A', (2024, 2), 'SB') for cid in sorted(ids)]
 
 
 def to_taken(history):
@@ -179,7 +179,7 @@ def run_checking_benchmarks():
     results = {}
     for case, taken in [('pass', passing_taken), ('fail', failing_taken)]:
         print(f'\n  checking [{case}]')
-        hist = best_attempts([History(t.id, t.credits, t.grade, t.when, t.where) for t in taken])
+        hist = best_attempts([Taken(t.id, t.credits, t.grade, t.when, t.where) for t in taken])
         results[case] = {
             'python':  timed_runs(lambda t=taken: python_check(t), 5, label='python'),
             'prolog':  timed_runs(lambda t=taken: run_prolog(t, 'swi'), 5, label='prolog'),

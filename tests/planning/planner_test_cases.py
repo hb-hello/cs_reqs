@@ -1,5 +1,5 @@
 from ortools_version.planner import catalog, plan_courses
-from ortools_version.course_catalog import Major, Standing, History
+from ortools_version.course_catalog import Major, Standing, Taken
 
 
 FULL = {
@@ -13,7 +13,7 @@ FULL = {
 
 
 def history(ids, grade='A', loc='SB', when=(2024, 2)):
-    return [History(cid, catalog[cid].credits, grade, when, loc) for cid in sorted(ids)]
+    return [Taken(cid, catalog[cid].credits, grade, when, loc) for cid in sorted(ids)]
 
 
 def test_plan_no_electives():

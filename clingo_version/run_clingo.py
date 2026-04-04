@@ -81,7 +81,7 @@ def run_clingo(
     ctrl_args.append(f"-c finish_sem={finish_sem}")
     ctrl_args.append(f"-c max_credits_per_semester={NUM_CREDITS_PER_SEM}")  
   
-    for cid, terms in COURSE_OFFERED.items():
+    for cid, terms in COURSE_OFFERED_TERMS.items():
       # terms is a set like {2,3,4}; blank CSV entry is set()
       for sem in range(start_sem, finish_sem + 1):
         if rel_sem_to_term(sem, min_sem) in terms:
