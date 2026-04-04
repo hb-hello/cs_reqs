@@ -253,6 +253,11 @@ taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
 
 %% offered(Id, Sem): course Id is offered at semester Sem. input taken from python.
 
+% prereq in gen?
+% {plan(Id, Sem) : offered(Id, Sem), prereq(Id, Sem)} <= 1 :- 
+%   credits(Id, _), not taken_id(Id), not exclude(Id).
+% {plan(Id, Sem) : offered(Id, Sem), prereq(Id, Sem)} == 1 :- include(Id).
+
 %% at most one semester for each planned course
 {plan(Id, Sem) : offered(Id, Sem)} <= 1 :- 
   credits(Id, _), not taken_id(Id), not exclude(Id).
