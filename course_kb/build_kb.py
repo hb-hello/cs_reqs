@@ -400,7 +400,7 @@ COURSES_CSE_DEGREE = {    ## courses listed in the degree requirements.
 COURSES_CSE_DEGREE |= { ## missing prereq courses from the above courses
   'AMS 110', 'AMS 261', 'AMS 361', 'AMS 412',  ## ams
   'BME 120',  ## bme
-  'CHE 129', 'CHE 383',  ## che
+  'CHE 129', 'CHE 130', 'CHE 383',  ## che
   'ESE 124', 'ESE 280',  ## ese
   'ESG 111',  ## esg
   'ISE 108', 'ISE 208', 'ISE 218', 'ISE 334',  ## ise
