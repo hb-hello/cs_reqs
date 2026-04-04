@@ -6,6 +6,7 @@ import select
 import signal
 import statistics
 import time
+import sys
 from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
 from pathlib import Path
@@ -23,8 +24,40 @@ from python_version.cs_reqs_2024 import Taken, degree_reqs
 from tests.checking.checker_test_cases_a import test_0, test_01
 from tests.planning.planner_test_cases import FULL
 
-MAIN_LP = 'clingo_version/cse_req_clingo.lp'
-KB_LP = 'course_kb/kb_complete.lp'
+import python_version.cs_reqs_2024 as reqs
+
+INTRO = set().union(*(getattr(reqs, name) for name in reqs.intro))
+ADV = set().union(*(getattr(reqs, name) for name in reqs.adv))
+CALC = set().union(*(getattr(reqs, name) for name in reqs.calc))
+STA = set().union(*(getattr(reqs, name) for name in reqs.sta))
+ALG = set().union(*(getattr(reqs, name) for name in reqs.alg))
+SCI_COMB = set().union(*reqs.sci_combs)
+SCI_MORE = reqs.sci_more
+ELECT = {'CSE 337', 'CSE 327', 'CSE 307', 'CSE 371', 'CSE 333', 'CSE 392', 'CSE 381', 
+         'CSE 304', 'CSE 487', 'CSE 352', 'CSE 328', 'CSE 377', 'CSE 334', 'CSE 357', 
+         'CSE 380', 'CSE 356', 'CSE 370', 'CSE 355', 'CSE 391', 'CSE 353', 'CSE 362', 
+         'CSE 363', 'CSE 305', 'CSE 332', 'CSE 390', 'CSE 488', 'CSE 351', 'CSE 354', 
+         'CSE 336', 'CSE 364', 'CSE 376', 'CSE 393', 'CSE 360', 'CSE 366', 'CSE 311', 
+         'CSE 496', 'CSE 306', 'CSE 378', 'CSE 323', 'CSE 394', 'CSE 331', 'CSE 361', 'CSE 325'}
+
+## replace previous cases (empty, small, large)
+def planning_cases_inc_taken():
+    return [
+        FULL & INTRO,
+        FULL & (INTRO | ADV | ELECT | CALC | STA | ALG),
+        FULL & (INTRO | ADV | ELECT | CALC | STA | ALG | SCI_COMB | SCI_MORE),
+    ]
+
+## planning with different categories of taken input.
+##   different categories may have different impacts on pruning the search space
+##   e.g. planning for sci courses might be harder than planning for cs courses.
+def planning_cases_category():      ### todo: move to planner_tests.py?
+    return [
+        FULL & INTRO,
+        FULL & ADV,
+        FULL & (CALC | STA | ALG),
+        FULL & (SCI_COMB | SCI_MORE),
+    ]
 
 def run_once(func, extract_metrics=None):
     # fork so SIGKILL can terminate blocking C extensions (SIGALRM can't)
@@ -166,10 +199,8 @@ def to_taken(history):
 
 
 def planning_inputs():
-    full = sorted(FULL)
-    random.seed(42)
-    random.shuffle(full)
-    return {f'{size} input courses': to_history(full[:size]) for size in PLANNING_CASE_SIZES}
+   return {f'{len(taken_set)} input courses': 
+            to_history(taken_set) for taken_set in planning_cases_inc_taken()}
 
 
 def run_checking_benchmarks():
@@ -209,10 +240,21 @@ def run_planning_benchmarks():
 
 
 def main():
-    print('=== checking benchmarks ===')
-    checking = run_checking_benchmarks()
-    print('\n=== planning benchmarks ===')
-    planning = run_planning_benchmarks()
+    mode = sys.argv[1] if len(sys.argv) > 1 else 'all'
+    if mode not in {'check', 'plan', 'all'}:
+        print("Usage: python benchmarks/run_benchmarks.py [check|plan|all]")
+        return
+
+    checking = None
+    planning = None
+
+    if mode in {'check', 'all'}:
+        print('=== checking benchmarks ===')
+        checking = run_checking_benchmarks()
+
+    if mode in {'plan', 'all'}:
+        print('\n=== planning benchmarks ===')
+        planning = run_planning_benchmarks()
 
     results = {
         'timestamp': datetime.now().isoformat(),
