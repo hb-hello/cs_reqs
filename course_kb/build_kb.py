@@ -241,12 +241,12 @@ class PrologGenerator:
           subexprs = [op for op in req_value.subexprs if not isinstance(op, UnsupportedRequirement)]
           
           if not subexprs:
-            l.append(f'{req_type}("{course.id}", Sem) :- semester(Sem), unsupported_{req_type}.')
+            l.append(f'{req_type}("{course.id}", Sem) :- plan("{course.id}", Sem), unsupported_{req_type}.')
           else:
             for subexpr in subexprs:
-              l.append(f'{req_type}("{course.id}", Sem) :- semester(Sem), {self.generate_expr(subexpr, req_type)}.')
+              l.append(f'{req_type}("{course.id}", Sem) :- plan("{course.id}", Sem), {self.generate_expr(subexpr, req_type)}.')
         else:
-          l.append(f'{req_type}("{course.id}", Sem) :- semester(Sem),{self.generate_expr(req_value, req_type)}.')
+          l.append(f'{req_type}("{course.id}", Sem) :- plan("{course.id}", Sem),{self.generate_expr(req_value, req_type)}.')
     return list(dict.fromkeys(l))   ## deduplicate with order preserved
 
   def generate_expr(self, expr: Expr, req_type: str) -> str:
@@ -360,7 +360,7 @@ class ClingoGenerator(PrologGenerator):
     aux_pred = f'aux_or_{self.aux_id}(Sem)'
     for op in subexprs:
       op_str = self.generate_expr(op, req_type)
-      self.aux_rules.append(f'{aux_pred} :- semester(Sem), {op_str}.')
+      self.aux_rules.append(f'{aux_pred} :- plan(_, Sem), {op_str}.')
     return aux_pred
 
 COURSES_CSE_DEGREE = {    ## courses listed in the degree requirements.

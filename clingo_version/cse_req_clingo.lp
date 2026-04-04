@@ -224,28 +224,25 @@ degree :- req(Item) : item(Item).
 %%  python maintains the mapping between integers and (year, term) tuples.
 #const start_sem = 1.         %% earliest semester to plan for
 #const finish_sem = 4*4.      %% latest semester ...
-#const max_sem = 4*4.    %% defines the semester domain
 #const sem_max_credits = 18.  %% max credits allowed per semester planned
 
-semester(1..max_sem).  %% domain of semesters
-
 %% Temporal relations used by the KB to evaluate requisites (e.g., passed_before, taken_same). E.g.
-%%  - prereq("CSE 214", Sem) :- semester(Sem), passed_before("CSE 114", Sem).
-%%  - coreq("CSE 161", Sem) :- semester(Sem), taken_same("CSE 160", Sem).
+%%  - prereq("CSE 214", Sem) :- plan(_, Sem), passed_before("CSE 114", Sem).
+%%  - coreq("CSE 161", Sem) :- plan(_, Sem), taken_same("CSE 160", Sem).
 %% the following rules define these temporal relations based on taken.
 
 %% course is taken before semester Sem.                           %% for prereq and antireq
-taken_before(Id, Sem) :- semester(Sem), taken(Id, _, _, Sem1, _), Sem1 < Sem.
+taken_before(Id, Sem) :- plan(_, Sem), taken(Id, _, _, Sem1, _), Sem1 < Sem.
 
 %% Course was passed before Sem with the required minimum Grade   %% prereq
 passed_before((Id, G), Sem) :- 
-  semester(Sem), 
+  plan(_, Sem), 
   taken(Id, _, G1, Sem1, _), 
   Sem1 < Sem, 
   is_higher(G1, G).
 
 %% course Id is taken at semester Sem.                            %% coreq %%% todo: rename to taken_at?
-taken_same(Id, Sem) :- semester(Sem), taken(Id, _, _, Sem, _).
+taken_same(Id, Sem) :- plan(_, Sem), taken(Id, _, _, Sem, _).
 
 %% could be taken before or at the same semester.                 %% pre_or_coreq
 taken_before_or_same(Id, Sem) :- taken_before(Id, Sem).
@@ -294,6 +291,10 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 :- plan(Id, Sem),
    has_anti_req(Id), 
    anti_req(Id, Sem).      %% anti-req can not be satisfied
+
+% semester limits
+:- plan(_, Sem), Sem < start_sem.
+:- plan(_, Sem), Sem > finish_sem.
 
 %% max credits per semester
 :- plan(_, Sem),
