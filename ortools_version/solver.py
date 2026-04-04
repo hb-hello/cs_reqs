@@ -1,6 +1,10 @@
 from ortools.sat.python import cp_model
 from course_kb.course_kb import Expr, Requirement, Or
 
+
+# use operator overloads to make expressions prettier? 
+# lets us evaluate Pred(A) < Pred(B) to or_model[Pred(A)] < or_model[Pred(B)]
+
 # stores, indexes and adds variables to the CP-SAT model
 class ORModel:
     def __init__(self, ignore=()):

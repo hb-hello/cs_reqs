@@ -1,5 +1,7 @@
 import json, re
 from collections import namedtuple
+from datetime import datetime
+from pathlib import Path
 from course_kb.course_kb import (
     Taken as TakenReq, Passed as PassedReq, Major, Standing, Permission, UnsupportedRequirement,
     And, Or, get_courses, get_reqs, Requirement, transform_leaves, course_of,
@@ -24,8 +26,24 @@ Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
 Course = namedtuple('Course', ['id', 'credits', 'prereq', 'coreq', 'anti_req'], defaults=[None, None, None])
 
 catalog = {}
+COURSE_ID_RE = re.compile(r'^[A-Z]{3} \d{3}$')
 
 def upper_division(cid): return int(cid[4:]) >= 300
+
+# provides range of (year, semester) tuples
+def semester_range(start, end_or_count):
+    y, s = start
+    if isinstance(end_or_count, int):
+        for _ in range(end_or_count):
+            yield (y, s)
+            s += 1
+            if s > 4: s, y = 1, y + 1
+        return
+
+    while (y, s) <= end_or_count:
+        yield (y, s)
+        s += 1
+        if s > 4: s, y = 1, y + 1
 
 # ── Load CSE courses from KB ───────────────────────────────────
 
@@ -138,3 +156,181 @@ _stub('MEC 262', 3)
 _stub('AMS 110', 3)
 _stub('MAT 200', 3)
 _stub('MAT 250', 3)
+
+
+# prereq options calculation for benchmarking
+
+def _req_course_ids(expr):
+    if expr is None:
+        return set()
+    return {course_of(req) for req in get_reqs(expr)}
+
+
+def _course_req_expr(cid):
+    course = catalog.get(cid)
+    if not course:
+        return None
+    exprs = [e for e in (course.prereq, course.coreq) if e is not None]
+    if not exprs:
+        return None
+    return exprs[0] if len(exprs) == 1 else And(*exprs)
+
+
+def _dep_tree_from_expr(expr, seen):
+    if isinstance(expr, And):
+        parts = [p for p in (_dep_tree_from_expr(op, seen) for op in expr.operands) if p]
+        if not parts:
+            return ''
+        return parts[0] if len(parts) == 1 else '(' + ' AND '.join(parts) + ')'
+    if isinstance(expr, Or):
+        parts = [p for p in (_dep_tree_from_expr(op, seen) for op in expr.operands) if p]
+        if not parts:
+            return ''
+        return parts[0] if len(parts) == 1 else '(' + ' OR '.join(parts) + ')'
+    if isinstance(expr, Requirement):
+        dep = course_of(expr)
+        if not COURSE_ID_RE.match(dep):
+            return ''
+        dep_expr = _course_req_expr(dep)
+        if dep_expr is None or dep in seen:
+            return dep
+        child = _dep_tree_from_expr(dep_expr, seen | {dep})
+        return dep if not child else f'{dep}=>{child}'
+    return str(expr)
+
+
+def dependency_tree(cid):
+    expr = _course_req_expr(cid)
+    if expr is None:
+        return '-'
+    tree = _dep_tree_from_expr(expr, {cid})
+    return tree if tree else '-'
+
+
+def _option_count_from_expr(expr, prereq_counts, seen, ignore_course=None):
+    if isinstance(expr, And):
+        total = 1
+        for op in expr.operands:
+            total *= _option_count_from_expr(op, prereq_counts, seen, ignore_course)
+        return total
+    if isinstance(expr, Or):
+        total = 0
+        for op in expr.operands:
+            total += _option_count_from_expr(op, prereq_counts, seen, ignore_course)
+        return total
+    if isinstance(expr, Requirement):
+        dep = course_of(expr)
+        if ignore_course and dep == ignore_course:
+            return 1
+        dep_expr = _course_req_expr(dep)
+        if dep_expr is None or dep in seen:
+            return max(1, prereq_counts.get(dep, 0))
+        return _option_count_from_expr(dep_expr, prereq_counts, seen | {dep}, ignore_course)
+    return 1
+
+
+def prerequisite_options(cid, prereq_counts, ignore_course=None):
+    expr = _course_req_expr(cid)
+    if expr is None:
+        return max(1, prereq_counts.get(cid, 0))
+    return _option_count_from_expr(expr, prereq_counts, {cid}, ignore_course)
+
+
+def options_opened_up(cid, dependents, prereq_counts):
+    # Sum dependent options when this course is treated as already satisfied in their req chains.
+    return sum(prerequisite_options(dep, prereq_counts, ignore_course=cid) for dep in dependents.get(cid, []))
+
+
+def requisite_counts_by_course(kb_path=None):
+    path = _kb_path if kb_path is None else kb_path
+    counts = {}
+    for kc in _load_kb(path):
+        prereq_ids = _req_course_ids(_rewrite_req_ids(kc.prereq))
+        coreq_ids = _req_course_ids(_rewrite_req_ids(kc.coreq))
+        counts[kc.id] = (len(prereq_ids), len(coreq_ids), len(prereq_ids) + len(coreq_ids))
+    return counts
+
+
+def prerequisite_dependents():
+    dependents = {cid: [] for cid in catalog}
+    for dep_cid, course in catalog.items():
+        req_ids = set()
+        if course.prereq is not None:
+            req_ids |= _req_course_ids(course.prereq)
+        if course.coreq is not None:
+            req_ids |= _req_course_ids(course.coreq)
+        if not req_ids:
+            continue
+        for req_cid in sorted(req_ids):
+            if req_cid in dependents:
+                dependents[req_cid].append(dep_cid)
+
+    for cid in dependents:
+        dependents[cid].sort()
+    return dependents
+
+
+def top_requisite_courses(n=10, kb_path=None):
+    rows = [(cid, prereq_n, coreq_n, total)
+            for cid, (prereq_n, coreq_n, total) in requisite_counts_by_course(kb_path).items()]
+
+    rows.sort(key=lambda r: (-r[3], -r[1], -r[2], r[0]))
+    return rows[:n]
+
+
+def main():
+
+    FULL = [
+        'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220',                  ## intro
+        'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',       ## adv
+        'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
+        'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',                  ## calc, sta, alg
+        'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
+        'CSE 300', 'CSE 312',                                                   ## writing, ethics
+    ]
+    counts = requisite_counts_by_course(_kb_path)
+    dependents = prerequisite_dependents()
+    prereq_counts = {cid: vals[0] for cid, vals in counts.items()}
+    print('course_id | prereq | options | dependents | options_opened_up | dep_tree')
+    rows = []
+    for cid in FULL:
+        prereq_n = counts.get(cid, (None, None, None))[0]
+        if prereq_n is None:
+            print(f'{cid:8} | not found | not found | not found | not found | not found')
+            rows.append({
+                'course_id': cid,
+                'prereq': None,
+                'options': None,
+                'dependents_count': None,
+                'dependents': None,
+                'options_opened_up': None,
+                'dep_tree': None,
+            })
+            continue
+        options = prerequisite_options(cid, prereq_counts)
+        course_dependents = dependents.get(cid, [])
+        dependents_count = len(course_dependents)
+        opened = options_opened_up(cid, dependents, prereq_counts)
+        tree = dependency_tree(cid)
+        print(f'{cid:8} | {prereq_n:6} | {options:7} | {dependents_count:10} | {opened:17} | {tree}')
+        rows.append({
+            'course_id': cid,
+            'prereq': prereq_n,
+            'options': options,
+            'dependents_count': dependents_count,
+            'dependents': course_dependents,
+            'options_opened_up': opened,
+            'dep_tree': tree,
+        })
+
+    out_dir = Path(__file__).resolve().parents[1] / 'benchmarks' / 'prereq_stats'
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+    out_path = out_dir / f'prereq_stats_{stamp}.json'
+    with out_path.open('w') as f:
+        json.dump({'timestamp': datetime.now().isoformat(), 'rows': rows}, f, indent=2)
+    print(f'Wrote {out_path}')
+
+
+if __name__ == '__main__':
+    main()

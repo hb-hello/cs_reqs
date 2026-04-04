@@ -12,4 +12,5 @@ catalog_snapshot.json
 cse416_f25_demo_testcases/
 benchmarks/**/*.png
 benchmarks/**/*.json
+benchmarks/ortools/*
 .claude/

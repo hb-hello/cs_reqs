@@ -4,7 +4,7 @@ from .solver import ORModel
 from .course_catalog import (
     catalog, upper_division, COURSE_OFFERED_TERMS,
     PassedId, TakenId, Taken, Major, Standing, UnsupportedRequirement, Permission,
-    And, Or, get_reqs, Requirement, grade_points,
+    And, Or, get_reqs, Requirement, grade_points, semester_range,
     MAX_SEMS_ALLOWED, CREDIT_LIMIT, transform_leaves, course_of
 )
 
@@ -19,14 +19,6 @@ class SciSubset(Requirement): pass # to track the sci subset
 class Prereq(Requirement): pass
 class Coreq(Requirement): pass
 class Antireq(Requirement): pass
-
-# provides range of (year, semester) tuples
-def semester_range(start, count):
-    y, s = start
-    for _ in range(count):
-        yield (y, s)
-        s += 1
-        if s > 4: s, y = 1, y + 1
 
 # pre-process raw history: one entry per course, best known grade, ignoring in-progress (None) entries
 def best_attempts(history):
@@ -56,7 +48,7 @@ def print_schedule(planned, grades, credits_fn):
 # starting semester indicates the starting semester from which to start planning
 # course_offered_terms is a dict of course ID : {sem names}, e.g., 'CSE 114': {'Fall', 'Spring'}
 # debug_print enables verbose solver output
-def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), check=False, starting_semester=(1, 1), course_offered_terms=None, debug_print=False):
+def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), check=False, starting_semester=(1, 1), ending_semester=None, course_offered_terms=None, debug_print=False):
 
     if must_include & must_exclude:
         return None # infeasible
@@ -74,13 +66,15 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
 
     # setting up the domain for semesters; base anchors the domain, starting_semester clamped within it
     base = min((h.when for h in taken), default=starting_semester)
-    Semester.domain = list(semester_range(base, MAX_SEMS_ALLOWED))
+    sem_domain_limit = ending_semester if ending_semester is not None else MAX_SEMS_ALLOWED
+    Semester.domain = list(semester_range(base, sem_domain_limit))
     starting_semester = max(starting_semester, base)
 
     history_ids = {h.id: h for h in taken}
-    excluded = history_ids.keys() | must_exclude
+    # excluded = history_ids.keys() | must_exclude
 
-    to_plan_from = catalog.keys() - excluded
+    to_plan_from = catalog.keys() - (history_ids.keys() | must_exclude)
+    to_plan_from &= course_offered_terms.keys()
 
     for cid, h in history_ids.items():
         or_model[Grade(cid)]    = h.grade
@@ -260,8 +254,8 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
             And(req, or_model.at_least(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 1)))
         # coreq: must be taken same semester or before (= rather than <)
         or_model[Coreq] = lambda cid, req: or_model.resolve(
-        # anti_req: cannot take this course if these courses are taken    
             And(req, or_model.exactly(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 0)))
+        # anti_req: cannot take this course if these courses are taken    
         or_model[Antireq] = lambda cid, req: or_model.resolve(req).negated()
 
         # pre-req course requirement
@@ -355,4 +349,4 @@ if __name__ == '__main__':
     taken_ids = {'CSE 114', 'CSE 214', 'CSE 216', 'CSE 220'}
     print([COURSE_OFFERED_TERMS[t] for t in taken_ids])
     history   = [Taken(cid, catalog[cid].credits, "A", (2024, 1), "SB") for cid in taken_ids]
-    plan_courses(history, Major("CSE"), Standing("U4"), starting_semester=(2024, 2), check=False, debug_print=True)
+    plan_courses(history, Major("CSE"), Standing("U4"), starting_semester=(2024, 2), ending_semester=(2025, 4), check=False, debug_print=True)
