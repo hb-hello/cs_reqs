@@ -6,8 +6,9 @@
 %% clingo version for checking and planning for BS degree requirements in CSE at Stony Brook University (Fall 2024).
 %% python version: https://github.com/unicomputing/cs_reqs/blob/main/cs_reqs_2024.da (checking only)
 
-is_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
-c_or_higher(Grade) :- is_higher(Grade, "C").
+is_or_higher(Grade, Grade2) :- 
+  grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
+c_or_higher(Grade) :- is_or_higher(Grade, "C").
 
 %% mapping letter grade to points for GPA calculation
 %% scaled by 100 to make each integer
@@ -234,12 +235,12 @@ degree :- req(Item) : item(Item).
 %% course is taken before semester Sem.                           %% for prereq and antireq
 taken_before(Id, Sem) :- plan(_, Sem), taken(Id, _, _, Sem1, _), Sem1 < Sem.
 
-%% Course was passed before Sem with the required minimum Grade   %% prereq
-passed_before((Id, G), Sem) :- 
-  plan(_, Sem), 
-  taken(Id, _, G1, Sem1, _), 
-  Sem1 < Sem, 
-  is_higher(G1, G).
+%% course taken before semester with at least grade.
+passed_before_grade(Id, Grade, Sem) :- 
+  plan(_, Sem), taken(Id, _, G, When, _), When < Sem, is_or_higher(G, Grade).
+
+%% "C or higher" in prereq
+passed_before(Id, Sem) :- passed_before_grade(Id, Grade, Sem), c_or_higher(Grade).
 
 %% course Id is taken at semester Sem.                            %% coreq %%% todo: rename to taken_at?
 taken_same(Id, Sem) :- plan(_, Sem), taken(Id, _, _, Sem, _).
