@@ -60,6 +60,8 @@ def run_clingo(
   taken_set = inputs.get('taken_set', set())
   must_include = inputs.get('must_include', set())
   must_exclude = inputs.get('must_exclude', set())
+  num_sems = inputs.get('num_sems', NUM_SEMS)
+  course_offered_terms = inputs.get('course_offered_terms', COURSE_OFFERED_TERMS)
 
   ctrl_args = ["0", "-Wno-atom-undefined"]
   items = (
@@ -77,18 +79,18 @@ def run_clingo(
 
   if mode == 'plan':
     test_facts.extend(f'taken_id("{c.id}").' for c in taken_set)
-    test_facts.extend(f'must_include("{cid}").' for cid in must_include)
-    test_facts.extend(f'must_exclude("{cid}").' for cid in must_exclude)
+    test_facts.extend(f'include("{cid}").' for cid in must_include)
+    test_facts.extend(f'exclude("{cid}").' for cid in must_exclude)
 
     start_sem = sem_to_int(max_sem, min_sem) + 1
-    finish_sem = start_sem + NUM_SEMS - 1
+    finish_sem = start_sem + num_sems - 1
     ctrl_args.extend([
       f"-c start_sem={start_sem}",
       f"-c finish_sem={finish_sem}",
-      f"-c max_credits_per_semester={NUM_CREDITS_PER_SEM}",
+      f"-c sem_max_credits={NUM_CREDITS_PER_SEM}",
     ])
 
-    for cid, terms in COURSE_OFFERED_TERMS.items():
+    for cid, terms in course_offered_terms.items():
       # terms is a set like {2,3,4}; blank CSV entry is set()
       for sem in range(start_sem, finish_sem + 1):
         if rel_sem_to_term(sem, min_sem) in terms:
@@ -126,10 +128,10 @@ def run_clingo(
     for sym in model.symbols(atoms=True):     ## collect check for each requirement
       if sym.name == "degree":
         checked['degree'][0] = True
-      elif sym.name == "sat":
+      elif sym.name == "req":
         item = str(sym.arguments[0])
         checked[item][0] = True
-      elif sym.name == "planned":             ## planning mode
+      elif sym.name == "plan":             ## planning mode
         cid_sym, semester_sym = sym.arguments
         cid = str(cid_sym).strip('"')
         sem = int_to_sem(semester_sym.number, min_sem)

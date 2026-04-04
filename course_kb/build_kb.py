@@ -208,6 +208,18 @@ class PrologGenerator:
       return f'{name}_{suffix}("{args[0]}", Sem)'
     return f'{name}_{suffix}(({self.join_args(args)}), Sem)'
 
+  def format_passed_requirement(self, req: Passed, req_type: str) -> str:
+    course_id = req.arguments[0]
+    grade = req.arguments[1] if len(req.arguments) >= 2 else "C"
+
+    if grade == "C":
+      return self.format_req_with_semester(req.name, [course_id], req_type)
+
+    suffix = self.semester_suffix(req_type)
+    if suffix == "before":
+      return f'passed_before_grade("{course_id}", "{grade}", Sem)'
+    return f'passed_{suffix}_grade("{course_id}", "{grade}", Sem)'
+
   def generate_kb(self) -> list[str]:
     output_lines = []    ## l is a list of strings representing the kb
     output_lines.extend([
@@ -231,7 +243,7 @@ class PrologGenerator:
       max_credit = int(m.group('max_credit')) if m.group('max_credit') else min_credit
     
     for credit in range(min_credit, max_credit + 1):
-      l.append(f'course("{course.id}", {credit}).')
+      l.append(f'credits("{course.id}", {credit}).')
 
     for req_type in REQ_TYPES - REQ_TYPES_IGNORE:
       req_value = getattr(course, req_type)
@@ -241,12 +253,12 @@ class PrologGenerator:
           subexprs = [op for op in req_value.subexprs if not isinstance(op, UnsupportedRequirement)]
           
           if not subexprs:
-            l.append(f'{req_type}("{course.id}", Sem) :- semester(Sem), unsupported_{req_type}.')
+            l.append(f'{req_type}("{course.id}", Sem) :- plan("{course.id}", Sem), unsupported_{req_type}.')
           else:
             for subexpr in subexprs:
-              l.append(f'{req_type}("{course.id}", Sem) :- semester(Sem), {self.generate_expr(subexpr, req_type)}.')
+              l.append(f'{req_type}("{course.id}", Sem) :- plan("{course.id}", Sem), {self.generate_expr(subexpr, req_type)}.')
         else:
-          l.append(f'{req_type}("{course.id}", Sem) :- semester(Sem),{self.generate_expr(req_value, req_type)}.')
+          l.append(f'{req_type}("{course.id}", Sem) :- plan("{course.id}", Sem),{self.generate_expr(req_value, req_type)}.')
     return list(dict.fromkeys(l))   ## deduplicate with order preserved
 
   def generate_expr(self, expr: Expr, req_type: str) -> str:
@@ -261,8 +273,10 @@ class PrologGenerator:
   ## same requirement output for both prolog and clingo
   def generate_requirement(self, req: Requirement, req_type) -> str:
     ## for passed and taken, add semester
-    if isinstance(req, (Passed, Taken)):
+    if isinstance(req, Taken):
       return self.format_req_with_semester(req.name, req.arguments, req_type)
+    elif isinstance(req, Passed):
+      return self.format_passed_requirement(req, req_type)
     elif isinstance(req, Coregister):
       return f'taken_same("{req.arguments[0]}")'
     elif isinstance(req, Permission):
@@ -323,9 +337,6 @@ class ClingoGenerator(PrologGenerator):
       parts.append(s)
     return ','.join(parts)
 
-  def pool_requirement_arguments(self, reqs: list[Requirement]) -> str:
-    return "; ".join(self.join_args(op.arguments) for op in reqs if op)
-
   def format_pooled_sem_requirement(self, name: str, pooled: str, req_type: str) -> str:
     suffix = self.semester_suffix(req_type)
     return f'{name}_{suffix}(({pooled}), Sem)' if pooled.count(";") >= 1 else f'{name}_{suffix}({pooled}, Sem)'
@@ -340,16 +351,22 @@ class ClingoGenerator(PrologGenerator):
 
     ## if all are with the same requirement type -> pool arguments
     if all(isinstance(op, Requirement) for op in subexprs) and len(set(type(op) for op in subexprs)) == 1:
-      pooled = self.pool_requirement_arguments(subexprs)
       node_type, node_name = type(subexprs[0]), subexprs[0].name
+
+      if node_type is Passed:
+        all_default_c = all(len(op.arguments) == 1 or op.arguments[1] == "C" for op in subexprs)
+        if all_default_c:
+          pooled_ids = "; ".join(f'"{op.arguments[0]}"' for op in subexprs)
+          return self.format_pooled_sem_requirement(node_name, pooled_ids, req_type)
+        ## mixed or non-default grade disjunctions should not be pooled
+        ## because explicit-grade requirements use a different predicate.
+        return ';'.join(self.generate_requirement(op, req_type) for op in subexprs)
+
+      pooled = "; ".join(self.join_args(op.arguments) for op in subexprs if op)
 
       if node_type is Taken:   ## taken takes semester argument
         return self.format_pooled_sem_requirement(node_name, pooled, req_type)
 
-      if node_type is Passed:  ## passed takes semester argument
-        if req_type == "coreq": print("coreq shouldn't have passed requirements, but found:", subexprs)
-        return self.format_pooled_sem_requirement(node_name, pooled, req_type)
-      
       if node_type is Coregister:  ## coregister is treated as taken_same
         return self.format_pooled_sem_requirement('taken', pooled, 'coreq')
 
@@ -360,7 +377,7 @@ class ClingoGenerator(PrologGenerator):
     aux_pred = f'aux_or_{self.aux_id}(Sem)'
     for op in subexprs:
       op_str = self.generate_expr(op, req_type)
-      self.aux_rules.append(f'{aux_pred} :- semester(Sem), {op_str}.')
+      self.aux_rules.append(f'{aux_pred} :- plan(_, Sem), {op_str}.')
     return aux_pred
 
 COURSES_CSE_DEGREE = {    ## courses listed in the degree requirements.
@@ -400,7 +417,7 @@ COURSES_CSE_DEGREE = {    ## courses listed in the degree requirements.
 COURSES_CSE_DEGREE |= { ## missing prereq courses from the above courses
   'AMS 110', 'AMS 261', 'AMS 361', 'AMS 412',  ## ams
   'BME 120',  ## bme
-  'CHE 129', 'CHE 383',  ## che
+  'CHE 129', 'CHE 130', 'CHE 383',  ## che
   'ESE 124', 'ESE 280',  ## ese
   'ESG 111',  ## esg
   'ISE 108', 'ISE 208', 'ISE 218', 'ISE 334',  ## ise
