@@ -38,10 +38,12 @@ def print_clingo_stats(stats):
     choices = int(solving_stats.get('choices', 0))
     conflicts = int(solving_stats.get('conflicts', 0))
     restarts = int(solving_stats.get('restarts', 0))
-    
+    min_cost = stats.get('min_cost')
     print(f"Choices:   {choices:,}")
     print(f"Conflicts: {conflicts:,}")
     print(f"Restarts:  {restarts:,}")
+    if min_cost is not None:
+      print(f"Min Cost:  {min_cost}")
   print("======================")
 
 def run_clingo(
@@ -53,63 +55,72 @@ def run_clingo(
     **inputs            ## taken_set, must_include, must_exclude
     ):
   
+  assert mode in {'check', 'plan'}, f"mode must be 'check' or 'plan', got {mode}"
+
   taken_set = inputs.get('taken_set', set())
   must_include = inputs.get('must_include', set())
   must_exclude = inputs.get('must_exclude', set())
 
-  ctrl_args = ["0", "-Wno-atom-undefined"]  ## find optimal solution and suppress warnings about undefined atoms
-  
-  items = ('intro', 'adv', 'elect', 'calc', 'alg', 'sta', 
-          'sci', 'ethics', 'writing', 'credits_at_SB',
-          'degree')   ## include degree as an item
+  ctrl_args = ["0", "-Wno-atom-undefined"]
+  items = (
+    'intro', 'adv', 'elect', 'calc', 'alg', 'sta',
+    'sci', 'ethics', 'writing', 'credits_at_SB', 'degree'
+  )
 
   min_sem = min(c.when for c in taken_set) if taken_set else MIN_SEM
   max_sem = max(c.when for c in taken_set) if taken_set else MIN_SEM
 
-  test_facts = []
-  
-  test_facts.extend([f'taken("{c.id}", {c.credits}, "{c.grade}", {sem_to_int(c.when, min_sem)}, "{c.where}").' for c in taken_set])
+  test_facts = [
+    f'taken("{c.id}", {c.credits}, "{c.grade}", {sem_to_int(c.when, min_sem)}, "{c.where}").'
+    for c in taken_set
+  ]
 
-  if mode == 'plan':  ## needed only for planning
-    test_facts.extend([f'taken_id("{c.id}").' for c in taken_set])
-    test_facts.extend([f'must_include("{cid}").' for cid in must_include])
-    test_facts.extend([f'must_exclude("{cid}").' for cid in must_exclude])
+  if mode == 'plan':
+    test_facts.extend(f'taken_id("{c.id}").' for c in taken_set)
+    test_facts.extend(f'must_include("{cid}").' for cid in must_include)
+    test_facts.extend(f'must_exclude("{cid}").' for cid in must_exclude)
 
     start_sem = sem_to_int(max_sem, min_sem) + 1
     finish_sem = start_sem + NUM_SEMS - 1
-    ctrl_args.append(f"-c start_sem={start_sem}")
-    ctrl_args.append(f"-c finish_sem={finish_sem}")
-    ctrl_args.append(f"-c max_credits_per_semester={NUM_CREDITS_PER_SEM}")  
-  
-    for cid, terms in COURSE_OFFERED_TERMS.items():
+    ctrl_args.extend([
+      f"-c start_sem={start_sem}",
+      f"-c finish_sem={finish_sem}",
+      f"-c max_credits_per_semester={NUM_CREDITS_PER_SEM}",
+    ])
+
+    for cid, terms in COURSE_OFFERED.items():
       # terms is a set like {2,3,4}; blank CSV entry is set()
       for sem in range(start_sem, finish_sem + 1):
         if rel_sem_to_term(sem, min_sem) in terms:
           test_facts.append(f'offered("{cid}", {sem}).')
 
   ctrl = clingo.Control(ctrl_args)
-  
   ctrl.load(main_lp)
   ctrl.load(kb_lp)
-
   ctrl.add("input", [], "\n".join(test_facts))
 
-  to_ground = [("base", []), ("input", []), ("check", [])]
-  if mode == 'plan': to_ground.append(("plan", []))
-
+  to_ground = [("base", []), ("input", []), (mode, [])]   ## mode in {'check', 'plan'}
   ctrl.ground(to_ground, context=ClingoContext())
-  
-  checked = {}  ## initialize all items to not passed
+
+  ## updated in on_model callback
+  checked = {}
   schedule = {}
+  min_cost = None
+  model_count = 0
   
   def on_model(model):    ## invoked for every model found
-    nonlocal checked, schedule
+    nonlocal checked, schedule, min_cost, model_count
 
     ## reset checked when there are multiple models (in planning mode)
     checked = {item: [False, []] for item in items}  ## initialize all items to not passed
     planned_courses = {}
     schedule = defaultdict(list)
-    cost = model.cost if model.cost is not None else None
+    model_count += 1
+    if model.cost is not None:
+      cost = tuple(model.cost)
+      if min_cost is None or cost < min_cost:
+        min_cost = cost
+
     # print(f"Model found with cost: {cost}")
     
     for sym in model.symbols(atoms=True):     ## collect check for each requirement
@@ -147,14 +158,15 @@ def run_clingo(
       try:
         finished = handle.wait(timeout)
         if not finished:
-          print(f'timeout {timeout} reached.'); timed_out = True
+          print(f'timeout {timeout} reached.')
+          timed_out = True
           handle.cancel()
       except KeyboardInterrupt:
         print('interrupted by user')
         handle.cancel()
       finally:
-        handle.wait()  ## wait for solver to finish after canceling
-        result = handle.get()
+        handle.wait()
+        # result = handle.get()
  
   ## sort witness, same as test in python
   checked = {item: (check, sorted(wits)) for item, (check, wits) in checked.items()}
@@ -175,7 +187,9 @@ def run_clingo(
                             'conflicts': int(solvers.get('conflicts', 0)),
                             'restarts':  int(solvers.get('restarts', 0))}},
     'summary': {'times': {'total': total_t, 'solve': solve_t}},
-    'timed_out': timed_out
+    'timed_out': timed_out,
+    'model_count': model_count,
+    'min_cost': list(min_cost) if min_cost is not None else None,
   }
   if timed_out and checked:
     stats['partial_reqs_sat']   = [k for k, (ok, _) in checked.items() if ok]

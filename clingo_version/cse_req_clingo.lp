@@ -37,22 +37,22 @@ passed(Id) :- taken(Id, Credits_, Grade, When_, Where_), c_or_higher(Grade).
 
 % passed all courses with course Id in Subject
 passed_all(Subject) :-
-  c(_, Subject),                 % c(Id, Subject): course Id in Subject
-  passed(Id) : c(Id, Subject).   %% for each course Id in Subject, passed(Id) is true
+  c(Subject, _),                 % c(Subject, Id): course Id in Subject
+  passed(Id) : c(Subject, Id).   %% for each course Id in Subject, passed(Id) is true
 
 % course C is witness for passing all courses in a subject in requirement Item
-wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Id, Subj).
+wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Subj, Id).
 
 % return set of courses in subjects in requirement item.
-courses(Id, Item) :- s(Item, Subj), c(Id, Subj).
-subset_taken(Id, Item) :- s(Item, Subj), c(Id, Subj), taken(Id, _, _, _, _).
+courses(Id, Item) :- s(Item, Subj), c(Subj, Id).
+subset_taken(Id, Item) :- s(Item, Subj), c(Subj, Id), taken(Id, _, _, _, _).
 
 % 1. Required Introductory Courses
-c(("CSE 114"; "CSE 214"; "CSE 216"), prog).
-c(("CSE 160"; "CSE 161"; "CSE 260"; "CSE 261"), prog2).
-c("CSE 215", dmath). 
-c("CSE 150", dmath2).
-c("CSE 220", sys). 
+c(prog, ("CSE 114"; "CSE 214"; "CSE 216")).
+c(prog2, ("CSE 160"; "CSE 161"; "CSE 260"; "CSE 261")).
+c(dmath, "CSE 215"). 
+c(dmath2, "CSE 150").
+c(sys, "CSE 220"). 
 s(intro, (prog; prog2; dmath; dmath2; sys)).
 
 sat(intro) :-
@@ -61,9 +61,9 @@ sat(intro) :-
   passed_all(sys).
 
 % 2. Required Advanced Courses
-c("CSE 303", theory). c("CSE 350", theory2).
-c("CSE 373", algo). c("CSE 385", algo2).
-c(("CSE 310"; "CSE 316"; "CSE 320"; "CSE 416"), other).
+c(theory, "CSE 303"). c(theory2, "CSE 350").
+c(algo, "CSE 373"). c(algo2, "CSE 385").
+c(other, ("CSE 310"; "CSE 316"; "CSE 320"; "CSE 416")).
 s(adv, (theory; theory2; algo; algo2; other)).
 
 sat(adv) :- 
@@ -72,13 +72,13 @@ sat(adv) :-
   passed_all(other).
 
 % 3. Computer Science Electives  %% simpler than 2025
-c(("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312"), elect_exclude).
+c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
 subset_taken(Id, elect_passed) :-
   taken(Id, Credits, Grade, _, _), c_or_higher(Grade),
   @course_prog(Id) = "CSE",
   @upper_division(Id) = 1,    %% is upper division
-  Credits >= 3, not courses(Id, adv), not c(Id, elect_exclude).
+  Credits >= 3, not courses(Id, adv), not c(elect_exclude, Id).
 
 sat(elect) :- 
   #count { Id: subset_taken(Id, elect_passed) } >= 4.
@@ -90,26 +90,26 @@ wit(elect, Id) :- subset_taken(Id, elect_passed).
 %%% (copied from python) todo:
 % Equivalency for MAT courses achieved through the Mathematics
 % Placement Examination is accepted to meet MAT course requirements.
-c(("AMS 151"; "AMS 161"), calc).
-c(("MAT 125"; "MAT 126"; "MAT 127"), calc2).
-c(("MAT 131"; "MAT 132"), calc3).
+c(calc, ("AMS 151"; "AMS 161")).
+c(calc2, ("MAT 125"; "MAT 126"; "MAT 127")).
+c(calc3, ("MAT 131"; "MAT 132")).
 s(calc, (calc; calc2; calc3)).
 
 sat(calc) :- 
   passed_all(calc; calc2; calc3).
 
 % 5. One of the following:
-c("MAT 211", alg).
-c("AMS 210", alg2).
+c(alg, "MAT 211").
+c(alg2, "AMS 210").
 s(alg, (alg; alg2)).
 
 sat(alg) :- 
   passed_all(alg; alg2).
 
 % 6. Both of the following:
-c("AMS 301", fmath).
-c("AMS 310", sta).
-c("AMS 311", sta2).
+c(fmath, "AMS 301").
+c(sta, "AMS 310").
+c(sta2, "AMS 311").
 s(sta, (fmath; sta; sta2)).
 
 sat(sta) :-
@@ -118,31 +118,31 @@ sat(sta) :-
 
 % 7. At least one of the following natural science lecture/laboratory combinations...
 % combinations:
-c(("BIO 201"; "BIO 204"), bio).
-c(("BIO 202"; "BIO 204"), bio2).
-c(("BIO 203"; "BIO 204"), bio3).
-c(("CHE 131"; "CHE 133"), che).
-c(("CHE 152"; "CHE 154"), che2).
-c(("PHY 126"; "PHY 133"), phy).
-c(("PHY 131"; "PHY 133"), phy2).
-c(("PHY 141"; "PHY 133"), phy3).
+c(bio, ("BIO 201"; "BIO 204")).
+c(bio2, ("BIO 202"; "BIO 204")).
+c(bio3, ("BIO 203"; "BIO 204")).
+c(che, ("CHE 131"; "CHE 133")).
+c(che2, ("CHE 152"; "CHE 154")).
+c(phy, ("PHY 126"; "PHY 133")).
+c(phy2, ("PHY 131"; "PHY 133")).
+c(phy3, ("PHY 141"; "PHY 133")).
 sci_combs(bio; bio2; bio3; che; che2; phy; phy2; phy3).
 
 % 8. Additional natural science courses selected from above and following list:
 % Note: The courses selected in 7 and 8 must carry at least 9 credits.
-c(("AST 203"; "AST 205"; "CHE 132"; "CHE 321"; "CHE 322"; "CHE 331"; "CHE 332";
-   "GEO 102"; "GEO 103"; "GEO 112"; "GEO 123"; "GEO 122";
-   "PHY 125"; "PHY 127"; "PHY 132"; "PHY 134"; "PHY 142"; "PHY 251"; "PHY 252"), sci_more).
+c(sci_more, ("AST 203"; "AST 205"; "CHE 132"; "CHE 321"; "CHE 322"; "CHE 331"; "CHE 332";
+             "GEO 102"; "GEO 103"; "GEO 112"; "GEO 123"; "GEO 122";
+             "PHY 125"; "PHY 127"; "PHY 132"; "PHY 134"; "PHY 142"; "PHY 251"; "PHY 252")).
 
 %% sci_courses(taken) in python: set of all sci courses taken
-sci_taken(Id) :- sci_combs(Subj), c(Id, Subj), taken(Id, _, _, _, _).
-sci_taken(Id) :- c(Id, sci_more), taken(Id, _, _, _, _).
+sci_taken(Id) :- sci_combs(Subj), c(Subj, Id), taken(Id, _, _, _, _).
+sci_taken(Id) :- c(sci_more, Id), taken(Id, _, _, _, _).
 
 %% generate a subset of sci_courses taken: use the same subset to satisfy sci_req, sci_cred_req and sci_grade_req.
 { subset_taken(Id, sci) } :- sci_taken(Id).
 
 %% the subset must contain one sci_combo, use in requirement 7.
-sci_combs_req :- sci_combs(Subj), subset_taken(Id, sci) : c(Id, Subj).
+sci_combs_req :- sci_combs(Subj), subset_taken(Id, sci) : c(Subj, Id).
 
 % The courses selected in 7 and 8 must carry at least 9 credits.
 %% Id is needed otherwise credit will only be counted once for courses that have the same credits.
@@ -157,13 +157,13 @@ sat(sci) :- sci_combs_req, sci_cred_req, sci_grade_req.
 wit(sci, Id) :- subset_taken(Id, sci).
 
 % 9. Professional Ethics
-c("CSE 312", ethics).
+c(ethics, "CSE 312").
 s(ethics, ethics).
 
 sat(ethics) :- passed_all(ethics).
 
 % 10. Upper-Division Writing Requirement
-c("CSE 300", writing).
+c(writing, "CSE 300").
 s(writing, writing).
 
 sat(writing) :- passed_all(writing).
@@ -209,14 +209,15 @@ wit(credits_at_SB, Id) :- items23_course(Id), taken(Id, _, _, _, "SB").
 % at least 2.00.  %%% assume to be: The courses *taken to satisfy* Req...
 %% merged with 7 and 8; otherwise, not correct if as assumed.
 
-#program check.
-
 %% requirements items
 item(intro; adv; elect; calc; alg; sta; sci; ethics; writing; credits_at_SB).
 
-degree :- sat(Item) : item(Item).     %% degree requirement sat if all requirements are satisfied
+%% degree requirement sat if all requirements are satisfied
+degree :- sat(Item) : item(Item).
 
-#maximize { 1@3, Item : sat(Item) }.  %% soft constraint: maximize the number of requirements satisfied. 
+#program check.
+
+#maximize { 1, Item : sat(Item) }.    %% soft constraint: maximize the number of requirements satisfied. 
                                       %%   so we have a model even when not all requirements are satisfied.
 
 #program plan. 
@@ -251,18 +252,18 @@ taken_same(Id, Sem) :- semester(Sem), taken(Id, _, _, Sem, _).
 taken_before_or_same(Id, Sem) :- taken_before(Id, Sem).
 taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
 
-%%% TODO: assume courses are offered in all semesters, need to change it later.
-offered(Id, Sem) :- course(Id, _), semester(Sem).
+%%%% generate 
 
-%%%% generate
-%% any untaken course can be planned for at most one semester.
-{ planned(Id, Sem) : semester(Sem), offered(Id, Sem) } 1 :- course(Id, _), not taken_id(Id), not must_exclude(Id).
+%% offered(Id, Sem): course Id is offered at semester Sem. input taken from python.
 
-%% must_include must be planned for exactly one semester.
-1 { planned(Id, Sem) : semester(Sem), offered(Id, Sem) } 1 :- course(Id, _), must_include(Id).
+%% at most one semester for each planned course
+{planned(Id, Sem) : offered(Id, Sem)} <= 1 :- course(Id, _), not taken_id(Id), not must_exclude(Id).
 
-%% select exactly one credit option for each planned course.
-1 { planned_credit(Id, Credit) : course(Id, Credit) } 1 :- planned(Id, _).
+%% exactly one semester planned for must_include
+{planned(Id, Sem) : offered(Id, Sem)} == 1 :- course(Id, _), must_include(Id).
+
+%% exactly one credit option for each planned course
+{planned_credit(Id, Credit) : course(Id, Credit)} == 1 :- planned(Id, _).
 
 %% assume course planned has grade A and taken in SB.
 %%  we could also make grade a variable and optimize for minimum grade needed.

@@ -4,6 +4,8 @@ from collections import namedtuple
 ## a course taken, e.g., Taken('CSE 114', 4, 'A', (2024, 2), 'SB')
 Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
 
+def gen_taken(taken_ids):
+  return {Taken(cid, 4, 'A', (2024,2), 'SB') for cid in taken_ids}
 
 def test_0():  ## as test() in cs_reqs_2024.da
   taken_ids = {'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220',
@@ -14,7 +16,7 @@ def test_0():  ## as test() in cs_reqs_2024.da
                # science
                'PHY 131', 'PHY 133', 'AST 203',
                'CSE 300', 'CSE 312'}
-  taken = {Taken(cid, 4, 'A', (2024,2), 'SB') for cid in taken_ids}
+  taken = gen_taken(taken_ids)
 
   checked = {
       'intro': (True, ['CSE 114', 'CSE 214', 'CSE 215', 'CSE 216', 'CSE 220']),
