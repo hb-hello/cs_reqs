@@ -232,6 +232,13 @@ degree :- req(Item) : item(Item).
 %%  - coreq("CSE 161", Sem) :- plan(_, Sem), taken_same("CSE 160", Sem).
 %% the following rules define these temporal relations based on taken.
 
+%%% ISSUE TODO: plan(_, Sem) shouldn't be used to ground semester here.
+%%%   e.g. generating plan("CSE 214", Sem) requires passed_before("CSE 114", Sem) because:
+%%% prereq("CSE 214", Sem) :- offered("CSE 214", Sem),passed_before("CSE 114", Sem).
+%%% passed_before can not rely on plan(_, Sem) because of circular dependency.
+%%% need something else to ground semester which should not only be in the planning domain
+%%% start_sem..finish_sem, but need to consider courses taken previously: 1..finish_sem
+
 %% course is taken before semester Sem.                           %% for prereq and antireq
 taken_before(Id, Sem) :- plan(_, Sem), taken(Id, _, _, Sem1, _), Sem1 < Sem.
 
@@ -253,12 +260,21 @@ taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
 
 %% offered(Id, Sem): course Id is offered at semester Sem. input taken from python.
 
-%% at most one semester for each planned course
-{plan(Id, Sem) : offered(Id, Sem)} <= 1 :- 
-  credits(Id, _), not taken_id(Id), not exclude(Id).
+%% if used before(Sem), Sem would need to be grounded. this is more straightforward.
+offered_in_range(Id) :- offered(Id, Sem), Sem >= start_sem, Sem <= finish_sem.
 
-%% exactly one semester planned for include
-{plan(Id, Sem) : offered(Id, Sem)} == 1 :- include(Id).
+%% trying prereq in gen, see ISSUE above %% even offered can be removed because it's in prereq
+{plan(Id, Sem) : offered(Id, Sem), prereq(Id, Sem)} <= 1 :- 
+  offered_in_range(Id), not taken_id(Id), not exclude(Id).
+
+{plan(Id, Sem) : offered(Id, Sem), prereq(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
+
+% %% at most one semester for each planned course
+% {plan(Id, Sem) : offered(Id, Sem)} <= 1 :- 
+%   credits(Id, _), not taken_id(Id), not exclude(Id).
+
+% %% exactly one semester planned for include
+% {plan(Id, Sem) : offered(Id, Sem)} == 1 :- include(Id).
 
 %% exactly one credit option for each planned course
 {plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
@@ -273,24 +289,22 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 
 %% requisites below are constraints on the planned courses.
 
-%% prereq: must be satisfied before the planned semester.
-:- plan(Id, Sem),
-   has_prereq(Id),
-   not prereq(Id, Sem).
+% expressed in generation 
+% %% prereq: must be satisfied before the planned semester.
+% :- plan(Id, Sem),
+%    has_prereq(Id),
+%    not prereq(Id, Sem).
 
 % coreq: at the same semester, usually with the planned course.
 :- plan(Id, Sem),
-   has_coreq(Id),
    not coreq(Id, Sem).
 
 % pre_or_coreq: either before or at the same semester.
 :- plan(Id, Sem),
-   has_pre_or_coreq(Id),
    not pre_or_coreq(Id, Sem).
 
 % antireq: can not be satisfied at the planned semester.
 :- plan(Id, Sem),
-   has_anti_req(Id), 
    anti_req(Id, Sem).      %% anti-req can not be satisfied
 
 % semester limits

@@ -167,7 +167,7 @@ def run_one(label, backend):
 
     print(
         f"\n-> {label}: passed {len(passed)} test cases, "
-        f"failed {len(failed)} test cases, skipped {len(skipped)} test cases"
+        f"failed {len(failed)} test cases, skipped {len(skipped)} test cases: {skipped}"
     )
     for name, error in failed:
         print(f"   FAIL: {name}")

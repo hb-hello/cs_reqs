@@ -97,16 +97,20 @@ def test_plan_respects_course_allowed_terms():
     taken = history(ids)
 
     def validate(checked, schedule_courses, schedule_by_course):
-        expected_sem = {'Fall': 1, 'Spring': 3}
-        for sem_name, sem_num in expected_sem.items():
-            _, direct_schedule, _ = plan_courses(
+        ## planner expects term numbers: 1=Winter, 2=Spring, 3=Summer, 4=Fall
+        expected_term = {'Fall': 4, 'Spring': 2}
+        for sem_name, term_num in expected_term.items():
+            result = plan_courses(
                 taken,
                 Major('CSE'),
                 Standing('U4'),
-                course_offered_terms={'CSE 220': {sem_name}},
+                course_offered_terms={'CSE 220': {term_num}},
             )
-            assert 'CSE 220' in direct_schedule
-            assert direct_schedule['CSE 220'][1] == sem_num, f'CSE 220 should be planned in {sem_name}'
+
+            assert result, f'no feasible plan returned when restricting CSE 220 to {sem_name}'
+            _, direct_schedule, _ = result
+            assert 'CSE 220' in direct_schedule, f'CSE 220 not planned when restricted to {sem_name}'
+            assert direct_schedule['CSE 220'][1] == term_num, f'CSE 220 should be planned in {sem_name}'
 
     return taken, validate
 
