@@ -110,13 +110,19 @@ subset_taken(Id, elect_passed) :-
   taken(Id, Crs, G, _, _), c_or_higher(G),
   @course_prog(Id) = "CSE",
   @upper_division(Id) = 1,    %% is upper division
-  Crs >= 3, not courses(Id, adv), not c(elect_exclude, Id).
+  Crs >= 3, not courses(Id, adv), not c((elect_exclude;elect_limit), Id).
+
+%% choose elect_limit to be in the subset
+{ subset_taken(Id, elect_passed) } :- 
+  c(elect_limit, Id),
+  taken(Id, Crs, G, _, _),
+  c_or_higher(G).
 
 req(elect) :- 
-  #count { Id: subset_taken(Id, elect_passed) } >= 6.
+  #count { Id: subset_taken(Id, elect_passed) } >= 6,
+  %% at most 3 credits from elect_limit
+  #sum { Crs, Id : c(elect_limit, Id), subset_taken(Id, elect_passed), taken(Id, Crs, _, _, _) } <= 3.
 
-% may only use 3 credits from the elect_limit
-:- #sum { Crs, Id : c(elect_limit, Id), taken(Id, Crs, _, _, _) } > 3.
 
 %% for elect, witness is the subset elect_passed used in elect.
 wit(elect, Id) :- subset_taken(Id, elect_passed).
