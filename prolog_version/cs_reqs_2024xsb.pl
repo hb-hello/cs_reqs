@@ -1,5 +1,11 @@
-:- import(library(lists)).
+:- import memberchk/2 from basics.
+:- import length/2 from lists.
+:- import concat_atom/2 from string.
 :- dynamic taken/5.
+
+atom_number(Atom, Num) :-
+    atom_codes(Atom, Codes),
+    number_codes(Num, Codes).
 
 is_higher(Grade, Grade2) :- grade_toPoints(Grade, Points), grade_toPoints(Grade2, Points2), Points >= Points2.
 c_or_higher(Grade) :- is_higher(Grade, 'C').
@@ -67,7 +73,7 @@ disallowed_elective('CSE496').
 disallowed_elective('CSE301').
 
 elective_req :- findall(Id, (passed(Id), elective(Id)), Electives),
-    length(Electives, Count),
+  length(Electives, Count),
     Count > 3.
 
 elective(Id) :- \+ advanced_courses(Id),
@@ -76,9 +82,9 @@ elective(Id) :- \+ advanced_courses(Id),
     \+ disallowed_elective(Id),
     upperdivCS(Id).
 
-upperdivCS(Id) :- atom_concat('CSE', CourseNumstr, Id),
+upperdivCS(Id) :- concat_atom(['CSE', CourseNumstr], Id),
     atom_number(CourseNumstr, CourseNumInt),
-    CourseNumInt >= 300.
+  CourseNumInt >= 300.
 
 wit(elective, Id) :- elective_req, passed(Id), elective(Id).
 
@@ -193,6 +199,12 @@ all_requirements :-
     sci_subset_req,
     passed_all(ethics_comm).
 
+  measure_wall(Goal) :-
+    statistics(walltime, [_, _]),
+    (call(Goal) -> Outcome = yes ; Outcome = no),
+    statistics(walltime, [_, T]),
+    write('result('), write(Outcome), writeln(')'),
+    write('Wall time: '), write(T), writeln(' s').
 
 % taken('CSE 215', 3, 'A', (2024,2), 'SBU').
 % taken('CSE 214', 3, 'A', (2024,2), 'SBU').

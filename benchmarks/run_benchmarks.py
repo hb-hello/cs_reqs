@@ -136,7 +136,7 @@ def run_once_direct(func, extract_metrics=None):
         return {'error': traceback.format_exc()}
 
 
-def timed_runs(func, n, extract_metrics=None, label='', direct=False):
+def timed_runs(func, n, extract_metrics=None, label='', direct=False, timing_metric_key=None):
     if label:
         print(f'  {label} ', end='', flush=True)
     times = []
@@ -153,8 +153,13 @@ def timed_runs(func, n, extract_metrics=None, label='', direct=False):
         if 'error' in run:
             print(f'\n  ERROR: {run["error"]}', flush=True)
             continue
-        times.append(run['elapsed'])
-        for k, v in run.get('metrics', {}).items():
+        metrics = run.get('metrics', {})
+        run_time = run['elapsed']
+        if timing_metric_key and isinstance(metrics.get(timing_metric_key), (int, float)):
+            run_time = float(metrics[timing_metric_key])
+        times.append(run_time)
+
+        for k, v in metrics.items():
             if isinstance(v, bool):
                 if v: any_timed_out = True
             elif isinstance(v, list):
@@ -168,7 +173,6 @@ def timed_runs(func, n, extract_metrics=None, label='', direct=False):
     if not times:
         print('  all runs killed (SIGKILL)')
         return {'runs': 0, 'timed_out': True}
-
     out = {'runs': len(times), 'min_s': min(times), 'max_s': max(times), 'mean_s': statistics.mean(times)}
     for k, vals in numeric.items():
         out[k] = {'min': min(vals), 'max': max(vals), 'mean': statistics.mean(vals)}
@@ -218,6 +222,19 @@ def clingo_metrics(_stdout, result, input_course_ids=None, input_count=None, cas
     return m
 
 
+def prolog_metrics(_stdout, result):
+    if not isinstance(result, dict):
+        return {}
+    out = {}
+    if isinstance(result.get('prolog_eval_s'), (int, float)):
+        out['prolog_eval_s'] = float(result['prolog_eval_s'])
+    if 'ok' in result:
+        out['check_passed'] = 1 if result['ok'] else 0
+    if result.get('engine'):
+        out['engine'] = result['engine']
+    return out
+
+
 def python_check(taken):
     py_checker.w = {}
     return degree_reqs(taken)
@@ -232,6 +249,7 @@ def to_taken(history):
 
 
 def planning_inputs():
+    return {f'input_{n}_courses': to_history(sorted(FULL)[:n]) for n in PLANNING_CASE_SIZES}
     return {name: to_history(taken_set) for name, taken_set in planning_cases_category().items()}
 
 
@@ -257,7 +275,18 @@ def run_checking_benchmarks():
         hist = best_attempts([Taken(t.id, t.credits, t.grade, t.when, t.where) for t in taken])
         results[case] = {
             'python':  timed_runs(lambda t=taken: python_check(t), 5, label='python'),
-            'prolog':  timed_runs(lambda t=taken: run_prolog(t, 'swi'), 5, label='prolog'),
+            'prolog_swi':  timed_runs(
+                lambda t=taken: run_prolog(t, 'swi', swi_with_witness=False, return_timing=True),
+                5,
+                extract_metrics=prolog_metrics,
+                timing_metric_key='prolog_eval_s',
+                label='prolog_swi'),
+            'prolog_xsb':  timed_runs(
+                lambda t=taken: run_prolog(t, 'xsb', return_timing=True),
+                5,
+                extract_metrics=prolog_metrics,
+                timing_metric_key='prolog_eval_s',
+                label='prolog_xsb'),
             'ortools': timed_runs(lambda h=hist: plan_courses(h, Major('CSE'), Standing('U4'), check=True), 5, label='ortools'),
             'clingo':  timed_runs(lambda t=taken: run_clingo(taken_set=t, mode='check', main_lp=MAIN_LP, kb_lp=KB_LP), 5, label='clingo'),
         }
@@ -338,8 +367,8 @@ def main():
         checking = run_checking_benchmarks()
 
     if mode in {'plan', 'all'}:
-        # print('\n=== planning benchmarks ===')
-        # planning = run_planning_benchmarks()
+        print('\n=== planning benchmarks ===')
+        planning = run_planning_benchmarks()
         print('\n=== course prereq impact ===')
         course_prereq_impact = run_course_wise_prereqs_analysis()
 
