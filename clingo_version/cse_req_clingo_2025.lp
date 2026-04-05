@@ -1,69 +1,52 @@
-%%%%% TO RUN: copy the this file and the KB file (kb_complete.lp) into the following:
-%%%%%         https://potassco.org/clingo/run/ (it works for clingo v5.7.2)
-%%%%%         click the toggle for "lua" and it should be blue and says "python"
-%%%%%         paste the code and click "Run"
-
-%%%%% Guide: https://github.com/potassco/guide/releases/tag/v2.2.0
-%%%%%   "introduction to the Answer Set Programming (ASP) tools gringo, clasp, and clingo"
-
-%%% ISSUE: better ways to do the same?
-%%%   Clingo does not seem to have native support for string manipulation,
-%%%   therefore we use external python functions to extract course number and program from course Id.
-#script (python)
-import clingo
-
-def upper_division(id):
-  return clingo.Number(int(id.string[4:]) >= 300)
-
-def course_prog(id):
-  return clingo.String(id.string[:3])
-
-#end.
-
 %% Guide: 3.1.10 Pooling
 %% the following is equivalent to c_or_higher("A"). c_or_higher("A-"). ...
-c_or_higher("A";"A-";"B+";"B";"B-";"C+";"C").
+%% clingo encoding for BS degree requirements in CSE at Stony Brook University (Fall 2025).
+% https://catalog.stonybrook.edu/preview_program.php?catoid=7&poid=318
 
-grade_to_points("A", 400).
-grade_to_points("A-", 367).
-grade_to_points("B+", 333).
-grade_to_points("B", 300).
-grade_to_points("B-", 267).
-grade_to_points("C+", 233).
-grade_to_points("C", 200).
-grade_to_points("C-", 167).
-grade_to_points("D+", 133).
-grade_to_points("D", 100).
-grade_to_points("F", 0).
-grade_to_points("I/F", 0).
-grade_to_points("Q", 0).
+is_or_higher(Grade, Grade2) :- 
+  grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
+c_or_higher(Grade) :- is_or_higher(Grade, "C").
 
-gpa_mul_100(TakenSubset, Gpa) :-
-  courses_taken(Id, _, _, TakenSubset),
-  WeightedSum = #sum { Credit*Points : courses_taken(Id_, Credit, Grade, TakenSubset), grade_to_points(Grade, Points) }, %% only consider letter grades
-  SumOfWeights = #sum { Credit : courses_taken(Id_, Credit, Grade, TakenSubset), grade_to_points(Grade, _) },
-  SumOfWeights > 0,   %%% fails when it's 0, not returning 0 as in python.
-  Gpa = WeightedSum / SumOfWeights.
+%% mapping letter grade to points for GPA calculation
+%% scaled by 100 to make each integer
+grade_points("A", 400). grade_points("A-", 367).
+grade_points("B+", 333). grade_points("B", 300). grade_points("B-", 267).
+grade_points("C+", 233). grade_points("C", 200). grade_points("C-", 167).
+grade_points("D+", 133). grade_points("D", 100). grade_points("F", 0).
+grade_points("I/F", 0). grade_points("Q", 0).
 
-%% taken(Id, Credits, Grade, When, Where), defined later
+%% gpa calculation, takes a subset (marked by the tag) and calculates the GPA = floor(weighted sum / sum of weights).
+%%   only consider letter grades in grade_points.
+%%   if a course is taken multiple times, only one would be counted. we assume no repeated courses
+%%   to allow repeats, simply add 'When' in the aggregate, but grounding takes longer.
+gpa(Tag, GPA) :-
+  subset_taken(_, Tag),
+  WeightedSum = #sum { Cr * Pts, Id: subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, Pts) },
+  SumOfWeights = #sum { Cr, Id : subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, _) },
+  SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
+
+%% gpa is 0 when sum of weights is 0, as in python.
+gpa(Tag, 0) :-
+  subset_taken(_, Tag),
+  #sum { Cr, Id: subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, _) } = 0.
+
+% taken(Id, Credits, Grade, When, Where): taken course Id with Credits, etc.
+
 passed(Id) :- taken(Id, Credits_, Grade, When_, Where_), c_or_higher(Grade).
 
-%% define passed_all using distalgo semantics for "each"
+% c(Subject, Id): course Id in Subject
+
+% passed all courses in Subject
 passed_all(Subject) :-
-  c(_, Subject),                                % c(Id, Subject): course Id in Subject
-  X = #count { C : c(C, Subject), passed(C) },
-  Y = #count { C : c(C, Subject) },
-  X = Y.
+  c(Subject, _),                 %% ground Subject
+  passed(Id) : c(Subject, Id).   %% passed for each course in subject
 
-%% it could also be defined as follows:
-%% passed_all(Subject) :-
-%%   c(_, Subject),
-%%   0 = #count { C : c(C, Subject), not passed(C) }.
+%% course C is witness for passing all courses in a subject in requirement Item
+wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Subj, Id).
 
-%% alternatively, we could first define the negation of passed_all
-%% 	then define passed_all:
-%% -passed_all(Subject) :- c(Id, Subject), not passed(Id).
-%% passed_all(Subject) :- c(_, Subject), not -passed_all(Subject).
+% return set of courses in subjects in requirement item.
+courses(Id, Item) :- s(Item, Subj), c(Subj, Id).
+subset_taken(Id, Item) :- s(Item, Subj), c(Subj, Id), taken(Id, _, _, _, _).
 
 % 1. Required Introductory Courses
 %%% CHANGED for 2025: restructured from prog/prog2/dmath/dmath2/sys
@@ -74,17 +57,16 @@ passed_all(Subject) :-
 %%%     but now substitutes for {CSE 114, CSE 214, CSE 307} (307 is in req 2)
 %%%   - added CSE 213 (focs_ii) and CSE 350 as its honors substitute (focs_ii2)
 %%%   - removed CSE 215 (dmath) and CSE 150 as dmath2 (CSE 150 is now focs2)
-c("CSE 113", focs).
-c("CSE 150", focs2).
-c("CSE 114", prog). c("CSE 214", prog).
-c("CSE 160", prog2). c("CSE 161", prog2). 
-c("CSE 260", prog2). c("CSE 261", prog2).
-c("CSE 213", focs_ii).
-c("CSE 350", focs_ii2).
-c("CSE 220", sys). 
-intro_courses(Id) :- c(Id, (focs; focs2; prog; prog2; focs_ii; focs_ii2; sys)).
+c(focs, "CSE 113").
+c(focs2, "CSE 150").
+c(prog, ("CSE 114"; "CSE 214")).
+c(prog2, ("CSE 160"; "CSE 161"; "CSE 260"; "CSE 261")).
+c(focs_ii, "CSE 213").
+c(focs_ii2, "CSE 350").
+c(sys, "CSE 220"). 
+s(intro, (focs; focs2; prog; prog2; focs_ii; focs_ii2; sys)).
 
-intro_req :- 
+req(intro) :- 
   passed_all(focs; focs2),
   passed_all(prog; prog2),
   passed_all(focs_ii; focs_ii2),
@@ -94,18 +76,20 @@ intro_req :-
 %%% CHANGED for 2025: restructured from theory/theory2/algo/algo2/common
 %%%   - removed CSE 303 (theory) and CSE 350 (theory2) — CSE 350 moved to req 1 focs_ii2
 %%%   - removed CSE 310 from required (was in common)
-%%%   - added CSE 307 as required (ppl); prog2 also satisfies it (cross-req substitution)
+%%%   - added CSE 307 as required (pl); prog2 also satisfies it (cross-req substitution)
 %%%   - CSE 316 and CSE 320 remain required (now individual sets)
 %%%   - added CSE 356 OR CSE 416 choice (was: CSE 416 in common with no alternative)
-c("CSE 307", ppl).
-c("CSE 316", softdev). 
-c("CSE 320", sysfund).
-c("CSE 373", algo). c("CSE 385", algo2).
-c("CSE 356", cloud). c("CSE 416", se).
-adv_courses(Id) :- c(Id, (ppl; softdev; sysfund; algo; algo2; cloud; se)).
+c(pl, "CSE 307").
+c(softdev, "CSE 316"). 
+c(sysfund, "CSE 320").
+c(algo, "CSE 373").
+c(algo2, "CSE 385").
+c(cloud, "CSE 356").
+c(se, "CSE 416").
+s(adv, (pl; softdev; sysfund; algo; algo2; cloud; se)).
 
-adv_req :- 
-  passed_all(ppl; prog2),     %% CSE 307, or honors prog2 substitutes for it
+req(adv) :- 
+  passed_all(pl; prog2),     %% CSE 307, or honors prog2 substitutes for it
   passed_all(softdev),
   passed_all(sysfund),
   passed_all(algo; algo2),
@@ -115,62 +99,57 @@ adv_req :-
 %%% CHANGED for 2025:
 %%%   - threshold raised from 4 to 6
 %%%   - removed CSE 300 and CSE 312 from elect_exclude (but still excluded as non-technical)
-%%%   - added elect_cap_one set: at most 1 of these counts toward the 6 electives
-%%%     (CSE 487, CSE 496, VIP 395, VIP 396, VIP 495, VIP 496)
-c(("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312"), elect_exclude).
-c(("CSE 487"; "CSE 496"; "VIP 395"; "VIP 396"; "VIP 495"; "VIP 496"), elect_cap_one).
+%%%   - added following:
+% Students may only use 3 credits from the following courses to satisfy one upper-division technical elective for the CSE major requirements: CSE 487, CSE 496, VIP 395, VIP 396, VIP 495, VIP 496. 
+%%% todo: could 3 credits satisfy more than one? interpret as at most 3 credits from the following
+c(elect_limit, ("CSE 487"; "CSE 496"; "VIP 395"; "VIP 396"; "VIP 495"; "VIP 496")).
 
-%% define courses_taken(Id, Credits, Grade, Subset) to represent a subset of taken courses 
-%%   as in Annie's python, where Subset is a term used to identify the subset.
-%% regular electives (not capped)
-courses_taken(Id, Credits, Grade, elect_passed) :- 
-  taken(Id, Credits, Grade, _, _), 
-  Prog = @course_prog(Id), 
-  Prog = "CSE", 
+c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
+
+subset_taken(Id, elect_passed) :-
+  taken(Id, Crs, G, _, _), c_or_higher(G),
+  @course_prog(Id) = "CSE",
   @upper_division(Id) = 1,    %% is upper division
-  Credits >= 3, not adv_courses(Id), not c(Id, elect_exclude), not c(Id, elect_cap_one).
+  Crs >= 3, not courses(Id, adv), not c(elect_exclude, Id).
 
-%% capped electives (at most 1 counts toward the 6)
-courses_taken(Id, Credits, Grade, elect_cap_passed) :-
-  taken(Id, Credits, Grade, _, _),
-  c(Id, elect_cap_one), Credits >= 3.
+req(elect) :- 
+  #count { Id: subset_taken(Id, elect_passed) } >= 6.
 
-%% helper: 1 if any capped elective was passed, 0 otherwise
-has_elect_cap :- courses_taken(_, _, _, elect_cap_passed).
-elect_cap_count(1) :- has_elect_cap.
-elect_cap_count(0) :- not has_elect_cap.
+% may only use 3 credits from the elect_limit
+:- #sum { Crs, Id : c(elect_limit, Id), taken(Id, Crs, _, _, _) } > 3.
 
-elect_req :- 
-  N1 = #count { Id: courses_taken(Id, _, _, elect_passed) },
-  elect_cap_count(N2),
-  N1 + N2 >= 6.
+%% for elect, witness is the subset elect_passed used in elect.
+wit(elect, Id) :- subset_taken(Id, elect_passed).
 
 % 4. AMS 151, AMS 161 Applied Calculus I, II
 %%% (copied from python) todo:
 % Equivalency for MAT courses achieved through the Mathematics
 % Placement Examination is accepted to meet MAT course requirements.
 %%% NO CHANGE for 2025
-c("AMS 151", calc). c("AMS 161", calc).
-c("MAT 125", calc2). c("MAT 126", calc2). c("MAT 127", calc2).
-c("MAT 131", calc3). c("MAT 132", calc3).
+c(calc, ("AMS 151"; "AMS 161")).
+c(calc2, ("MAT 125"; "MAT 126"; "MAT 127")).
+c(calc3, ("MAT 131"; "MAT 132")).
+s(calc, (calc; calc2; calc3)).
 
-calc_req :- 
+req(calc) :- 
   passed_all(calc;calc2;calc3).
 
 % 5. One of the following:
 %%% NO CHANGE for 2025
-c("MAT 211", alg).
-c("AMS 210", alg2).
+c(alg, "MAT 211").
+c(alg2, "AMS 210").
+s(alg, (alg; alg2)).
 
-alg_req :- 
-  passed_all(alg;alg2).
+req(alg) :- 
+  passed_all(alg; alg2).
 
 % 6. Required Upper-Division Statistics Course
 %%% CHANGED for 2025: simplified
 %%%   - removed AMS 301 (fmath) — no longer required
 %%%   - removed AMS 311 (sta2) — no longer an alternative
 %%%   - just AMS 310 required
-c("AMS 310", sta).
+c(sta, "AMS 310").
+s(sta, sta).
 
 sta_req :-
   passed_all(sta).
@@ -178,17 +157,15 @@ sta_req :-
 % 7. At least one of the following natural science lecture/laboratory combinations...
 % All courses taken to satisfy Requirements 1 through 9 must be taken for a letter grade.
 %%% NO CHANGE for 2025 (same combos)
-c("BIO 201", bio). c("BIO 204", bio).
-c("BIO 202", bio2). c("BIO 204", bio2).
-c("BIO 203", bio3). c("BIO 204", bio3).
-c("CHE 131", che). c("CHE 133", che).
-c("CHE 152", che2). c("CHE 154", che2).
-c("PHY 126", phy). c("PHY 133", phy).
-c("PHY 131", phy2). c("PHY 133", phy2).
-c("PHY 141", phy3). c("PHY 133", phy3).
-
-sci_combs(L) :- L = (bio;bio2;bio3;che;che2;phy;phy2;phy3).
-
+c(bio, ("BIO 201"; "BIO 204")).
+c(bio2, ("BIO 202"; "BIO 204")).
+c(bio3, ("BIO 203"; "BIO 204")).
+c(che, ("CHE 131"; "CHE 133")).
+c(che2, ("CHE 152"; "CHE 154")).
+c(phy, ("PHY 126"; "PHY 133")).
+c(phy2, ("PHY 131"; "PHY 133")).
+c(phy3, ("PHY 141"; "PHY 133")).
+sci_combs(bio; bio2; bio3; che; che2; phy; phy2; phy3).
 % 8. One additional natural science course selected from above and the following list...
 % All courses taken to satisfy Requirements 1 through 9 must be taken for a letter grade.
 %%% CHANGED for 2025:
@@ -197,37 +174,44 @@ sci_combs(L) :- L = (bio;bio2;bio3;che;che2;phy;phy2;phy3).
 %%%   - added: BIO 201, BIO 202, BIO 203
 %%%   - added: CHE 131, CHE 152
 %%%   - added: PHY 126, PHY 131
-c(("AST 203"; "AST 205"; "BIO 201"; "BIO 202"; "BIO 203"; "CHE 131"; "CHE 132"; "CHE 152"; "CHE 321"; "CHE 322"; "CHE 331"; "CHE 332"; "PHY 125"; "PHY 126"; "PHY 127"; "PHY 131"; "PHY 132"; "PHY 142"; "PHY 251"), sci_more).
 
-%% set of all sci courses taken
-courses_taken(Id, Credit, Grade, sci_courses) :- taken(Id, Credit, Grade, _, _), c(Id, sci_more).
-courses_taken(Id, Credit, Grade, sci_courses) :- taken(Id, Credit, Grade, _, _), c(Id, L), sci_combs(L).
+%%% no sci_cred_req
+c(sci_more, ("AST 203"; "AST 205"; "BIO 201"; "BIO 202"; "BIO 203"; 
+            "CHE 131"; "CHE 132"; "CHE 152"; "CHE 321"; "CHE 322"; "CHE 331"; "CHE 332"; 
+            "PHY 125"; "PHY 126"; "PHY 127"; "PHY 131"; "PHY 132"; "PHY 142"; "PHY 251")).
 
-%% a subset of sci courses taken: to satisfy sci_req, sci_cred_req and sci_grade_req.
-{ courses_taken(Id, Credit, Grade, sci_subset) : courses_taken(Id, Credit, Grade, sci_courses) }.
+%% sci_courses(taken) in python: set of all sci courses taken
+sci_taken(Id) :- sci_combs(Subj), c(Subj, Id), taken(Id, _, _, _, _).
+sci_taken(Id) :- c(sci_more, Id), taken(Id, _, _, _, _).
 
-%% use the same subset to check both credit and grade requirements:
-%% the subset must contain one sci_combo, use in requirement 7. %%% assume each combo has only two courses.
-sci_req :- sci_combs(L),
-           c(Id1, L),
-           c(Id2, L),
-           Id1 != Id2,
-           courses_taken(Id1, _, _, sci_subset), courses_taken(Id2, _, _, sci_subset).
+%% generate a subset of sci_courses taken: use the same subset to satisfy sci_req, sci_cred_req and sci_grade_req.
+{ subset_taken(Id, sci) } :- sci_taken(Id).
 
-% The courses selected in 7 and 8 must carry at least 9 credits.
-%% Id is needed otherwise credit will only be counted once for courses that have the same credits.
-sci_cred_req :-  #sum { Credit, Id : courses_taken(Id, Credit, _, sci_subset) } >= 9.
+%%% separeted out because clingo treats all conditions after a colon (:) as part of the condition
+sci_combs_req :- sci_combs(Subj), subset_taken(Id, sci) : c(Subj, Id).
 
-% The grade point average for the courses in Requirements 7 and 8 must be at least 2.00.
-sci_grade_req :- gpa_mul_100(sci_subset, Gpa), Gpa >= 200.  %% scaled by 100.
+req(sci) :- 
+  sci_combs_req,
+  gpa(sci, Gpa), Gpa >= 2*100.
+
+%%% CHANGED FOR 2025:
+% Note: One may not take science courses that are deemed equivalent to satisfy 7 and 8 (e.g., PHY 125 and PHY 131). Please review course descriptions for more information. 
+
+% equiv(C1, C2): courses C1 and C2 are deemed equivalent for satisfying the sci requirement. to be taken from KB.
+
+:- subset_taken(C1, sci), subset_taken(C2, sci), equiv(C1, C2).
+
+%% witness for sci is the subset used to satisfy all sci requirements, as in python.
+wit(sci, Id) :- subset_taken(Id, sci).
 
 % 9. Required Non-Technical Courses
-%%% CHANGED for 2025: merged old req 9 (ethics) and req 10 (writing) into one
+%%% CHANGED for 2025: req 9 and 10 in 2024 merged.
 %%%   - was: ethics_req (CSE 312) and writing_req (CSE 300) as separate requirements
 %%%   - now: nontechnical_req requiring both CSE 300 and CSE 312
-c("CSE 300", nontechnical). c("CSE 312", nontechnical).
+c(nontech, ("CSE 300"; "CSE 312")).
+s(nontech, nontech).
 
-nontechnical_req :- passed_all(nontechnical).
+req(nontech) :- passed_all(nontech).
 
 %%% (copied from python) todo:
 % Note: All students are encouraged to discuss their program with an
@@ -238,142 +222,34 @@ nontechnical_req :- passed_all(nontechnical).
 % project contains a significant software component. Approval of the
 % Department of Computer Science is required.
 %%% Note for 2025: CSE 356 or CSE 416 must be completed at Stony Brook University.
-%% this is at the top of the section on the webpage:
+%% at the top of webpage:
 % The major in Computer Science leads to the Bachelor of Science degree.
 % Completion of the major requires approximately 80 credits.  %%% todo: count
 % At least 24 credits from items 1 to 3 below, and at least 18 credits from
 % items 2 and 3, must be completed at Stony Brook.
 %%% assume to be not about "The courses taken to satisfy Requirements ..."
 
-item123_course(Id) :- intro_courses(Id).
-item123_course(Id) :- adv_courses(Id).
-item123_course(Id) :- courses_taken(Id, _, _, elect_passed).
+%% courses in items 1,2,3
+items123_course(Id) :- courses(Id, intro).
+items123_course(Id) :- courses(Id, adv).
+items123_course(Id) :- subset_taken(Id, elect_passed).
 
-item23_course(Id) :- adv_courses(Id).
-item23_course(Id) :- courses_taken(Id, _, _, elect_passed).
+%% courses in items 2,3
+items23_course(Id) :- courses(Id, adv).
+items23_course(Id) :- subset_taken(Id, elect_passed).
 
-credits_at_sb_req :- %% similar to sci_cred_req
-  #sum { Credit, Id : taken(Id, Credit, _, _, "SB"), item123_course(Id) } >= 24,
-  #sum { Credit, Id : taken(Id, Credit, _, _, "SB"), item23_course(Id) } >= 18.
+req(credits_at_SB) :-
+  #sum { Cr, Id : taken(Id, Cr, _, _, "SB"), items123_course(Id) } >= 24,
+  #sum { Cr, Id : taken(Id, Cr, _, _, "SB"), items23_course(Id) } >= 18.
 
-%%%%% planning
+wit(credits_at_SB, Id) :- items123_course(Id), taken(Id, _, _, _, "SB").
+wit(credits_at_SB, Id) :- items23_course(Id), taken(Id, _, _, _, "SB").
 
-%%%% constants
-#const min_semester = 1.            %% min semester number, assume 1
-#const max_semester = 8.            %% max number of semesters, assume 8
-#const max_courses_per_semester = 4.
+%% requirements items
+%%% CHANGED for 2025: replaced ethics and writing with nontech
+item(intro; adv; elect; calc; alg; sta; sci; nontech; credits_at_SB).
 
-%% define semester to be from 1 to 8
-semester(min_semester..max_semester).
+%% degree requirement sat if all requirements are satisfied
+degree :- req(Item) : item(Item).
 
-%%%% KB rules
-
-%% for prereq and antireq
-taken_before(Id, Sem) :- semester(Sem), taken(Id, _, _, Sem1, _), Sem1 < Sem.
-%% for prereq
-passed_before(Id, Sem) :- semester(Sem), taken(Id, _, Grade, Sem1, _), Sem1 < Sem, c_or_higher(Grade).
-%% for coreq
-taken_same(Id, Sem) :- semester(Sem), taken(Id, _, _, Sem, _).
-
-%%%% generate
-%% if a course is not taken, we consider it for planning.
-%%   requisites (prereq, coreq, antireq) will be checked in constraints.
-%%   can't use taken/5 because planning needs to add new taken facts.
-can_take(Id) :- course(Id, _), not taken_id(Id).
-
-%% choose up to max_course_planned courses to plan for
-%% assume each planned course will be taken with credit, grade ...
-%% for each course, only take it in one semester.
-{ taken(Id, 4, "A", Sem, "SB") : Sem = min_semester..max_semester } 1 :- can_take(Id). %% #const can't be used in the head
-
-%% planned if not in the input (taken_id) and chosen in the generate rule above.
-planned(Id, Sem) :- taken(Id, _, _, Sem, _), not taken_id(Id).
-
-%%%% constraints
-
-%% all requirements must be satisfied.
-:- req_name(X), not req_passed(X).
-
-%% prereq
-:-  planned(Id, Sem),
-    has_prereq(Id),
-    not prereq(Id, Sem).
-
-% coreq
-:-  planned(Id, Sem),
-    has_coreq(Id),
-    not coreq(Id, Sem).
-
-%% antireq                     %% TODO: for antireq we can not simply assume unsupported is true or false
-% :-  plan_to_take(Id, Sem),   %%        need to work on the KB on each one (there is only 3 courses with anti-req)
-%     has_anti_req(Id), 
-%     anti_req(Id, Sem).      %% anti-req can not be satisfied
-
-%% do not exceed max courses per semester
-:- semester(Sem), #count { Id : planned(Id, Sem) } > max_courses_per_semester.
-
-%%%% optimization
-%% minimize the number of courses to take to satisfy all requirements.
-% #minimize { 1, Id : taken(Id, _, _, _, _) }.
-
-%% minimize the number of semesters
-max_sem(X) :- semester(X), X = #max { Sem : planned(_, Sem) }.
-#minimize { X: max_sem(X) }.
-
-#show planned/2.       %% courses planned
-
-%%%%% test
-%% to play around:
-%%   you can comment out more of the taken_id facts.
-%%   change the generate rule (in the planning part below) to set upper_bound to max number of courses to plan for, e.g. 5.
-%%   upper_bound can also be removed, which means there is no limit.
-%%   { plan_to_take(Id) : can_take(Id) } upper_bound
-%%% CHANGED for 2025: updated test courses
-%%%   - removed: CSE 216 (no longer in req 1)
-%%%   - removed: CSE 303 (no longer in req 2)
-%%%   - removed: AMS 301 (no longer required)
-%%%   - added: CSE 113 (new in req 1)
-%%%   - added: CSE 213 (new in req 1)
-%%%   - added: CSE 307 (new in req 2)
-%% first line commented out to test planning
-taken_id("CSE 113"). taken_id("CSE 114"). taken_id("CSE 213"). taken_id("CSE 214").
-% taken_id("CSE 220").
-% taken_id("CSE 307"). taken_id("CSE 316").
-% taken_id("CSE 320"). taken_id("CSE 373"). taken_id("CSE 416").
-% taken_id("MAT 131"). taken_id("MAT 132"). taken_id("AMS 210").
-% taken_id("AMS 310").
-% taken_id("CSE 300"). taken_id("CSE 312").
-% taken_id("CSE 360"). taken_id("CSE 361"). taken_id("CSE 351").
-% taken_id("CSE 352"). taken_id("CSE 353"). taken_id("CSE 355").
-% taken_id("PHY 131"). taken_id("PHY 133"). taken_id("AST 203").
-
-%% generate input, assume all courses are taken in semester 0 (before planning semesters)
-taken(Id, Credit, "A", 0, "SB") :- course(Id, Credit), taken_id(Id).
-
-%% student facts
-standing("U1"). standing("U2"). standing("U3"). standing("U4").
-major("CSE").
-
-%% requirements:
-%% req_name: used in the constraint to check if all requirements are satisfied.
-%% req_passed: used in the constraint, also in the output.
-%%% CHANGED for 2025: removed ethics_req and writing_req, added nontechnical_req
-req_name(intro_req; adv_req; elect_req; calc_req; alg_req; sta_req; sci_req; sci_cred_req; sci_grade_req; nontechnical_req; credits_at_sb_req).
-
-%% req 1-6
-req_passed(intro_req)         :- intro_req.
-req_passed(adv_req)           :- adv_req.
-req_passed(elect_req)         :- elect_req.
-req_passed(calc_req)          :- calc_req.
-req_passed(alg_req)           :- alg_req.
-req_passed(sta_req)           :- sta_req.
-
-%% req 7, 8
-req_passed(sci_req)           :- sci_req.
-req_passed(sci_cred_req)      :- sci_cred_req.
-req_passed(sci_grade_req)     :- sci_grade_req.
-
-%% req 9 (merged from old req 9 + 10)
-req_passed(nontechnical_req)  :- nontechnical_req.
-
-req_passed(credits_at_sb_req) :- credits_at_sb_req.
+% check, plan, input..., same as in cse_req_clingo.lp
