@@ -127,5 +127,4 @@ def test_plan_coreq_160_161_mutual():
         assert schedule_by_course['CSE 160'] == schedule_by_course['CSE 161']
 
     # require planner to include CSE 160 and validate its coreq is scheduled
-    return taken, validate, {'must_include': {'CSE 160'}, 'approaches': ['ortools_version']}
-
+    return taken, validate, {'must_include': {'CSE 160'}}
