@@ -185,7 +185,7 @@ def timed_runs(func, n, extract_metrics=None, label='', direct=False, timing_met
 
 def ortools_metrics(_stdout, result, input_count=None, case_name=None):
     _, planned, m = result
-    out = {k: m.get(k) for k in ('booleans', 'branches', 'conflicts')}
+    out = {k: m.get(k) for k in ('booleans', 'branches', 'conflicts', 'wall_time_s', 'user_time_s', 'det_time')}
     out['planned_new_courses'] = len(planned)
     if input_count is not None:
         out['input_courses'] = input_count
@@ -207,6 +207,7 @@ def clingo_metrics(_stdout, result, input_course_ids=None, input_count=None, cas
         'booleans':    int(lp.get('atoms', 0)) or None,
         'choices':     int(solvers.get('choices', 0)),
         'conflicts':   int(solvers.get('conflicts', 0)),
+        'total_s':     round(total_t, 4),
         'grounding_s': round(total_t - solve_t, 4),
         'solving_s':   round(solve_t, 4),
         'planned_new_courses': len(planned - input_ids),
@@ -220,6 +221,27 @@ def clingo_metrics(_stdout, result, input_course_ids=None, input_count=None, cas
         m['partial_reqs_sat']   = stats.get('partial_reqs_sat', [])
         m['partial_reqs_unsat'] = stats.get('partial_reqs_unsat', [])
     return m
+
+
+def ortools_check_metrics(_stdout, result, input_count=None, case_name=None):
+    checked, _planned, _m = result
+    out = ortools_metrics(_stdout, result, input_count=input_count, case_name=case_name)
+    out['reqs_sat'] = sum(1 for ok, _ in checked.values() if ok)
+    out['reqs_unsat'] = sum(1 for ok, _ in checked.values() if not ok)
+    out['check_passed'] = 1 if checked.get('degree', (False, []))[0] else 0
+    return out
+
+
+def clingo_check_metrics(_stdout, result, input_count=None, case_name=None):
+    checked, _schedule, stats = result
+    out = clingo_metrics(_stdout, result, input_count=input_count, case_name=case_name)
+    out['reqs_sat'] = sum(1 for ok, _ in checked.values() if ok)
+    out['reqs_unsat'] = sum(1 for ok, _ in checked.values() if not ok)
+    out['check_passed'] = 1 if checked.get('degree', (False, []))[0] else 0
+    if stats.get('timed_out'):
+        out['partial_reqs_sat'] = stats.get('partial_reqs_sat', [])
+        out['partial_reqs_unsat'] = stats.get('partial_reqs_unsat', [])
+    return out
 
 
 def prolog_metrics(_stdout, result):
@@ -273,6 +295,7 @@ def run_checking_benchmarks():
     for case, taken in [('pass', passing_taken), ('fail', failing_taken)]:
         print(f'\n  checking [{case}]')
         hist = best_attempts([Taken(t.id, t.credits, t.grade, t.when, t.where) for t in taken])
+        input_count = len(taken)
         results[case] = {
             'python':  timed_runs(lambda t=taken: python_check(t), 5, label='python'),
             'prolog_swi':  timed_runs(
@@ -287,8 +310,18 @@ def run_checking_benchmarks():
                 extract_metrics=prolog_metrics,
                 timing_metric_key='prolog_eval_s',
                 label='prolog_xsb'),
-            'ortools': timed_runs(lambda h=hist: plan_courses(h, Major('CSE'), Standing('U4'), check=True), 5, label='ortools'),
-            'clingo':  timed_runs(lambda t=taken: run_clingo(taken_set=t, mode='check', main_lp=MAIN_LP, kb_lp=KB_LP), 5, label='clingo'),
+            'ortools': timed_runs(
+                lambda h=hist: plan_courses(h, Major('CSE'), Standing('U4'), check=True),
+                5,
+                extract_metrics=lambda o, r, n=input_count, c=case: ortools_check_metrics(o, r, n, c),
+                timing_metric_key='wall_time_s',
+                label='ortools'),
+            'clingo':  timed_runs(
+                lambda t=taken: run_clingo(taken_set=t, mode='check', main_lp=MAIN_LP, kb_lp=KB_LP),
+                5,
+                extract_metrics=lambda o, r, n=input_count, c=case: clingo_check_metrics(o, r, n, c),
+                timing_metric_key='total_s',
+                label='clingo'),
         }
     return results
 
@@ -307,12 +340,14 @@ def run_planning_benchmarks():
                 lambda h=hist, s=start: plan_courses(h, Major('CSE'), Standing('U4'), starting_semester=s),
                 1,
                 extract_metrics=lambda o, r, n=input_count, c=case_name: ortools_metrics(o, r, n, c),
+                timing_metric_key='wall_time_s',
                 label='ortools'),
         }
         results[case_name]['clingo'] = timed_runs(
             lambda t=taken: run_clingo(taken_set=t, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, timeout=TIMEOUT),
             1,
             extract_metrics=lambda o, r, ids=input_ids, n=input_count, c=case_name: clingo_metrics(o, r, ids, n, c),
+            timing_metric_key='total_s',
             label='clingo',
             direct=True)
     return results
@@ -341,10 +376,10 @@ def run_course_wise_prereqs_analysis():
         ort_timing = timed_runs(
             lambda h=hist, s=start, offerings=normalized_offerings: plan_courses(
                 h, Major('CSE'), Standing('U4'), starting_semester=s, course_offered_terms=offerings),
-            10, extract_metrics=ortools_metrics, label=f'ortools {label}')
+            10, extract_metrics=ortools_metrics, timing_metric_key='wall_time_s', label=f'ortools {label}')
         clingo_timing = timed_runs(
             lambda t=taken: run_clingo(taken_set=t, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, timeout=TIMEOUT),
-            10, extract_metrics=clingo_metrics, label=f'clingo {label}', direct=True)
+            10, extract_metrics=clingo_metrics, timing_metric_key='total_s', label=f'clingo {label}', direct=True)
         times['ortools'][cid] = ort_timing.get('mean_s')
         times['clingo'][cid] = clingo_timing.get('mean_s')
         prereqs[cid] = 0 if cid == '' else prereq_options.get(cid)

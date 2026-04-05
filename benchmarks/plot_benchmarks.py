@@ -402,6 +402,72 @@ def plot_planner_times_bar_reqs(data, out_dir):
     print(f'Wrote {out}')
 
 
+def plot_checker_planner_wall_time_combo(data, out_dir):
+    checking = data.get('checking')
+    planning = data.get('planning')
+    if not checking or not planning:
+        return
+
+    fig, (ax_l, ax_r) = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Left panel: checker times by case/backend (grouped bars)
+    cases = list(checking.keys())
+    backends = sorted(checking[cases[0]].keys())
+    x = np.arange(len(cases))
+    width = 0.75 / max(1, len(backends))
+
+    for i, b in enumerate(backends):
+        means = [checking[c][b]['mean_s'] for c in cases]
+        err_lo = [checking[c][b]['mean_s'] - checking[c][b]['min_s'] for c in cases]
+        err_hi = [checking[c][b]['max_s'] - checking[c][b]['mean_s'] for c in cases]
+        offset = (i - (len(backends) - 1) / 2) * width
+        ax_l.bar(x + offset, means, width, yerr=[err_lo, err_hi],
+                 label=b, color=color(b), capsize=3, alpha=0.85)
+
+    ax_l.set_xticks(x)
+    ax_l.set_xticklabels(cases)
+    ax_l.set_ylabel('Wall time (s)')
+    ax_l.set_title('Checker Wall Time')
+    ax_l.grid(axis='y', alpha=0.3)
+    ax_l.legend(fontsize=10)
+
+    # Right panel: planner times as lines vs # new courses planned
+    sizes = _planner_cases(planning)
+    backends_r = _planner_backends(planning, sizes)
+    for b in backends_r:
+        means, err_lo, err_hi, timed_out = _planner_time_series_capped(planning, sizes, b)
+        x_vals = []
+        for s in sizes:
+            entry = planning[s].get(b)
+            r = _stat_summary(entry, 'planned_new_courses', skip_timeout=False)
+            fallback = _input_count(planning, s)
+            x_vals.append(r[0] if r else (fallback if fallback is not None else 0))
+        points = sorted(zip(x_vals, means, err_lo, err_hi, timed_out), key=lambda p: p[0])
+        x_sorted  = [p[0] for p in points]
+        y_sorted  = [p[1] for p in points]
+        lo_sorted = [p[2] for p in points]
+        hi_sorted = [p[3] for p in points]
+        t_sorted  = [p[4] for p in points]
+        ax_r.errorbar(x_sorted, y_sorted, yerr=[lo_sorted, hi_sorted], marker='o', linewidth=2,
+                      label=b, color=color(b), capsize=3)
+        for xv, tv in zip(x_sorted, t_sorted):
+            if tv:
+                ax_r.text(xv, PLANNER_TIME_CAP_S, 'timeout', ha='center', va='bottom', fontsize=15, color='#666')
+
+    ax_r.set_xlabel('# new courses planned')
+    ax_r.set_ylabel('Wall time (s)')
+    ax_r.set_title('Planner Wall Time')
+    ax_r.set_ylim(0, PLANNER_TIME_CAP_S)
+    ax_r.grid(axis='y', alpha=0.3)
+    ax_r.legend(fontsize=10)
+
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=0.35)
+    out = out_dir / 'checker_planner_wall_time_combo.png'
+    fig.savefig(out, dpi=150)
+    print(f'Wrote {out}')
+
+
 def main():
     if len(sys.argv) < 2:
         here = Path(__file__).parent
@@ -424,6 +490,7 @@ def main():
     plot_planner_times_bar_reqs(data, out_dir)
     plot_planner_times_bar(data, out_dir)
     plot_planner_times_line(data, out_dir)
+    plot_checker_planner_wall_time_combo(data, out_dir)
     # plot_planner_output_size_bar(data, out_dir)
     # plot_planner_output_size_line(data, out_dir)
     plot_planner_booleans(data, out_dir)
