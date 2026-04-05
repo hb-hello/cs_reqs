@@ -7,6 +7,13 @@ import pexpect
 _PL_FILE_SWI = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cs_reqs_2024swi.pl')
 _PL_FILE_XSB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cs_reqs_2024xsb.pl')
 
+
+def _normalize_where(where):
+    key = str(where).strip().upper()
+    if key == 'SB':
+        return 'SBU'
+    return key
+
 # ── public API ────────────────────────────────────────────────────────────────
 
 def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False):
@@ -26,7 +33,8 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
     run_cmd("retractall(taken(_,_,_,_,_)).")
 
     for t in taken:
-        fact = f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{t.where}')"
+        where = _normalize_where(t.where)
+        fact = f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{where}')"
         run_cmd(f"assertz({fact}).")
 
     query_output = run_cmd("measure_wall(all_requirements).")
@@ -49,7 +57,7 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
 
 def run_swi(taken, with_witness=True, return_timing=False):
     facts = (
-        f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{t.where}')"
+        f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{_normalize_where(t.where)}')"
         for t in taken
     )
 
@@ -63,7 +71,7 @@ def run_swi(taken, with_witness=True, return_timing=False):
         janus.query_once(f"assertz({f})")
 
     if not with_witness:
-        ok = janus.query_once("all_requirements").get('truth', False)
+        ok = janus.query_once("all_requirements()").get('truth', False)
         elapsed = time.perf_counter() - t0
         if return_timing:
             return {'ok': ok, 'prolog_eval_s': elapsed, 'engine': 'swi'}
@@ -71,7 +79,7 @@ def run_swi(taken, with_witness=True, return_timing=False):
 
     reqs = ('intro', 'adv', 'elect', 'sci', 'ethics_comm', 'math')
     queries = [('wit', req, 'Q') for req in reqs]
-    queries.append(('all_requirements', None, None))
+    queries.append(('all_requirements()', None, None))
     checked = {}
     for pred, first, second in queries:
         arg = (first if first else '') + (f', {second}' if second else '')
@@ -84,7 +92,7 @@ def run_swi(taken, with_witness=True, return_timing=False):
                 if second and second in d:
                     courses.append(d[second])
             checked[first if second else pred] = (sat, courses)
-    checked['degree'] = checked.pop('all_requirements')
+    checked['degree'] = checked.pop('all_requirements()', checked.pop('all_requirements', (False, [])))
     checked['ethics'] = checked.pop('ethics_comm')
     checked['writing'] = checked['ethics']
     checked['sta'] = checked.pop('math')
@@ -117,9 +125,9 @@ if __name__ == '__main__':
         Taken('CSE 220', 3, 'A', (2024,2), 'SBU'),
     ]
 
-    taken = [Taken(cid, 3, 'A', (2024,2), 'SBU') for cid in FULL]
+    taken = [Taken(cid, 3, 'A', (2024,2), 'SB') for cid in FULL]
     # engine = sys.argv[1] if len(sys.argv) > 1 else 'xsb'
-    # pprint(run_prolog(taken, 'swi'))
+    pprint(run_prolog(taken, 'swi', return_timing=True))
     pprint(run_prolog(taken, 'xsb', return_timing=True))
     # run_swi(taken)
 

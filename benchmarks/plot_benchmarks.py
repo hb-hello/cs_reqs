@@ -8,7 +8,8 @@ import numpy as np
 # consistent colours across all charts — index by backend name
 COLORS = {
     'python':  '#4c72b0',   # muted blue
-    'prolog':  '#dd8452',   # muted orange
+    'prolog_swi':  '#dd8452',   # muted orange
+    'prolog_xsb': '#c44e52',    # muted red
     'ortools': '#55a868',   # muted green
     'clingo':  '#8172b2',   # muted purple
 }
@@ -412,7 +413,8 @@ def plot_checker_planner_wall_time_combo(data, out_dir):
 
     # Left panel: checker times by case/backend (grouped bars)
     cases = list(checking.keys())
-    backends = sorted(checking[cases[0]].keys())
+    # backends = sorted(checking[cases[0]].keys())
+    backends = ['python', 'prolog_swi', 'prolog_xsb', 'clingo', 'ortools']
     x = np.arange(len(cases))
     width = 0.75 / max(1, len(backends))
 

@@ -66,8 +66,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
 
     # setting up the domain for semesters; base anchors the domain, starting_semester clamped within it
     base = min((h.when for h in taken), default=starting_semester)
-    sem_domain_limit = ending_semester if ending_semester is not None else MAX_SEMS_ALLOWED
-    Semester.domain = list(semester_range(base, sem_domain_limit))
+    Semester.domain = list(semester_range(base, ending_semester))
     starting_semester = max(starting_semester, base)
 
     history_ids = {h.id: h for h in taken}

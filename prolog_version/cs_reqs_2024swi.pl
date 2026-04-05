@@ -58,10 +58,10 @@ advanced_req() :-
   passed_all(other).
 
 % 3. Computer Science Electives  %% simpler than 2025
-disallowed_elective('CSE475').
-disallowed_elective('CSE495').
-disallowed_elective('CSE496').
-disallowed_elective('CSE301').
+disallowed_elective('CSE 475').
+disallowed_elective('CSE 495').
+disallowed_elective('CSE 496').
+disallowed_elective('CSE 301').
 
 elective_req() :- findall(Id, (passed(Id), elective(Id)), Electives), 
     length(Electives, Count), 
@@ -73,9 +73,10 @@ elective(Id) :- \+ advanced_courses(Id),
     \+ disallowed_elective(Id), 
     upperdivCS(Id).
 
-upperdivCS(Id) :- atom_concat('CSE', CourseNumstr, Id), 
-    atom_number(CourseNumstr, CourseNumInt), 
-    CourseNumInt >= 300.
+upperdivCS(Id) :-
+  atom_concat('CSE ', CourseNumstr, Id),
+  atom_number(CourseNumstr, CourseNumInt),
+  CourseNumInt >= 300.
 
 wit(elect, Id) :- elective_req(), passed(Id), elective(Id).
 

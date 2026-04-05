@@ -272,7 +272,7 @@ def to_taken(history):
 
 def planning_inputs():
     return {f'input_{n}_courses': to_history(sorted(FULL)[:n]) for n in PLANNING_CASE_SIZES}
-    return {name: to_history(taken_set) for name, taken_set in planning_cases_category().items()}
+    # return {name: to_history(taken_set) for name, taken_set in planning_cases_category().items()}
 
 
 def load_latest_prereq_options():
