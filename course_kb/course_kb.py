@@ -119,6 +119,9 @@ def transform_leaves(expr, fn):
     """Apply fn to every leaf (non-And/Or) node, preserving tree structure."""
     if isinstance(expr, (And, Or)):
         return type(expr)(*[transform_leaves(op, fn) for op in expr.operands])
+    if isinstance(expr, (UnsupportedRequirement, Permission)):
+        # Hardcode: these leaves are ignored by solvers and should never be wrapped.
+        return expr
     return fn(expr)
 
 def course_of(req):

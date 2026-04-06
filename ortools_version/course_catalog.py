@@ -23,7 +23,7 @@ class PassedId(Requirement):
 ## record of a course taken by the student
 Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
 ## record of relevant course information
-Course = namedtuple('Course', ['id', 'credits', 'prereq', 'coreq', 'anti_req'], defaults=[None, None, None])
+Course = namedtuple('Course', ['id', 'credits', 'prereq', 'coreq', 'anti_req', 'pre_or_coreq'], defaults=[None, None, None, None])
 
 catalog = {}
 COURSE_ID_RE = re.compile(r'^[A-Z]{3} \d{3}$')
@@ -31,15 +31,15 @@ COURSE_ID_RE = re.compile(r'^[A-Z]{3} \d{3}$')
 def upper_division(cid): return int(cid[4:]) >= 300
 
 # provides range of (year, semester) tuples
-def semester_range(start, end_or_count):
+def semester_range(start, end_or_count=MAX_SEMS_ALLOWED):
     y, s = start
+    if end_or_count is None: end_or_count = MAX_SEMS_ALLOWED
     if isinstance(end_or_count, int):
         for _ in range(end_or_count):
             yield (y, s)
             s += 1
             if s > 4: s, y = 1, y + 1
         return
-
     while (y, s) <= end_or_count:
         yield (y, s)
         s += 1
@@ -78,6 +78,7 @@ for kc in _load_kb(_kb_path):
         _rewrite_req_ids(kc.prereq),
         _rewrite_req_ids(kc.coreq),
         _rewrite_req_ids(kc.anti_req),
+        _rewrite_req_ids(kc.pre_or_coreq),
     )
 
 # ── Non-CSE courses used in degree requirements ────────────────
@@ -333,4 +334,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    print(catalog['AMS 151'])
+    print(catalog['MAT 123'])

@@ -183,10 +183,40 @@ def timed_runs(func, n, extract_metrics=None, label='', direct=False, timing_met
     return out
 
 
-def ortools_metrics(_stdout, result, input_count=None, case_name=None):
-    _, planned, m = result
+def extract_course_ids(value):
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if hasattr(value, 'id') and isinstance(value.id, str):
+        return [value.id]
+    if isinstance(value, dict):
+        out = []
+        for k in value.keys():
+            out.extend(extract_course_ids(k))
+        for v in value.values():
+            out.extend(extract_course_ids(v))
+        return out
+    if isinstance(value, (list, tuple, set)):
+        out = []
+        for v in value:
+            out.extend(extract_course_ids(v))
+        return out
+    return []
+
+
+def ortools_metrics(_stdout, result, input_course_ids=None, input_count=None, case_name=None):
+    checked, planned, m = result
+    input_ids = set(input_course_ids or ())
+    planned_all = sorted(set(extract_course_ids(planned)))
+    planned_new = sorted(set(planned_all) - input_ids)
     out = {k: m.get(k) for k in ('booleans', 'branches', 'conflicts', 'wall_time_s', 'user_time_s', 'det_time')}
     out['planned_new_courses'] = len(planned)
+    out['planned_witness'] = checked
+    out['planned_all_ids'] = planned_all
+    out['planned_new_ids'] = planned_new
+    if input_ids:
+        out['input_ids'] = sorted(input_ids)
     if input_count is not None:
         out['input_courses'] = input_count
     if case_name is not None:
@@ -195,7 +225,7 @@ def ortools_metrics(_stdout, result, input_count=None, case_name=None):
 
 
 def clingo_metrics(_stdout, result, input_course_ids=None, input_count=None, case_name=None):
-    _, schedule, stats = result
+    checked, schedule, stats = result
     lp      = stats.get('problem', {}).get('lp', {})
     solvers = stats.get('solving', {}).get('solvers', {})
     times   = stats.get('summary', {}).get('times', {})
@@ -203,6 +233,8 @@ def clingo_metrics(_stdout, result, input_course_ids=None, input_count=None, cas
     solve_t = float(times.get('solve', 0))
     planned = {cid for courses in schedule.values() for cid in courses}
     input_ids = set(input_course_ids or ())
+    planned_all = sorted(planned)
+    planned_new = sorted(planned - input_ids)
     m = {
         'booleans':    int(lp.get('atoms', 0)) or None,
         'choices':     int(solvers.get('choices', 0)),
@@ -211,8 +243,13 @@ def clingo_metrics(_stdout, result, input_course_ids=None, input_count=None, cas
         'grounding_s': round(total_t - solve_t, 4),
         'solving_s':   round(solve_t, 4),
         'planned_new_courses': len(planned - input_ids),
+        'planned_witness': checked,
+        'planned_all_ids': planned_all,
+        'planned_new_ids': planned_new,
         'timed_out':   bool(stats.get('timed_out', False)),
     }
+    if input_ids:
+        m['input_ids'] = sorted(input_ids)
     if input_count is not None:
         m['input_courses'] = input_count
     if case_name is not None:
@@ -339,7 +376,7 @@ def run_planning_benchmarks():
             'ortools': timed_runs(
                 lambda h=hist, s=start: plan_courses(h, Major('CSE'), Standing('U4'), starting_semester=s),
                 1,
-                extract_metrics=lambda o, r, n=input_count, c=case_name: ortools_metrics(o, r, n, c),
+                extract_metrics=lambda o, r, ids=input_ids, n=input_count, c=case_name: ortools_metrics(o, r, ids, n, c),
                 timing_metric_key='wall_time_s',
                 label='ortools'),
         }

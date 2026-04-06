@@ -18,6 +18,7 @@ class Grade(Requirement): pass   ## predicate to represent grade that student ha
 class SciSubset(Requirement): pass # to track the sci subset
 class Prereq(Requirement): pass
 class Coreq(Requirement): pass
+class PreOrCoreq(Requirement): pass
 class Antireq(Requirement): pass
 
 # pre-process raw history: one entry per course, best known grade, ignoring in-progress (None) entries
@@ -251,9 +252,12 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         # prereq: must be taken before (<)
         or_model[Prereq] = lambda cid, req: or_model.resolve(
             And(req, or_model.at_least(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 1)))
-        # coreq: must be taken same semester or before (= rather than <)
+        # coreq: must be taken same semester (= rather than <)
         or_model[Coreq] = lambda cid, req: or_model.resolve(
             And(req, or_model.exactly(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 0)))
+        # pre_or_coreq: must be taken same semester or before (= rather than <)
+        or_model[PreOrCoreq] = lambda cid, req: or_model.resolve(
+            And(req, or_model.at_least(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 0)))
         # anti_req: cannot take this course if these courses are taken    
         or_model[Antireq] = lambda cid, req: or_model.resolve(req).negated()
 
@@ -272,7 +276,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         #     or_model.forbids(TakenId(cid), c.anti_req)
 
         for cid in to_plan_from:
-            for expr, pred in ((catalog[cid].prereq, Prereq), (catalog[cid].coreq, Coreq)):
+            for expr, pred in ((catalog[cid].prereq, Prereq), (catalog[cid].coreq, Coreq), (catalog[cid].pre_or_coreq, PreOrCoreq)):
                 if expr: or_model.implies(TakenId(cid), transform_leaves(expr, lambda req, c=cid, P=pred: P(c, req)))
             if catalog[cid].anti_req: or_model.forbids(TakenId(cid), catalog[cid].anti_req)
 
