@@ -47,8 +47,19 @@ class Taken(Requirement):     ## e.g. taken_id("CSE 303"), taken_id("CSE 350")
                                ###    named taken_id to avoid clash with taken/5 in prolog and clingo.
     pass                       ###    TODO: better name?
 
-class Passed(Requirement):    ## e.g. passed("CSE 101"), passed("AMS 210", "B")
-    pass
+class Passed(Requirement):
+    def __init__(self, course_id, min_grade):
+        self.course_id = course_id
+        self.min_grade = min_grade
+        super().__init__(course_id, min_grade)
+
+class C_or_higher(Passed):
+    def __init__(self, course_id):
+        super().__init__(course_id, 'C')
+
+class B_or_higher(Passed):
+    def __init__(self, course_id):
+        super().__init__(course_id, 'B')
 
 class Major(Requirement):     ## e.g. cse_major
     pass
