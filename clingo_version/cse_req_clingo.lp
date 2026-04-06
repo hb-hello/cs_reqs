@@ -79,10 +79,10 @@ req(adv) :-
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
 subset_taken(Id, elect_passed) :-
-  taken(Id, Credits, G, _, _), c_or_higher(G),
+  taken(Id, Crs, G, _, _), c_or_higher(G),
   @course_prog(Id) = "CSE",
   @upper_division(Id) = 1,    %% is upper division
-  Credits >= 3, not courses(Id, adv), not c(elect_exclude, Id).
+  Crs >= 3, not courses(Id, adv), not c(elect_exclude, Id).
 
 req(elect) :- 
   #count { Id: subset_taken(Id, elect_passed) } >= 4.
@@ -241,6 +241,9 @@ degree :- req(Item) : item(Item).
 %%% passed_before can not rely on plan(_, Sem) because of circular dependency.
 %%% need something else to ground semester which should not only be in the planning domain
 %%% start_sem..finish_sem, but need to consider courses taken previously: 1..finish_sem
+%%%   solved? Sem = 1..finish_sem, but it looks ugly
+
+%% following 6 are generated in the KB. we define them here
 
 %% course is taken before semester Sem.                           %% for prereq and antireq
 taken_before(Id, Sem) :- Sem = 1..finish_sem, taken(Id, _, _, Sem1, _), Sem1 < Sem.
@@ -253,7 +256,7 @@ passed_before_grade(Id, Grade, Sem) :-
 passed_before(Id, Sem) :- passed_before_grade(Id, Grade, Sem), c_or_higher(Grade).
 
 %% course Id is taken at semester Sem.                            %% coreq %%% todo: rename to taken_at?
-taken_same(Id, Sem) :- Sem = 1..finish_sem, taken(Id, _, _, Sem, _).
+taken_same(Id, Sem) :- taken(Id, _, _, Sem, _).
 
 %% could be taken before or at the same semester.                 %% pre_or_coreq
 taken_before_or_same(Id, Sem) :- taken_before(Id, Sem).
@@ -266,18 +269,12 @@ taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
 %% if used before(Sem), Sem would need to be grounded. this is more straightforward.
 offered_in_range(Id) :- offered(Id, Sem), Sem >= start_sem, Sem <= finish_sem.
 
-%% trying prereq in gen, see ISSUE above %% even offered can be removed because it's in prereq
+%% prereq and anti req in gen
+{plan(Id, Sem) : offered(Id, Sem), prereq(Id, Sem), not anti_req(Id, Sem)} == 1 :- 
+  offered_in_range(Id), include(Id).
+
 {plan(Id, Sem) : offered(Id, Sem), prereq(Id, Sem), not anti_req(Id, Sem)} <= 1 :- 
   offered_in_range(Id), not taken_id(Id), not exclude(Id).
-
-{plan(Id, Sem) : offered(Id, Sem), prereq(Id, Sem), not anti_req(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
-
-% %% at most one semester for each planned course
-% {plan(Id, Sem) : offered(Id, Sem)} <= 1 :- 
-%   credits(Id, _), not taken_id(Id), not exclude(Id).
-
-% %% exactly one semester planned for include
-% {plan(Id, Sem) : offered(Id, Sem)} == 1 :- include(Id).
 
 %% exactly one credit option for each planned course
 {plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
@@ -290,22 +287,10 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 %% all requirements must be satisfied.
 :- item(X), not req(X).
 
-% expressed in generation 
-% %% prereq: must be satisfied before the planned semester.
-% :- plan(Id, Sem),
-%    not prereq(Id, Sem).
-
-% coreq: at the same semester, usually with the planned course.
-:- plan(Id, Sem),
-   not coreq(Id, Sem).
-
-% pre_or_coreq: either before or at the same semester.
-:- plan(Id, Sem),
-   not pre_or_coreq(Id, Sem).
-
-% % antireq: can not be satisfied at the planned semester.
-% :- plan(Id, Sem),
-%    anti_req(Id, Sem).      %% anti-req can not be satisfied
+%% only coreq and pre_or_coreq in constaints.
+%% prereq, antireq are in gen.
+:- plan(Id, Sem), not coreq(Id, Sem).
+:- plan(Id, Sem), not pre_or_coreq(Id, Sem).
 
 %% max credits per semester
 :- plan(_, Sem),
@@ -319,8 +304,8 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 max_sem_plan(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }. %% get the max semester in the plan
 #minimize { Sem@1 : max_sem_plan(Sem) }.
 
-#program plan_1. % diff with plan: requisites are in constraints, extra comments removed
-%% #const is global, don't need to redefine them here.
+%%%%%%%%%%%%%% requisites as tests, extra comments removed %%%%%%%%%%%%%%
+#program plan1.  %% #const is global, don't need to redefine them here.
 
 %% use Sem = 1..finish_sem to ground Sem, same in both
 taken_before(Id, Sem) :- Sem = 1..finish_sem, taken(Id, _, _, Sem1, _), Sem1 < Sem.
@@ -330,7 +315,7 @@ passed_before_grade(Id, Grade, Sem) :-
 
 passed_before(Id, Sem) :- passed_before_grade(Id, Grade, Sem), c_or_higher(Grade).
 
-taken_same(Id, Sem) :- Sem = 1..finish_sem, taken(Id, _, _, Sem, _).
+taken_same(Id, Sem) :- taken(Id, _, _, Sem, _).
 
 taken_before_or_same(Id, Sem) :- taken_before(Id, Sem).
 taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
@@ -341,10 +326,9 @@ taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
 
 offered_in_range(Id) :- offered(Id, Sem), Sem >= start_sem, Sem <= finish_sem.
 
-{plan(Id, Sem) : offered(Id, Sem)} <= 1 :- 
-  offered_in_range(Id), not taken_id(Id), not exclude(Id).
-
 {plan(Id, Sem) : offered(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
+{plan(Id, Sem) : offered(Id, Sem)} <= 1 :- offered_in_range(Id), 
+                                           not taken_id(Id), not exclude(Id).
 
 {plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
 

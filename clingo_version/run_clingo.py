@@ -55,7 +55,13 @@ def run_clingo(
     **inputs            ## taken_set, must_include, must_exclude
     ):
   
-  assert mode in {'check', 'plan'}, f"mode must be 'check' or 'plan', got {mode}"
+  to_ground = {
+    "check": [("base", []), ("input", []), ("check", [])],
+    "plan":  [("base", []), ("input", []), ("plan", [])],    ## prereq and anti in gen
+    "plan1": [("base", []), ("input", []), ("plan1", [])], ## all constaints as tests
+  }
+
+  assert mode in to_ground, f"mode must be one of {to_ground.keys()}, got {mode}"
 
   taken_set = inputs.get('taken_set', set())
   must_include = inputs.get('must_include', set())
@@ -77,7 +83,7 @@ def run_clingo(
     for c in taken_set
   ]
 
-  if mode == 'plan':
+  if mode in {'plan', 'plan1'}:
     test_facts.extend(f'taken_id("{c.id}").' for c in taken_set)
     test_facts.extend(f'include("{cid}").' for cid in must_include)
     test_facts.extend(f'exclude("{cid}").' for cid in must_exclude)
@@ -101,8 +107,7 @@ def run_clingo(
   ctrl.load(kb_lp)
   ctrl.add("input", [], "\n".join(test_facts))
 
-  to_ground = [("base", []), ("input", []), (mode, [])]   ## mode in {'check', 'plan'}
-  ctrl.ground(to_ground, context=ClingoContext())
+  ctrl.ground(to_ground[mode], context=ClingoContext())
 
   ## updated in on_model callback
   checked = {}
@@ -202,7 +207,7 @@ def run_clingo(
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Run the Degree Checker and Planner.")
-  parser.add_argument('-m', '--mode', choices=['check', 'plan'], default='check', help="Run mode.")
+  parser.add_argument('-m', '--mode', choices=['check', 'plan', 'plan1'], default='check', help="Run mode.")
   parser.add_argument('-f', '--file', default=MAIN_LP, help="Path to the main .lp file that encodes the logic.")
   parser.add_argument('-k', '--kb', default=KB_LP, help="Path to the KB .lp file.")
   
