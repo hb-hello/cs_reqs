@@ -297,12 +297,13 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
    #sum { Cr, Id : plan(Id, Sem), plan_credits(Id, Cr) } > sem_max_credits.
 
 %%%% optimization
-%% first, minimize the number of courses to take to satisfy all requirements.
-#minimize { 1@2, Id : plan(Id, _) }.
 
-%% next, minimize the number of semesters
+%% minimize the number of semesters
 max_sem_plan(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }. %% get the max semester in the plan
-#minimize { Sem@1 : max_sem_plan(Sem) }.
+#minimize { Sem@2 : max_sem_plan(Sem) }.
+
+%% next, minimize the number of courses to take to satisfy all requirements.
+#minimize { 1@1, Id : plan(Id, _) }.
 
 %%%%%%%%%%%%%% requisites as tests, extra comments removed %%%%%%%%%%%%%%
 #program plan1.  %% #const is global, don't need to redefine them here.
@@ -347,21 +348,9 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
    #sum { Cr, Id : plan(Id, Sem), plan_credits(Id, Cr) } > sem_max_credits.
 
 %%%% optimization
-#minimize { 1@2, Id : plan(Id, _) }.
-
+%% minimize the number of semesters
 max_sem_plan(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }. %% get the max semester in the plan
-#minimize { Sem@1 : max_sem_plan(Sem) }.
+#minimize { Sem@2 : max_sem_plan(Sem) }.
 
-#program input.
-
-%% student facts
-standing("U1"). standing("U2"). standing("U3"). standing("U4").
-major("CSE"). permission.
-
-%% from python:
-  %% must exclude and must include: 
-  %% exclude("CHE 322").
-  %% include("CHE 322").
-
-  %% taken_id(Id).
-  %% taken(Id, ...)
+%% next, minimize the number of courses to take to satisfy all requirements.
+#minimize { 1@1, Id : plan(Id, _) }.
