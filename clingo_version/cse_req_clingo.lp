@@ -354,3 +354,17 @@ max_sem_plan(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }. %% get t
 
 %% next, minimize the number of courses to take to satisfy all requirements.
 #minimize { 1@1, Id : plan(Id, _) }.
+
+#program input.
+
+%% student facts
+standing("U1"). standing("U2"). standing("U3"). standing("U4").
+major("CSE"). permission.
+
+%% from python:
+  %% must exclude and must include: 
+  %% exclude("CHE 322").
+  %% include("CHE 322").
+
+  %% taken_id(Id).
+  %% taken(Id, ...)

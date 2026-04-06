@@ -102,7 +102,7 @@ req(adv) :-
 %%%   - added following:
 % Students may only use 3 credits from the following courses to satisfy one upper-division technical elective for the CSE major requirements: CSE 487, CSE 496, VIP 395, VIP 396, VIP 495, VIP 496. 
 %%% todo: could 3 credits satisfy more than one? interpret as at most 3 credits from the following
-c(elect_limit, ("CSE 487"; "CSE 496"; "VIP 395"; "VIP 396"; "VIP 495"; "VIP 496")).
+c(elect_capped, ("CSE 487"; "CSE 496"; "VIP 395"; "VIP 396"; "VIP 495"; "VIP 496")).
 
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
@@ -110,18 +110,18 @@ subset_taken(Id, elect_passed) :-
   taken(Id, Crs, G, _, _), c_or_higher(G),
   @course_prog(Id) = "CSE",
   @upper_division(Id) = 1,    %% is upper division
-  Crs >= 3, not courses(Id, adv), not c((elect_exclude;elect_limit), Id).
+  Crs >= 3, not courses(Id, adv), not c((elect_exclude;elect_capped), Id).
 
-%% choose elect_limit to be in the subset
+%% add elect_capped course to elect_passed
 { subset_taken(Id, elect_passed) } :- 
-  c(elect_limit, Id),
+  c(elect_capped, Id),
   taken(Id, Crs, G, _, _),
   c_or_higher(G).
 
 req(elect) :- 
   #count { Id: subset_taken(Id, elect_passed) } >= 6,
-  %% at most 3 credits from elect_limit
-  #sum { Crs, Id : c(elect_limit, Id), subset_taken(Id, elect_passed), taken(Id, Crs, _, _, _) } <= 3.
+  %% at most 3 credits from elect_capped
+  #sum { Crs, Id : c(elect_capped, Id), subset_taken(Id, elect_passed), taken(Id, Crs, _, _, _) } <= 3.
 
 
 %% for elect, witness is the subset elect_passed used in elect.
@@ -258,4 +258,8 @@ item(intro; adv; elect; calc; alg; sta; sci; nontech; credits_at_SB).
 %% degree requirement sat if all requirements are satisfied
 degree :- req(Item) : item(Item).
 
-% check, plan, input..., same as in cse_req_clingo.lp
+% checking. program tag omitted
+#maximize { 1, Item : req(Item) }.    %% soft constraint: maximize the number of requirements satisfied. 
+                                      %%   so we have a model even when not all requirements are satisfied.
+
+% plan, input: same as in cse_req_clingo.lp
