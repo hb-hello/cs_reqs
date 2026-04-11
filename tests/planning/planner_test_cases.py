@@ -84,9 +84,11 @@ def test_plan_prereq_order_for_calc_sequence():
             for pre, req in possible_pairs
             if pre in schedule_by_course and req in schedule_by_course
         ]
+        # print(schedule_by_course)
+        # print(schedule_courses)
         assert planned_pairs, 'no planned prereq/course pair found to validate ordering'
         for pre, req in planned_pairs:
-            assert schedule_by_course[pre] < schedule_by_course[req], f'{pre} should be before {req} in planned schedule'
+            assert schedule_by_course[pre] < schedule_by_course[req], f'{pre} should be before {req} in planned schedule; taken:{taken}; sched:{schedule_by_course}'
 
     return taken, validate
 

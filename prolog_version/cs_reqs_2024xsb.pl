@@ -199,12 +199,12 @@ all_requirements :-
     sci_subset_req,
     passed_all(ethics_comm).
 
-  measure_wall(Goal) :-
-    statistics(walltime, [_, _]),
-    (call(Goal) -> Outcome = yes ; Outcome = no),
-    statistics(walltime, [_, T]),
-    write('result('), write(Outcome), writeln(')'),
-    write('Wall time: '), write(T), writeln(' s').
+measure_wall(Goal) :-
+  statistics(walltime, [_, _]),
+  (call(Goal) -> Outcome = yes ; Outcome = no),
+  statistics(walltime, [_, T]),
+  write('result('), write(Outcome), writeln(')'),
+  write('Wall time: '), write(T), writeln(' s').
 
 % taken('CSE 215', 3, 'A', (2024,2), 'SBU').
 % taken('CSE 214', 3, 'A', (2024,2), 'SBU').

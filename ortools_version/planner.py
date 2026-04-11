@@ -248,36 +248,30 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         # calculate total number of new courses taken
         new_courses = sum(or_model[TakenId(cid)] for cid in to_plan_from)
 
-        # define what the predicates prereqs, coreqs and antireqs should resolve into
+        # courses that are actually set up in the model (history + plannable)
+        available = history_ids.keys() | to_plan_from
+
+        # prereq/coreq lambdas: return 0 if the prereq course is not in the model,
+        # preventing ghost courses (e.g. MAT 141, PHY 121) from faking prereq satisfaction.
         # prereq: must be taken before (<)
-        or_model[Prereq] = lambda cid, req: or_model.resolve(
-            And(req, or_model.at_least(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 1)))
+        or_model[Prereq] = lambda cid, req: (
+            or_model.resolve(And(req, or_model.at_least(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 1)))
+            if course_of(req) in available else 0)
         # coreq: must be taken same semester (= rather than <)
-        or_model[Coreq] = lambda cid, req: or_model.resolve(
-            And(req, or_model.exactly(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 0)))
-        # pre_or_coreq: must be taken same semester or before (= rather than <)
-        or_model[PreOrCoreq] = lambda cid, req: or_model.resolve(
-            And(req, or_model.at_least(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 0)))
-        # anti_req: cannot take this course if these courses are taken    
+        or_model[Coreq] = lambda cid, req: (
+            or_model.resolve(And(req, or_model.exactly(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 0)))
+            if course_of(req) in available else 0)
+        # pre_or_coreq: must be taken same semester or before (>= 0)
+        or_model[PreOrCoreq] = lambda cid, req: (
+            or_model.resolve(And(req, or_model.at_least(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 0)))
+            if course_of(req) in available else 0)
+        # anti_req: cannot take this course if these courses are taken
         or_model[Antireq] = lambda cid, req: or_model.resolve(req).negated()
-
-        # pre-req course requirement
-
-        # for cid, c in catalog.items():
-        #     if not c.prereq or cid in excluded: continue
-        #     or_model.implies(TakenId(cid), transform_leaves(c.prereq, lambda req, c=cid: Prereq(c, req)))
-
-        # for cid, c in catalog.items():
-        #     if not c.coreq or cid in excluded: continue
-        #     or_model.implies(TakenId(cid), transform_leaves(c.coreq, lambda req, c=cid: Coreq(c, req)))
-
-        # for cid, c in catalog.items():
-        #     if not c.anti_req or cid in excluded: continue
-        #     or_model.forbids(TakenId(cid), c.anti_req)
 
         for cid in to_plan_from:
             for expr, pred in ((catalog[cid].prereq, Prereq), (catalog[cid].coreq, Coreq), (catalog[cid].pre_or_coreq, PreOrCoreq)):
-                if expr: or_model.implies(TakenId(cid), transform_leaves(expr, lambda req, c=cid, P=pred: P(c, req)))
+                if expr:
+                    or_model.implies(TakenId(cid), transform_leaves(expr, lambda req, c=cid, P=pred: P(c, req)))
             if catalog[cid].anti_req: or_model.forbids(TakenId(cid), catalog[cid].anti_req)
 
         # enforce credit limit per semester using the same encoded semester domain
@@ -301,7 +295,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
 
     if solution.obj is None:
         print("No solution:", solution.status)
-        return {}
+        return None, {}, {}
 
     if debug_print:
         if check:

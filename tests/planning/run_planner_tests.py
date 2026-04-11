@@ -77,15 +77,17 @@ def run_ortools(history, attrs=None):
     must_include = set(attrs.get('must_include', set()))
     must_exclude = set(attrs.get('must_exclude', set()))
     start_sem = min((h.when for h in history), default=(1, 1))
-    with redirect_stdout(io.StringIO()):
-        checked, schedule, _ = plan_courses(
-            history,
-            Major('CSE'),
-            Standing('U4'),
-            starting_semester=start_sem,
-            must_include=must_include,
-            must_exclude=must_exclude,
-        )
+    # with redirect_stdout(io.StringIO()):
+    checked, schedule, _ = plan_courses(
+        history,
+        Major('CSE'),
+        Standing('U4'),
+        starting_semester=start_sem,
+        must_include=must_include,
+        must_exclude=must_exclude,
+    )
+    if checked is None:
+        return {'degree': (False, [])}, set(), {}, False, ['INFEASIBLE']
     checker_result, checker_ok = validate_with_checker(history, schedule)
     failed = [k for k, v in checker_result.items() if not v[0]]
     return normalize_checked(checked), set(schedule), schedule, checker_ok, failed
@@ -131,42 +133,43 @@ def run_one(system, backend):
     skipped = []
 
     print(f"\nRunning tests in {system}...")
-    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-        for name, func in ALL_TESTS:
-            try:
-                case = func()
-                if len(case) == 2:
-                    history, validate = case
-                    attrs = {}
-                elif len(case) == 3:
-                    history, validate, attrs = case
-                else:
-                    raise ValueError('test case must return (history, validate) or (history, validate, attrs)')
+    # with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+    for name, func in ALL_TESTS:
+        try:
+            case = func()
+            if len(case) == 2:
+                history, validate = case
+                attrs = {}
+            elif len(case) == 3:
+                history, validate, attrs = case
+            else:
+                raise ValueError('test case must return (history, validate) or (history, validate, attrs)')
 
-                approaches = set(attrs.get('approaches', []))
-                if approaches and system not in approaches:
-                    skipped.append(name)
-                    continue
+            approaches = set(attrs.get('approaches', []))
+            if approaches and system not in approaches:
+                skipped.append(name)
+                continue
 
-                checked, schedule_courses, schedule_by_course, checker_ok, checker_failed = backend(history, attrs)
-                if not checker_ok and not attrs.get('skip_checker_validation', False):
-                    failed.append((name, f"python checker rejected combined plan on: {checker_failed}"))
-                    continue
+            checked, schedule_courses, schedule_by_course, checker_ok, checker_failed = backend(history, attrs)
+            print(name)
+            if not checker_ok and not attrs.get('skip_checker_validation', False):
+                failed.append((name, f"python checker rejected combined plan on: {checker_failed}"))
+                continue
 
-                missing = must_include_missing(schedule_courses, attrs.get('must_include', set()))
-                if missing:
-                    failed.append((name, f"missing must_include in planned schedule: {missing}"))
-                    continue
+            missing = must_include_missing(schedule_courses, attrs.get('must_include', set()))
+            if missing:
+                failed.append((name, f"missing must_include in planned schedule: {missing}"))
+                continue
 
-                added_excludes = must_exclude_added(schedule_courses, attrs.get('must_exclude', set()))
-                if added_excludes:
-                    failed.append((name, f"found must_exclude in planned schedule: {added_excludes}"))
-                    continue
+            added_excludes = must_exclude_added(schedule_courses, attrs.get('must_exclude', set()))
+            if added_excludes:
+                failed.append((name, f"found must_exclude in planned schedule: {added_excludes}"))
+                continue
 
-                validate(checked, schedule_courses, schedule_by_course)
-                passed.append(name)
-            except Exception as e:
-                failed.append((name, str(e)))
+            validate(checked, schedule_courses, schedule_by_course)
+            passed.append(name)
+        except Exception as e:
+            failed.append((name, str(e)))
 
     print(
         f"\n-> {system}: passed {len(passed)} test cases, "

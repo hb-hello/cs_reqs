@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from course_kb.course_kb import (
     Taken as TakenReq, Passed as PassedReq, Major, Standing, Permission, UnsupportedRequirement,
-    And, Or, get_courses, get_reqs, Requirement, transform_leaves, course_of,
+    And, Or, get_courses, get_reqs, Requirement, course_of, transform_leaves, Coregister,
     MAX_SEMS_ALLOWED, SEM_NAMES, CREDIT_LIMIT, grade_points, COURSE_OFFERED_TERMS
 )
 from course_kb.build_kb import ASTDecoder
@@ -55,19 +55,21 @@ def _load_kb(path):
         text = re.sub(r'^\s*//.*$', '', f.read(), flags=re.MULTILINE)
     return json.loads(text, cls=ASTDecoder)
 
-# convert Taken and Passed from prereqs to TakenId and PassedId to not conflict with Taken defined above
+# convert Taken/Passed to TakenId/PassedId; prune UnsupportedRequirement and Permission leaves.
+# transform_leaves skips those types, so we do a direct recursive walk instead.
 def _rewrite_req_ids(expr):
     if expr is None:
         return None
-
-    def rewrite(leaf):
-        if isinstance(leaf, TakenReq):
-            return TakenId(*leaf.arguments)
-        if isinstance(leaf, PassedReq):
-            return PassedId(*leaf.arguments)
-        return leaf
-
-    return transform_leaves(expr, rewrite)
+    if isinstance(expr, (And, Or)):
+        operands = [_rewrite_req_ids(op) for op in expr.operands]
+        operands = [op for op in operands if op is not None]
+        if not operands: return None
+        if len(operands) == 1: return operands[0]
+        return type(expr)(*operands)
+    if isinstance(expr, TakenReq):  return TakenId(*expr.arguments)
+    if isinstance(expr, PassedReq): return PassedId(*expr.arguments)
+    if isinstance(expr, (UnsupportedRequirement, Permission, Major, Standing, Coregister)): return None
+    return expr
 
 import os
 _kb_path = os.path.join(os.path.dirname(__file__), '..', 'course_kb', 'kb_cse_degree.json')
