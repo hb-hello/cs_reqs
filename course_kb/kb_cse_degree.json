@@ -12,14 +12,20 @@
     "anti_req": {
       "Or": [
         {
-          "Taken": [
-            "CSE 114"
-          ]
+          "Not": {
+              "Passed": [
+                "CSE 114",
+                "C"
+              ]
+          }
         },
-        {
-          "Taken": [
-            "CSE 160"
-          ]
+        { 
+          "Not": {
+              "Passed": [
+                "CSE 160",
+                "C"
+              ]
+          }
         }
       ]
     },
@@ -4628,14 +4634,20 @@
     "anti_req": {
       "Or": [
         {
-          "Taken": [
-            "MAT 203"
-          ]
+          "Not": {
+            "Passed": [
+              "MAT 203",
+              "C"
+            ]
+          }
         },
         {
-          "Taken": [
-            "AMS 310"
-          ]
+          "Not": {
+            "Passed": [
+              "AMS 310",
+              "C"
+            ]
+          }
         }
       ]
     },

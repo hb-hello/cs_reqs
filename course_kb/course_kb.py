@@ -53,6 +53,11 @@ class Passed(Requirement):
         self.min_grade = min_grade
         super().__init__(course_id, min_grade)
 
+    def __repr__(self):
+        if type(self) is Passed:
+            return f'Passed({self.course_id}, {self.min_grade})'
+        return f'{type(self).__name__}({self.course_id})'
+
 class C_or_higher(Passed):
     def __init__(self, course_id):
         super().__init__(course_id, 'C')

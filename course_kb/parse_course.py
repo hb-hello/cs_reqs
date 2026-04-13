@@ -516,3 +516,6 @@ if __name__ == "__main__":
 
   ## test: cse 101 (unsupported format)
   print(parse_req_text("Level 3 or higher on the mathematics placement examination"))
+
+  ## ams 151: B or higher
+  print(parse_req_text("B or higher in MAT 123 or level 5 on the mathematics placement examination"))

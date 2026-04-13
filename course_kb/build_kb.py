@@ -186,8 +186,8 @@ def deserialize_kb_from_json(filepath) -> list[Course]:
 class PrologGenerator:
   suffix_mapping = {
     "prereq": "before",
-    "coreq": "same",
-    "pre_or_coreq": "before_or_same",
+    "coreq": "together",
+    "pre_or_coreq": "before_or_together",
     "anti_req": "before",
   }
   ## generates rules from the AST in prolog and clingo format.
@@ -226,14 +226,49 @@ class PrologGenerator:
       r"%%%%% for unsupported requirements, we put 'unsupported' and assume they are satisfied.",
       r"unsupported_prereq.     %%% assume unsupported prereqs are satisfied",
       r"unsupported_coreq.      %%% assume unsupported coreqs are satisfied",
+      r"unsupported_pre_or_coreq. %%% assume unsupported pre_or_coreqs are satisfied",
+      r"unsupported_anti_req.   %%% assume unsupported anti-reqs are satisfied",
     ])
 
     for course in self.kb:
       output_lines.extend(self.generate_course(course))
     return output_lines
 
+  def generate_req_common(self, req_type, req_value, course):
+    req_rules = []
+    if isinstance(req_value, Or):
+      ## in Or, filter out supported requirements first
+      subexprs = [op for op in req_value.subexprs if not isinstance(op, UnsupportedRequirement)]
+      if not subexprs:
+        req_rules.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem), unsupported_{req_type}.')
+      else:
+        for subexpr in subexprs:    ## top level Or, we use multiple rules
+          req_rules.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem), {self.generate_expr(subexpr, req_type)}.')
+    else:
+      req_rules.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem), {self.generate_expr(req_value, req_type)}.')
+    return req_rules
+
+  def generate_req_w_has(self, req_type, req_value, course):
+    req_rules = []
+    if not req_value:     ## missing requisite not in KB
+      return req_rules
+
+    req_rules.append(f'has_{req_type}("{course.id}").')
+
+    req_rules.extend(self.generate_req_common(req_type, req_value, course))
+    return req_rules
+
+  def generate_req_wo_has(self, req_type, req_value, course):
+    req_rules = []
+    if not req_value:      ## missing requisite is assumed to be satisfied
+      req_rules.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem).')
+      return req_rules
+
+    req_rules.extend(self.generate_req_common(req_type, req_value, course))
+    return req_rules
+
   def generate_course(self, course) -> list[str]:
-    l = []    ## l is a list of strings representing the kb
+    kb_rules = []    ## l is a list of strings representing the kb
 
     ## generate course facts (course/2)
     pat_credits = r'^(?P<min_credit>\d+)(?:-(?P<max_credit>\d+))?$'
@@ -243,23 +278,12 @@ class PrologGenerator:
       max_credit = int(m.group('max_credit')) if m.group('max_credit') else min_credit
     
     for credit in range(min_credit, max_credit + 1):
-      l.append(f'credits("{course.id}", {credit}).')
+      kb_rules.append(f'credits("{course.id}", {credit}).')
 
-    for req_type in REQ_TYPES - REQ_TYPES_IGNORE:
+    for req_type in sorted(list(REQ_TYPES - REQ_TYPES_IGNORE)):
       req_value = getattr(course, req_type)
-      if req_value is not None:
-        l.append(f'has_{req_type}("{course.id}").')       ## add has_requisite fact for each course with that type of requisite
-        if isinstance(req_value, Or):
-          subexprs = [op for op in req_value.subexprs if not isinstance(op, UnsupportedRequirement)]
-          
-          if not subexprs:
-            l.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem), unsupported_{req_type}.')
-          else:
-            for subexpr in subexprs:
-              l.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem), {self.generate_expr(subexpr, req_type)}.')
-        else:
-          l.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem),{self.generate_expr(req_value, req_type)}.')
-    return list(dict.fromkeys(l))   ## deduplicate with order preserved
+      kb_rules.extend(self.generate_req_wo_has(req_type, req_value, course))
+    return list(dict.fromkeys(kb_rules))   ## deduplicate with order preserved
 
   def generate_expr(self, expr: Expr, req_type: str) -> str:
     if isinstance(expr, Requirement): return self.generate_requirement(expr, req_type)
@@ -311,9 +335,9 @@ class PrologGenerator:
     return ';'.join(parts)
   
   def generate_not(self, expr: Not, req_type) -> str:
-    negated_expr = expr.subexpr
+    negated_expr = expr.subexprs[0]
     s = self.generate_expr(negated_expr, req_type)
-    return f'not ({s})'
+    return f'not {s}'
 
 class ClingoGenerator(PrologGenerator):
   ## same as PrologGenerator, only overridding conjunction and disjunction for pooling
