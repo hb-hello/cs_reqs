@@ -10,31 +10,29 @@ grade_toPoints('F', 0.0).
 
 passed(Id) :- taken(Id, _, Grade, _, _), c_or_higher(Grade).
 
+% passed all courses with course Id in Subject
+passed_all(Subject) :- forall(c(Subject, Id), passed(Id)).
 
 % passed all courses with course Id in Subject
-passed_all(Subject) :- forall(c(Id, Subject), passed(Id)).
-
-% passed all courses with course Id in Subject
-passed_all(Subject, ReqData) :- forall(c(Id, Subject), memberchk(f(Id, _, _), ReqData)).
+passed_all(Subject, ReqData) :- forall(c(Subject, Id), memberchk(f(Id, _, _), ReqData)).
 
 :- discontiguous wit/2.
 % course C is witness for passing all courses in a subject in requirement Item
-wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Id, Subj).
-
+wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Subj, Id).
 
 :- discontiguous c/2.
 :- discontiguous s/2.
 % 1. Required Introductory Courses
-c('CSE 114', prog). c('CSE 214', prog). c('CSE 216', prog). 
-c('CSE 160', prog2). c('CSE 161', prog2). 
-c('CSE 260', prog2). c('CSE 261', prog2).
-c('CSE 215', dmath). 
-c('CSE 150', dmath2).
-c('CSE 220', sys). 
+c(prog, 'CSE 114'). c(prog, 'CSE 214'). c(prog, 'CSE 216'). 
+c(prog2, 'CSE 160'). c(prog2, 'CSE 161'). 
+c(prog2, 'CSE 260'). c(prog2, 'CSE 261').
+c(dmath, 'CSE 215'). 
+c(dmath2, 'CSE 150').
+c(sys, 'CSE 220'). 
 s(intro, prog). s(intro, prog2). s(intro, dmath). s(intro, dmath2). s(intro, sys).
 
 intro_courses(Id) :-
-  c(Id, prog); c(Id, prog2); c(Id, dmath); c(Id, dmath2); c(Id, sys).
+  c(prog, Id); c(prog2, Id); c(dmath, Id); c(dmath2, Id); c(sys, Id).
 
 intro_req() :-
   (passed_all(prog); passed_all(prog2)),
@@ -42,15 +40,15 @@ intro_req() :-
   passed_all(sys).
 
 % 2. Required Advanced Courses
-c('CSE 310', other). c('CSE 316', other). c('CSE 320', other). c('CSE 416', other). 
-c('CSE 373', algs). 
-c('CSE 385', algs2).
-c('CSE 303', theory). 
-c('CSE 350', theory2).
+c(other, 'CSE 310'). c(other, 'CSE 316'). c(other, 'CSE 320'). c(other, 'CSE 416'). 
+c(algs, 'CSE 373'). 
+c(algs2, 'CSE 385').
+c(theory, 'CSE 303'). 
+c(theory2, 'CSE 350').
 s(adv, theory). s(adv, theory2). s(adv, algo). s(adv, algo2). s(adv, other).
 
 advanced_courses(Id) :-
-  c(Id, other); c(Id, algs); c(Id, algs2); c(Id, theory); c(Id, theory2).
+  c(other, Id); c(algs, Id); c(algs2, Id); c(theory, Id); c(theory2, Id).
 
 advanced_req() :-
   (passed_all(algs); passed_all(algs2)),
@@ -79,43 +77,48 @@ upperdivCS(Id) :- atom_concat('CSE', CourseNumstr, Id),
 
 wit(elect, Id) :- elective_req(), passed(Id), elective(Id).
 
-% 4-6 Math requirements
-c('AMS 151', calc). c('AMS 161', calc). 
-c('MAT 125', calc2). c('MAT 126', calc2). c('MAT 127', calc2). 
-c('MAT 131', calc3). c('MAT 132', calc3). 
-c('MAT 211', linalg). 
-c('AMS 210', linalg2).
-c('AMS 301', finite).
-c('AMS 310', prob). 
-c('AMS 311', prob2).
-s(math, calc). s(math, calc2). s(math, calc3). 
-s(math, linalg). s(math, linalg2). s(math, finite). 
-s(math, prob). s(math, prob2). 
+% Req 4. Calculus
+c(calc, 'AMS 151'). c(calc, 'AMS 161'). 
+c(calc2, 'MAT 125'). c(calc2, 'MAT 126'). c(calc2, 'MAT 127'). 
+c(calc3, 'MAT 131'). c(calc3, 'MAT 132'). 
+s(calculus, calc). s(calculus, calc2). s(calculus, calc3). 
+calc_req() :- 
+  (passed_all(calc); passed_all(calc2); passed_all(calc3)).
 
-math_req() :-
-  (passed_all(calc); passed_all(calc2); passed_all(calc3)),
-  (passed_all(linalg); passed_all(linalg2)),
+% Req 5. Linear Algebra
+c(linalg, 'MAT 211'). 
+c(linalg2, 'AMS 210').
+s(linearAlgebra, linalg). s(linearAlgebra, linalg2).
+linalg_req() :- 
+  (passed_all(linalg); passed_all(linalg2)).
+
+% Req 6. Math Misc.
+c(finite, 'AMS 301').
+c(prob, 'AMS 310'). 
+c(prob2, 'AMS 311').
+s(mathmisc, finite). s(mathmisc, prob). s(mathmisc, prob2). 
+mathmisc_req() :- 
   passed_all(finite),
   (passed_all(prob); passed_all(prob2)).
 
 % 7. At least one of the following natural science lecture/laboratory combinations:
 % BIO 201/204 or BIO 202/204 or BIO 203/204 or CHE 131/133 or CHE 152/154 or PHY 126/133 or 
 % PHY 131/133 or PHY 141/133
-c('BIO 201', sci1). c('BIO 204', sci1).
-c('BIO 202', sci2). c('BIO 204', sci2).
-c('BIO 203', sci3). c('BIO 204', sci3).
-c('CHE 131', sci4). c('CHE 133', sci4).
-c('CHE 152', sci5). c('CHE 154', sci5).
-c('PHY 126', sci6). c('PHY 133', sci6).
-c('PHY 131', sci7). c('PHY 133', sci7).
-c('PHY 141', sci8). c('PHY 133', sci8).
-c('AST 203', scimisc). c('AST 205', scimisc). 
-c('CHE 132', scimisc). c('CHE 321', scimisc). c('CHE 322', scimisc). c('CHE 331', scimisc). c('CHE 332', scimisc). 
-c('GEO 113', scimisc). c('GEO 122', scimisc). c('GEO 102', scimisc). c('GEO 103', scimisc). c('GEO 112', scimisc). 
-c('PHY 125', scimisc). c('PHY 127', scimisc). c('PHY 132', scimisc). c('PHY 134', scimisc). c('PHY 142', scimisc). c('PHY 251', scimisc). c('PHY 252', scimisc). 
+c(sci1, 'BIO 201'). c(sci1, 'BIO 204').
+c(sci2, 'BIO 202'). c(sci2, 'BIO 204').
+c(sci3, 'BIO 203'). c(sci3, 'BIO 204').
+c(sci4, 'CHE 131'). c(sci4, 'CHE 133').
+c(sci5, 'CHE 152'). c(sci5, 'CHE 154').
+c(sci6, 'PHY 126'). c(sci6, 'PHY 133').
+c(sci7, 'PHY 131'). c(sci7, 'PHY 133').
+c(sci8, 'PHY 141'). c(sci8, 'PHY 133').
+c(scimisc, 'AST 203'). c(scimisc, 'AST 205'). 
+c(scimisc, 'CHE 132'). c(scimisc, 'CHE 321'). c(scimisc, 'CHE 322'). c(scimisc, 'CHE 331'). c(scimisc, 'CHE 332'). 
+c(scimisc, 'GEO 113'). c(scimisc, 'GEO 122'). c(scimisc, 'GEO 102'). c(scimisc, 'GEO 103'). c(scimisc, 'GEO 112'). 
+c(scimisc, 'PHY 125'). c(scimisc, 'PHY 127'). c(scimisc, 'PHY 132'). c(scimisc, 'PHY 134'). c(scimisc, 'PHY 142'). c(scimisc, 'PHY 251'). c(scimisc, 'PHY 252'). 
 
 sci_courses(Id) :-
-  c(Id, sci1); c(Id, sci2); c(Id, sci3); c(Id, sci4); c(Id, sci5); c(Id, sci6); c(Id, sci7); c(Id, sci8); c(Id, scimisc).
+  c(sci1, Id); c(sci2, Id); c(sci3, Id); c(sci4, Id); c(sci5, Id); c(sci6, Id); c(sci7, Id); c(sci8, Id); c(scimisc, Id).
 
 sci_subset_req():-
   findall(f(Id, Creds, Grade), (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_toPoints(Grade, _)), SciData),
@@ -135,7 +138,7 @@ sci_req(ReqData) :-
     SciQP / SciCreds >= 2.0.
 
 sci_acc([], f(0.0,0.0)).
-sci_acc([f(_, Creds, Grade)|T], f(CSum, GSum)) :- 
+sci_acc([f(_, Creds, Grade)|T], f(CSum, GSum)) :-
   sci_acc(T, f(SubCSum, SubGSum)),
   CSum is SubCSum + Creds,
   grade_toPoints(Grade, Points),
@@ -168,7 +171,7 @@ satisfied_residency_23() :- credits_at_sb_cat23(Total), Total >= 18.
 wit(res23, Id) :- satisfied_residency_23, taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
 % ethics and communication courses
-c('CSE 312', ethics_comm). c('CSE 300', ethics_comm).
+c(ethics_comm, 'CSE 312'). c(ethics_comm, 'CSE 300').
 s(ethics, ethics_comm). 
 all_requirements() :-
     intro_req(),
@@ -176,7 +179,9 @@ all_requirements() :-
     elective_req(),
     satisfied_residency_123(),
     satisfied_residency_23(),
-    math_req(),
+    calc_req(),
+    linalg_req(),
+    mathmisc_req(),
     sci_subset_req(),
     passed_all(ethics_comm).
 
