@@ -14,7 +14,7 @@ passed(Id) :- taken(Id, _, Grade, _, _), c_or_higher(Grade).
 passed_all(Subject) :- forall(c(Subject, Id), passed(Id)).
 
 % passed all courses with course Id in Subject
-passed_all(Subject, ReqData) :- forall(c(Subject, Id), memberchk(f(Id, _, _), ReqData)).
+passed_all(Subject, ReqData) :- forall(c(Subject, Id), memberchk([Id, _, _], ReqData)).
 
 :- discontiguous wit/2.
 % course C is witness for passing all courses in a subject in requirement Item
@@ -121,9 +121,9 @@ c(scimisc, 'PHY 125'). c(scimisc, 'PHY 127'). c(scimisc, 'PHY 132'). c(scimisc, 
 sci_courses(Id) :-
   c(sci1, Id); c(sci2, Id); c(sci3, Id); c(sci4, Id); c(sci5, Id); c(sci6, Id); c(sci7, Id); c(sci8, Id); c(scimisc, Id).
 
-sci_subset_req():-
-  findall(f(Id, Creds, Grade), (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_toPoints(Grade, _)), SciData),
-  subset(SciData, SciReqData),
+sci_subseq_req():-
+  findall([Id, Creds, Grade], (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_toPoints(Grade, _)), SciData),
+  subseq(SciData, SciReqData),
   lab_req(SciReqData),
   sci_req(SciReqData).
 
@@ -134,22 +134,23 @@ lab_req(ReqData) :-
   passed_all(sci7, ReqData); passed_all(sci8, ReqData)).
 
 sci_req(ReqData) :-
-    sci_acc(ReqData, f(SciCreds, SciQP)),
+    sci_acc(ReqData, SciCreds, SciQP),
     SciCreds >= 9,
     SciQP / SciCreds >= 2.0.
 
-sci_acc([], f(0.0,0.0)).
-sci_acc([f(_, Creds, Grade)|T], f(CSum, GSum)) :-
-  sci_acc(T, f(SubCSum, SubGSum)),
+sci_acc([], 0.0, 0.0).
+sci_acc([[_, Creds, Grade]|T], CSum, GSum) :-
+  sci_acc(T, SubCSum, SubGSum),
   CSum is SubCSum + Creds,
   grade_toPoints(Grade, Points),
   GSum is SubGSum + (Points*Creds).
 
-subset([], []).
-subset([_|T], Sub) :- subset(T, Sub).
-subset([H|T], [H|Sub]) :- subset(T, Sub).
+subseq([], []).
+subseq([H|T], [H|Sub]) :- subseq(T, Sub).
+subseq([_|T], Sub) :- subseq(T, Sub).
 
-wit(sci, Id) :- sci_subset_req(), sci_courses(Id), taken(Id, _, _, _, _).
+
+wit(sci, Id) :- sci_subseq_req(), sci_courses(Id), taken(Id, _, _, _, _).
 
 course_in_cat123(Id) :- intro_courses(Id) ; advanced_courses(Id) ; upperdivCS(Id).
 credits_at_sb_cat123(Total) :-
@@ -183,7 +184,7 @@ all_requirements() :-
     calc_req(),
     linalg_req(),
     mathmisc_req(),
-    sci_subset_req(),
+    sci_subseq_req(),
     passed_all(ethics_comm).
 
 
