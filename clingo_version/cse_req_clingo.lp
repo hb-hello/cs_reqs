@@ -47,9 +47,8 @@ passed_all(Subject) :-
 %% course C is witness for passing all courses in a subject in requirement Item
 wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Subj, Id).
 
-% return set of courses in subjects in requirement item.
+% set of courses in subjects of requirement item
 courses(Id, Item) :- s(Item, Subj), c(Subj, Id).
-subset_taken(Id, Item) :- s(Item, Subj), c(Subj, Id), taken(Id, _, _, _, _).
 
 % 1. Required Introductory Courses
 c(prog, ("CSE 114"; "CSE 214"; "CSE 216")).
@@ -87,7 +86,7 @@ subset_taken(Id, elect_passed) :-
 req(elect) :- 
   #count { Id: subset_taken(Id, elect_passed) } >= 4.
 
-%% for elect, witness is the subset elect_passed used in elect.
+%% witness for elect is the subset elect_passed used in elect.
 wit(elect, Id) :- subset_taken(Id, elect_passed).
 
 % 4. AMS 151, AMS 161 Applied Calculus I, II
@@ -222,7 +221,6 @@ degree :- req(Item) : item(Item).
 #maximize { 1, Item : req(Item) }.    %% soft constraint: maximize the number of requirements satisfied. 
                                       %%   so we have a model even when not all requirements are satisfied.
 
-#program plan. 
 %% Default planning constants (can be overridden by python).
 %%  for semesters we only use small integers, instead of a (year, semester) tuple.
 %%  python maintains the mapping between integers and (year, term) tuples.
@@ -230,50 +228,43 @@ degree :- req(Item) : item(Item).
 #const finish_sem = 4*4.      %% latest semester ...
 #const sem_max_credits = 18.  %% max credits allowed per semester planned
 
-%% Temporal relations used by the KB to evaluate requisites (e.g., passed_before, taken_same). E.g.
-%%  - prereq("CSE 214", Sem) :- plan(_, Sem), passed_before("CSE 114", Sem).
-%%  - coreq("CSE 161", Sem) :- plan(_, Sem), taken_same("CSE 160", Sem).
-%% the following rules define these temporal relations based on taken.
+#program plan.    %% with requisites in the test
 
-%%% ISSUE TODO: plan(_, Sem) shouldn't be used to ground semester here.
-%%%   e.g. generating plan("CSE 214", Sem) requires passed_before("CSE 114", Sem) because:
-%%% prereq("CSE 214", Sem) :- offered("CSE 214", Sem),passed_before("CSE 114", Sem).
-%%% passed_before can not rely on plan(_, Sem) because of circular dependency.
-%%% need something else to ground semester which should not only be in the planning domain
-%%% start_sem..finish_sem, but need to consider courses taken previously: 1..finish_sem
-%%%   solved? Sem = 1..finish_sem, but it looks ugly
+%% Temporal relations used by the KB to evaluate requisites (e.g., passed_before, taken_together). 
 
-%% following 6 are generated in the KB. we define them here
+%% helper predicate for comparing semesters.
+%%   O(N^2) grounding for semester pairs, but since the domain is small,
+%%   this is efficient.
+before(Sem1, Sem2) :- Sem1 = 1..finish_sem, Sem2 = 1..finish_sem, Sem1 < Sem2.
 
 %% course is taken before semester Sem.                           %% for prereq and antireq
-taken_before(Id, Sem) :- Sem = 1..finish_sem, taken(Id, _, _, Sem1, _), Sem1 < Sem.
+taken_before(Id, Sem) :- taken(Id, _, _, Sem1, _), before(Sem1, Sem).
 
 %% course taken before semester with at least grade.
 passed_before_grade(Id, Grade, Sem) :- 
-  Sem = 1..finish_sem, taken(Id, _, G, When, _), When < Sem, is_or_higher(G, Grade).
+  taken(Id, _, G, Sem1, _), before(Sem1, Sem), is_or_higher(G, Grade).
 
 %% "C or higher" in prereq
-passed_before(Id, Sem) :- passed_before_grade(Id, Grade, Sem), c_or_higher(Grade).
+passed_before(Id, Sem):- taken(Id, _, _, Sem1, _), before(Sem1, Sem), passed(Id). 
 
-%% course Id is taken at semester Sem.                            %% coreq %%% todo: rename to taken_at?
-taken_same(Id, Sem) :- taken(Id, _, _, Sem, _).
+%% course Id is taken at semester Sem.                            %% coreq
+taken_together(Id, Sem) :- taken(Id, _, _, Sem, _).
 
 %% could be taken before or at the same semester.                 %% pre_or_coreq
-taken_before_or_same(Id, Sem) :- taken_before(Id, Sem).
-taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
+taken_together_or_same(Id, Sem) :- taken_before(Id, Sem).
+taken_together_or_same(Id, Sem) :- taken_together(Id, Sem).
 
 %%%% generate 
 
 %% offered(Id, Sem): course Id is offered at semester Sem. input taken from python.
 
 %% if used before(Sem), Sem would need to be grounded. this is more straightforward.
-offered_in_range(Id) :- offered(Id, Sem), Sem >= start_sem, Sem <= finish_sem.
+offered_in_range(Id) :- offered(Id, Sem), before(start_sem, Sem), before(Sem, finish_sem).
 
 %% prereq and anti req in gen
-{plan(Id, Sem) : offered(Id, Sem), prereq(Id, Sem), not anti_req(Id, Sem)} == 1 :- 
-  offered_in_range(Id), include(Id).
+{plan(Id, Sem) : offered(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
 
-{plan(Id, Sem) : offered(Id, Sem), prereq(Id, Sem), not anti_req(Id, Sem)} <= 1 :- 
+{plan(Id, Sem) : offered(Id, Sem)} <= 1 :- 
   offered_in_range(Id), not taken_id(Id), not exclude(Id).
 
 %% exactly one credit option for each planned course
@@ -287,10 +278,11 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 %% all requirements must be satisfied.
 :- item(X), not req(X).
 
-%% only coreq and pre_or_coreq in constaints.
-%% prereq, antireq are in gen.
-:- plan(Id, Sem), not coreq(Id, Sem).
-:- plan(Id, Sem), not pre_or_coreq(Id, Sem).
+%% pre/co/pre_or_co/anti requisites
+:- plan(Id, Sem), has_prereq(Id), not prereq(Id, Sem).
+:- plan(Id, Sem), has_coreq(Id), not coreq(Id, Sem).
+:- plan(Id, Sem), has_pre_or_coreq(Id), not pre_or_coreq(Id, Sem).
+:- plan(Id, Sem), has_anti_req(Id), not anti_req(Id, Sem).
 
 %% max credits per semester
 :- plan(_, Sem),
@@ -298,56 +290,6 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 
 %%%% optimization
 
-%% minimize the number of semesters
-max_sem_plan(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }. %% get the max semester in the plan
-#minimize { Sem@2 : max_sem_plan(Sem) }.
-
-%% next, minimize the number of courses to take to satisfy all requirements.
-#minimize { 1@1, Id : plan(Id, _) }.
-
-%%%%%%%%%%%%%% requisites as tests, extra comments removed %%%%%%%%%%%%%%
-#program plan1.  %% #const is global, don't need to redefine them here.
-
-%% use Sem = 1..finish_sem to ground Sem, same in both
-taken_before(Id, Sem) :- Sem = 1..finish_sem, taken(Id, _, _, Sem1, _), Sem1 < Sem.
-
-passed_before_grade(Id, Grade, Sem) :- 
-  Sem = 1..finish_sem, taken(Id, _, G, When, _), When < Sem, is_or_higher(G, Grade).
-
-passed_before(Id, Sem) :- passed_before_grade(Id, Grade, Sem), c_or_higher(Grade).
-
-taken_same(Id, Sem) :- taken(Id, _, _, Sem, _).
-
-taken_before_or_same(Id, Sem) :- taken_before(Id, Sem).
-taken_before_or_same(Id, Sem) :- taken_same(Id, Sem).
-
-%%%% generate 
-
-%% offered(Id, Sem): course Id is offered at semester Sem. input taken from python.
-
-offered_in_range(Id) :- offered(Id, Sem), Sem >= start_sem, Sem <= finish_sem.
-
-{plan(Id, Sem) : offered(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
-{plan(Id, Sem) : offered(Id, Sem)} <= 1 :- offered_in_range(Id), 
-                                           not taken_id(Id), not exclude(Id).
-
-{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
-
-taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
-
-%%%% constraints
-
-:- item(X), not req(X).
-:- plan(Id, Sem), not prereq(Id, Sem).
-:- plan(Id, Sem), not coreq(Id, Sem).
-:- plan(Id, Sem), not pre_or_coreq(Id, Sem).
-:- plan(Id, Sem), anti_req(Id, Sem).      %% anti-req can not be satisfied
-
-%% max credits per semester
-:- plan(_, Sem),
-   #sum { Cr, Id : plan(Id, Sem), plan_credits(Id, Cr) } > sem_max_credits.
-
-%%%% optimization
 %% minimize the number of semesters
 max_sem_plan(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }. %% get the max semester in the plan
 #minimize { Sem@2 : max_sem_plan(Sem) }.
