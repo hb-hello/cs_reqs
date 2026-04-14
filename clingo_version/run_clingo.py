@@ -191,6 +191,32 @@ def run_clingo(
 
   return checked, schedule, stats
 
+def run_planner_incremental(mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, timeout=10 * 60, **inputs):
+  max_allowed_sems = inputs.get('num_sems', NUM_SEMS)
+
+  ## limit the number of sems in the plan by iteratively increasing it until we find a solution.
+  for t in range(1, max_allowed_sems + 1):
+    iter_inputs = dict(inputs)
+    iter_inputs['num_sems'] = t
+    checked, schedule, stats = run_clingo(
+      mode=mode,
+      main_lp=main_lp,
+      kb_lp=kb_lp,
+      timeout=timeout,
+      **iter_inputs,
+    )
+    if stats.get('model_count', 0) > 0:
+      return checked, schedule, stats
+
+  return None, None, {
+    'problem': {'lp': {'atoms': 0, 'rules': 0, 'bodies': 0, 'eqs': 0}},
+    'solving': {'solvers': {'choices': 0, 'conflicts': 0, 'restarts': 0}},
+    'summary': {'times': {'total': 0.0, 'solve': 0.0}},
+    'timed_out': False,
+    'model_count': 0,
+    'min_cost': None,
+  }
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Run the Degree Checker and Planner.")
   parser.add_argument(
