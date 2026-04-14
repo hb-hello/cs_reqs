@@ -251,8 +251,8 @@ passed_before(Id, Sem):- taken(Id, _, _, Sem1, _), before(Sem1, Sem), passed(Id)
 taken_together(Id, Sem) :- taken(Id, _, _, Sem, _).
 
 %% could be taken before or at the same semester.                 %% pre_or_coreq
-taken_together_or_same(Id, Sem) :- taken_before(Id, Sem).
-taken_together_or_same(Id, Sem) :- taken_together(Id, Sem).
+taken_before_or_together(Id, Sem) :- taken_before(Id, Sem).
+taken_before_or_together(Id, Sem) :- taken_together(Id, Sem).
 
 %%%% generate 
 

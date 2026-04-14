@@ -1,7 +1,9 @@
 import inspect
 from pprint import pprint
-from run_clingo import print_clingo_stats, run_clingo
+from run_clingo import run_clingo
 import python_version.tests as tests                ## tests.py in cs_reqs
+
+PLANNING_MODE = 'plan'
 
 def run_case(test_func, mode='check', checks_witness=False):
   case = test_func()
@@ -37,7 +39,7 @@ def run_case(test_func, mode='check', checks_witness=False):
     for sem in sorted(schedule):
       print(f"Semester {sem}: {schedule[sem]}")
 
-  print_clingo_stats(stats)
+  pprint(stats)
 
   return clingo_checked, schedule, stats
 
@@ -45,7 +47,7 @@ def testing(test_func):
   return run_case(test_func, mode='check', checks_witness=True)
 
 def test_clingo_planning(test_func):
-  return run_case(test_func, mode='plan', checks_witness=False)
+  return run_case(test_func, mode=PLANNING_MODE, checks_witness=False)
 
 def run_tests():
   for (name, func) in inspect.getmembers(tests, inspect.isfunction):

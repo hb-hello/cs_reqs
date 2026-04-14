@@ -302,7 +302,7 @@ class PrologGenerator:
     elif isinstance(req, Passed):
       return self.format_passed_requirement(req, req_type)
     elif isinstance(req, Coregister):
-      return f'taken_same("{req.arguments[0]}")'
+      return f'taken_together("{req.arguments[0]}")'
     elif isinstance(req, Permission):
       return f'permission'
     elif isinstance(req, UnsupportedRequirement):

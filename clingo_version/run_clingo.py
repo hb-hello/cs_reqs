@@ -1,6 +1,7 @@
 from collections import defaultdict
 import clingo
 import argparse
+import time
 from pprint import pprint
 from course_kb.course_kb import *
 from clingo_version.configs import MAIN_LP, KB_LP
@@ -18,33 +19,55 @@ class ClingoContext:
   def course_prog(self, course_id):
     return clingo.String(course_id.string[:3])
 
-def print_clingo_stats(stats):
-  times = stats.get('summary', {}).get('times', {})
-  total_time = times.get('total', 0)
-  solve_time = times.get('solve', 0)
-  ground_time = total_time - solve_time
-  print("======================")
-  print(f"Total time:     {total_time:.4f} seconds")
-  print(f"Grounding time: {ground_time:.4f} seconds")
-  print(f"Solving time:   {solve_time:.4f} seconds")
-  lp_stats = stats.get('problem', {}).get('lp', {})
-  if lp_stats:
-    print(f"Atoms (Variables): {int(lp_stats.get('atoms', 0)):,}")
-    print(f"Generated Rules:   {int(lp_stats.get('rules', 0)):,}")
-    print(f"Rule Bodies:       {int(lp_stats.get('bodies', 0)):,}")
-    print(f"Equivalences:      {int(lp_stats.get('eqs', 0)):,}")
-  solving_stats = stats.get('solving', {}).get('solvers', {})
-  if solving_stats:
-    choices = int(solving_stats.get('choices', 0))
-    conflicts = int(solving_stats.get('conflicts', 0))
-    restarts = int(solving_stats.get('restarts', 0))
-    min_cost = stats.get('min_cost')
-    print(f"Choices:   {choices:,}")
-    print(f"Conflicts: {conflicts:,}")
-    print(f"Restarts:  {restarts:,}")
-    if min_cost is not None:
-      print(f"Min Cost:  {min_cost}")
-  print("======================")
+def _collect_clingo_stats(ctrl, timed_out, model_count, min_cost):
+  """Collect clingo statistics into a plain dict (single source of metrics)."""
+  lp       = ctrl.statistics.get('problem', {}).get('lp', {})
+  solvers  = ctrl.statistics.get('solving', {}).get('solvers', {})
+  times    = ctrl.statistics.get('summary', {}).get('times', {})
+  total_t  = float(times.get('total', 0))
+  solve_t  = float(times.get('solve', 0))
+  return {
+    'problem': {'lp': {'atoms': int(lp.get('atoms', 0)), 'rules': int(lp.get('rules', 0)),
+                       'bodies': int(lp.get('bodies', 0)), 'eqs': int(lp.get('eqs', 0))}},
+    'solving': {'solvers': {'choices':   int(solvers.get('choices', 0)),
+                            'conflicts': int(solvers.get('conflicts', 0)),
+                            'restarts':  int(solvers.get('restarts', 0))}},
+    'summary': {'times': {'total': total_t, 'solve': solve_t}},
+    'timed_out': timed_out,
+    'model_count': model_count,
+    'min_cost': list(min_cost) if min_cost is not None else None,
+  }
+
+def _generate_planning_input(inputs):
+  taken_set = inputs.get('taken_set', set())
+  must_include = inputs.get('must_include', set())
+  must_exclude = inputs.get('must_exclude', set())
+  min_sem = inputs.get('min_sem', MIN_SEM)
+  max_sem = inputs.get('max_sem', MIN_SEM)
+  num_sems = inputs.get('num_sems', NUM_SEMS)
+  course_offered_terms = inputs.get('course_offered_terms', COURSE_OFFERED_TERMS)
+
+  planning_facts = []
+  planning_facts.extend(f'taken_id("{c.id}").' for c in taken_set)
+  planning_facts.extend(f'include("{cid}").' for cid in must_include)
+  planning_facts.extend(f'exclude("{cid}").' for cid in must_exclude)
+
+  start_sem = sem_to_int(max_sem, min_sem) + 1
+  finish_sem = start_sem + num_sems - 1
+
+  planning_ctrl_args = [
+    f"-c start_sem={start_sem}",
+    f"-c finish_sem={finish_sem}",
+    f"-c sem_max_credits={NUM_CREDITS_PER_SEM}",
+  ]
+
+  for cid, terms in course_offered_terms.items():
+    # terms is a set like {2,3,4}; blank CSV entry is set()
+    for sem in range(start_sem, finish_sem + 1):
+      if rel_sem_to_term(sem, min_sem) in terms:
+        planning_facts.append(f'offered("{cid}", {sem}).')
+
+  return planning_facts, planning_ctrl_args
 
 def run_clingo(
     mode,               ## one of 'check' or 'plan'
@@ -55,59 +78,39 @@ def run_clingo(
     **inputs            ## taken_set, must_include, must_exclude
     ):
   
-  to_ground = {
-    "check": [("base", []), ("input", []), ("check", [])],
-    "plan":  [("base", []), ("input", []), ("plan", [])],    ## prereq and anti in gen
-    "plan1": [("base", []), ("input", []), ("plan1", [])], ## all constaints as tests
-  }
-
-  assert mode in to_ground, f"mode must be one of {to_ground.keys()}, got {mode}"
+  ## temp hacks, mode is the program name ("check", "plan", or other plan programs)
+  to_ground = [("base", []), ("input", []), (mode, [])]
+  
+  assert mode.startswith(('check', 'plan')), f"mode must start with 'check' or 'plan', got {mode}"
 
   taken_set = inputs.get('taken_set', set())
-  must_include = inputs.get('must_include', set())
-  must_exclude = inputs.get('must_exclude', set())
-  num_sems = inputs.get('num_sems', NUM_SEMS)
-  course_offered_terms = inputs.get('course_offered_terms', COURSE_OFFERED_TERMS)
-
   ctrl_args = ["0", "-Wno-atom-undefined"]
+
   items = (
     'intro', 'adv', 'elect', 'calc', 'alg', 'sta',
     'sci', 'ethics', 'writing', 'credits_at_SB', 'degree'
   )
 
   min_sem = min(c.when for c in taken_set) if taken_set else MIN_SEM
-  max_sem = max(c.when for c in taken_set) if taken_set else MIN_SEM
 
-  test_facts = [
+  input_facts = [
     f'taken("{c.id}", {c.credits}, "{c.grade}", {sem_to_int(c.when, min_sem)}, "{c.where}").'
     for c in taken_set
   ]
 
-  if mode in {'plan', 'plan1'}:
-    test_facts.extend(f'taken_id("{c.id}").' for c in taken_set)
-    test_facts.extend(f'include("{cid}").' for cid in must_include)
-    test_facts.extend(f'exclude("{cid}").' for cid in must_exclude)
-
-    start_sem = sem_to_int(max_sem, min_sem) + 1
-    finish_sem = start_sem + num_sems - 1
-    ctrl_args.extend([
-      f"-c start_sem={start_sem}",
-      f"-c finish_sem={finish_sem}",
-      f"-c sem_max_credits={NUM_CREDITS_PER_SEM}",
-    ])
-
-    for cid, terms in course_offered_terms.items():
-      # terms is a set like {2,3,4}; blank CSV entry is set()
-      for sem in range(start_sem, finish_sem + 1):
-        if rel_sem_to_term(sem, min_sem) in terms:
-          test_facts.append(f'offered("{cid}", {sem}).')
+  if mode.startswith('plan'):
+    planning_facts, planning_ctrl_args = _generate_planning_input(inputs)
+    input_facts.extend(planning_facts)
+    ctrl_args.extend(planning_ctrl_args)
 
   ctrl = clingo.Control(ctrl_args)
   ctrl.load(main_lp)
   ctrl.load(kb_lp)
-  ctrl.add("input", [], "\n".join(test_facts))
+  ctrl.add("input", [], "\n".join(input_facts))
 
-  ctrl.ground(to_ground[mode], context=ClingoContext())
+  ground_start = time.perf_counter()
+  ctrl.ground(to_ground, context=ClingoContext())
+  ground_elapsed = time.perf_counter() - ground_start
 
   ## updated in on_model callback
   checked = {}
@@ -117,19 +120,16 @@ def run_clingo(
   
   def on_model(model):    ## invoked for every model found
     nonlocal checked, schedule, min_cost, model_count
-
+    model_count += 1
     ## reset checked when there are multiple models (in planning mode)
     checked = {item: [False, []] for item in items}  ## initialize all items to not passed
     planned_courses = {}
     schedule = defaultdict(list)
-    model_count += 1
     if model.cost is not None:
       cost = tuple(model.cost)
       if min_cost is None or cost < min_cost:
         min_cost = cost
 
-    # print(f"Model found with cost: {cost}")
-    
     for sym in model.symbols(atoms=True):     ## collect check for each requirement
       if sym.name == "degree":
         checked['degree'][0] = True
@@ -150,9 +150,6 @@ def run_clingo(
           checked[item][1].append(f"{val.name} = {val.arguments[0].number}")
           continue
         course = str(val).strip('"')
-        ## comment out for passing the planner test
-        # if course in planned_courses:         ## for planned courses, indicate the semester
-        #   course += f' (sem {planned_courses[course]})'
         checked[item][1].append(course)
     
     ## add extra strings if check for item is false
@@ -160,6 +157,7 @@ def run_clingo(
       checked['elect'][1].append('need 4 total')
     if not checked['sci'][0]:
       checked['sci'][1].append('need a lec/lab combo and more, with >=9 credits and >=2.0 GPA')
+
   timed_out = False
   if not ground_only:
     with ctrl.solve(on_model=on_model, async_=True) as handle:
@@ -174,40 +172,32 @@ def run_clingo(
         handle.cancel()
       finally:
         handle.wait()
-        # result = handle.get()
  
   ## sort witness, same as test in python
   checked = {item: (check, sorted(wits)) for item, (check, wits) in checked.items()}
 
+  ## sort courses in each semester
   for sem in schedule:
     schedule[sem].sort()
 
-  ## build a plain dict from clingo statistics for easy access and JSON serialisation
-  lp       = ctrl.statistics.get('problem', {}).get('lp', {})
-  solvers  = ctrl.statistics.get('solving', {}).get('solvers', {})
-  times    = ctrl.statistics.get('summary', {}).get('times', {})
-  total_t  = float(times.get('total', 0))
-  solve_t  = float(times.get('solve', 0))
-  stats = {
-    'problem': {'lp': {'atoms': int(lp.get('atoms', 0)), 'rules': int(lp.get('rules', 0)),
-                       'bodies': int(lp.get('bodies', 0)), 'eqs': int(lp.get('eqs', 0))}},
-    'solving': {'solvers': {'choices':   int(solvers.get('choices', 0)),
-                            'conflicts': int(solvers.get('conflicts', 0)),
-                            'restarts':  int(solvers.get('restarts', 0))}},
-    'summary': {'times': {'total': total_t, 'solve': solve_t}},
-    'timed_out': timed_out,
-    'model_count': model_count,
-    'min_cost': list(min_cost) if min_cost is not None else None,
-  }
-  if timed_out and checked:
-    stats['partial_reqs_sat']   = [k for k, (ok, _) in checked.items() if ok]
-    stats['partial_reqs_unsat'] = [k for k, (ok, _) in checked.items() if not ok]
+  stats = _collect_clingo_stats(ctrl, timed_out, model_count, min_cost)
+  if ground_only:
+    stats['summary']['times']['total'] = ground_elapsed
+    stats['summary']['times']['solve'] = 0.0
+
+  # if timed_out and checked:
+  #   stats['partial_reqs_sat']   = [k for k, (ok, _) in checked.items() if ok]
+  #   stats['partial_reqs_unsat'] = [k for k, (ok, _) in checked.items() if not ok]
 
   return checked, schedule, stats
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Run the Degree Checker and Planner.")
-  parser.add_argument('-m', '--mode', choices=['check', 'plan', 'plan1'], default='check', help="Run mode.")
+  parser.add_argument(
+    '-m', '--mode',
+    default='check',
+    help="Run mode."
+  )
   parser.add_argument('-f', '--file', default=MAIN_LP, help="Path to the main .lp file that encodes the logic.")
   parser.add_argument('-k', '--kb', default=KB_LP, help="Path to the KB .lp file.")
   
@@ -224,4 +214,4 @@ if __name__ == "__main__":
     for sem in sorted(schedule):
       print(f"  Semester {sem}: {schedule[sem]}")
           
-  print_clingo_stats(stats)
+  pprint(stats)
