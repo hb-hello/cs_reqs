@@ -1,19 +1,18 @@
 from ortools_version.planner import catalog, plan_courses
-from ortools_version.course_catalog import Major, Standing, History
-
+from ortools_version.course_catalog import Major, Standing, Taken
 
 FULL = {
-    'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220',
-    'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',
-    'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',
-    'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',
-    'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',
-    'CSE 300', 'CSE 312',
+    'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220',                  ## intro
+    'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',       ## adv
+    'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
+    'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',                  ## calc, sta, alg
+    'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
+    'CSE 300', 'CSE 312',                                                   ## writing, ethics
 }
 
 
 def history(ids, grade='A', loc='SB', when=(2024, 2)):
-    return [History(cid, catalog[cid].credits, grade, when, loc) for cid in sorted(ids)]
+    return [Taken(cid, catalog[cid].credits, grade, when, loc) for cid in sorted(ids)]
 
 
 def test_plan_no_electives():
@@ -85,9 +84,11 @@ def test_plan_prereq_order_for_calc_sequence():
             for pre, req in possible_pairs
             if pre in schedule_by_course and req in schedule_by_course
         ]
+        # print(schedule_by_course)
+        # print(schedule_courses)
         assert planned_pairs, 'no planned prereq/course pair found to validate ordering'
         for pre, req in planned_pairs:
-            assert schedule_by_course[pre] < schedule_by_course[req], f'{pre} should be before {req} in planned schedule'
+            assert schedule_by_course[pre] < schedule_by_course[req], f'{pre} should be before {req} in planned schedule; taken:{taken}; sched:{schedule_by_course}'
 
     return taken, validate
 
@@ -98,16 +99,20 @@ def test_plan_respects_course_allowed_terms():
     taken = history(ids)
 
     def validate(checked, schedule_courses, schedule_by_course):
-        expected_sem = {'Fall': 1, 'Spring': 3}
-        for sem_name, sem_num in expected_sem.items():
-            _, direct_schedule, _ = plan_courses(
+        ## planner expects term numbers: 1=Winter, 2=Spring, 3=Summer, 4=Fall
+        expected_term = {'Fall': 4, 'Spring': 2}
+        for sem_name, term_num in expected_term.items():
+            result = plan_courses(
                 taken,
                 Major('CSE'),
                 Standing('U4'),
-                course_offered_terms={'CSE 220': {sem_name}},
+                course_offered_terms={'CSE 220': {term_num}},
             )
-            assert 'CSE 220' in direct_schedule
-            assert direct_schedule['CSE 220'][1] == sem_num, f'CSE 220 should be planned in {sem_name}'
+
+            assert result, f'no feasible plan returned when restricting CSE 220 to {sem_name}'
+            _, direct_schedule, _ = result
+            assert 'CSE 220' in direct_schedule, f'CSE 220 not planned when restricted to {sem_name}'
+            assert direct_schedule['CSE 220'][1] == term_num, f'CSE 220 should be planned in {sem_name}'
 
     return taken, validate
 
@@ -124,5 +129,4 @@ def test_plan_coreq_160_161_mutual():
         assert schedule_by_course['CSE 160'] == schedule_by_course['CSE 161']
 
     # require planner to include CSE 160 and validate its coreq is scheduled
-    return taken, validate, {'must_include': {'CSE 160'}, 'approaches': ['ortools_version']}
-
+    return taken, validate, {'must_include': {'CSE 160'}}

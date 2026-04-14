@@ -186,8 +186,8 @@ def deserialize_kb_from_json(filepath) -> list[Course]:
 class PrologGenerator:
   suffix_mapping = {
     "prereq": "before",
-    "coreq": "same",
-    "pre_or_coreq": "before_or_same",
+    "coreq": "together",
+    "pre_or_coreq": "before_or_together",
     "anti_req": "before",
   }
   ## generates rules from the AST in prolog and clingo format.
@@ -208,20 +208,67 @@ class PrologGenerator:
       return f'{name}_{suffix}("{args[0]}", Sem)'
     return f'{name}_{suffix}(({self.join_args(args)}), Sem)'
 
+  def format_passed_requirement(self, req: Passed, req_type: str) -> str:
+    course_id = req.arguments[0]
+    grade = req.arguments[1] if len(req.arguments) >= 2 else "C"
+
+    if grade == "C":
+      return self.format_req_with_semester(req.name, [course_id], req_type)
+
+    suffix = self.semester_suffix(req_type)
+    if suffix == "before":
+      return f'passed_before_grade("{course_id}", "{grade}", Sem)'
+    return f'passed_{suffix}_grade("{course_id}", "{grade}", Sem)'
+
   def generate_kb(self) -> list[str]:
     output_lines = []    ## l is a list of strings representing the kb
     output_lines.extend([
       r"%%%%% for unsupported requirements, we put 'unsupported' and assume they are satisfied.",
       r"unsupported_prereq.     %%% assume unsupported prereqs are satisfied",
       r"unsupported_coreq.      %%% assume unsupported coreqs are satisfied",
+      r"unsupported_pre_or_coreq. %%% assume unsupported pre_or_coreqs are satisfied",
+      r"unsupported_anti_req.   %%% assume unsupported anti-reqs are satisfied",
     ])
 
     for course in self.kb:
       output_lines.extend(self.generate_course(course))
     return output_lines
 
+  def generate_req_common(self, req_type, req_value, course):
+    req_rules = []
+    if isinstance(req_value, Or):
+      ## in Or, filter out supported requirements first
+      subexprs = [op for op in req_value.subexprs if not isinstance(op, UnsupportedRequirement)]
+      if not subexprs:
+        req_rules.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem), unsupported_{req_type}.')
+      else:
+        for subexpr in subexprs:    ## top level Or, we use multiple rules
+          req_rules.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem), {self.generate_expr(subexpr, req_type)}.')
+    else:
+      req_rules.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem), {self.generate_expr(req_value, req_type)}.')
+    return req_rules
+
+  def generate_req_w_has(self, req_type, req_value, course):
+    req_rules = []
+    if not req_value:     ## missing requisite not in KB
+      return req_rules
+
+    req_rules.append(f'has_{req_type}("{course.id}").')
+
+    req_rules.extend(self.generate_req_common(req_type, req_value, course))
+    return req_rules
+
+  def generate_req_wo_has(self, req_type, req_value, course):
+    req_rules = []
+    if not req_value:      ## missing requisite is assumed to be satisfied
+      req_rules.append(f'{req_type}("{course.id}", Sem) :- offered("{course.id}", Sem).')
+      return req_rules
+
+    req_rules.extend(self.generate_req_common(req_type, req_value, course))
+    return req_rules
+
   def generate_course(self, course) -> list[str]:
-    l = []    ## l is a list of strings representing the kb
+    kb_rules = []    ## l is a list of strings representing the kb
 
     ## generate course facts (course/2)
     pat_credits = r'^(?P<min_credit>\d+)(?:-(?P<max_credit>\d+))?$'
@@ -231,23 +278,12 @@ class PrologGenerator:
       max_credit = int(m.group('max_credit')) if m.group('max_credit') else min_credit
     
     for credit in range(min_credit, max_credit + 1):
-      l.append(f'course("{course.id}", {credit}).')
+      kb_rules.append(f'credits("{course.id}", {credit}).')
 
-    for req_type in REQ_TYPES - REQ_TYPES_IGNORE:
+    for req_type in sorted(list(REQ_TYPES - REQ_TYPES_IGNORE)):
       req_value = getattr(course, req_type)
-      if req_value is not None:
-        l.append(f'has_{req_type}("{course.id}").')       ## add has_requisite fact for each course with that type of requisite
-        if isinstance(req_value, Or):
-          subexprs = [op for op in req_value.subexprs if not isinstance(op, UnsupportedRequirement)]
-          
-          if not subexprs:
-            l.append(f'{req_type}("{course.id}", Sem) :- semester(Sem), unsupported_{req_type}.')
-          else:
-            for subexpr in subexprs:
-              l.append(f'{req_type}("{course.id}", Sem) :- semester(Sem), {self.generate_expr(subexpr, req_type)}.')
-        else:
-          l.append(f'{req_type}("{course.id}", Sem) :- semester(Sem),{self.generate_expr(req_value, req_type)}.')
-    return list(dict.fromkeys(l))   ## deduplicate with order preserved
+      kb_rules.extend(self.generate_req_wo_has(req_type, req_value, course))
+    return list(dict.fromkeys(kb_rules))   ## deduplicate with order preserved
 
   def generate_expr(self, expr: Expr, req_type: str) -> str:
     if isinstance(expr, Requirement): return self.generate_requirement(expr, req_type)
@@ -261,8 +297,10 @@ class PrologGenerator:
   ## same requirement output for both prolog and clingo
   def generate_requirement(self, req: Requirement, req_type) -> str:
     ## for passed and taken, add semester
-    if isinstance(req, (Passed, Taken)):
+    if isinstance(req, Taken):
       return self.format_req_with_semester(req.name, req.arguments, req_type)
+    elif isinstance(req, Passed):
+      return self.format_passed_requirement(req, req_type)
     elif isinstance(req, Coregister):
       return f'taken_same("{req.arguments[0]}")'
     elif isinstance(req, Permission):
@@ -297,9 +335,9 @@ class PrologGenerator:
     return ';'.join(parts)
   
   def generate_not(self, expr: Not, req_type) -> str:
-    negated_expr = expr.subexpr
+    negated_expr = expr.subexprs[0]
     s = self.generate_expr(negated_expr, req_type)
-    return f'not ({s})'
+    return f'not {s}'
 
 class ClingoGenerator(PrologGenerator):
   ## same as PrologGenerator, only overridding conjunction and disjunction for pooling
@@ -323,9 +361,6 @@ class ClingoGenerator(PrologGenerator):
       parts.append(s)
     return ','.join(parts)
 
-  def pool_requirement_arguments(self, reqs: list[Requirement]) -> str:
-    return "; ".join(self.join_args(op.arguments) for op in reqs if op)
-
   def format_pooled_sem_requirement(self, name: str, pooled: str, req_type: str) -> str:
     suffix = self.semester_suffix(req_type)
     return f'{name}_{suffix}(({pooled}), Sem)' if pooled.count(";") >= 1 else f'{name}_{suffix}({pooled}, Sem)'
@@ -340,16 +375,22 @@ class ClingoGenerator(PrologGenerator):
 
     ## if all are with the same requirement type -> pool arguments
     if all(isinstance(op, Requirement) for op in subexprs) and len(set(type(op) for op in subexprs)) == 1:
-      pooled = self.pool_requirement_arguments(subexprs)
       node_type, node_name = type(subexprs[0]), subexprs[0].name
+
+      if node_type is Passed:
+        all_default_c = all(len(op.arguments) == 1 or op.arguments[1] == "C" for op in subexprs)
+        if all_default_c:
+          pooled_ids = "; ".join(f'"{op.arguments[0]}"' for op in subexprs)
+          return self.format_pooled_sem_requirement(node_name, pooled_ids, req_type)
+        ## mixed or non-default grade disjunctions should not be pooled
+        ## because explicit-grade requirements use a different predicate.
+        return ';'.join(self.generate_requirement(op, req_type) for op in subexprs)
+
+      pooled = "; ".join(self.join_args(op.arguments) for op in subexprs if op)
 
       if node_type is Taken:   ## taken takes semester argument
         return self.format_pooled_sem_requirement(node_name, pooled, req_type)
 
-      if node_type is Passed:  ## passed takes semester argument
-        if req_type == "coreq": print("coreq shouldn't have passed requirements, but found:", subexprs)
-        return self.format_pooled_sem_requirement(node_name, pooled, req_type)
-      
       if node_type is Coregister:  ## coregister is treated as taken_same
         return self.format_pooled_sem_requirement('taken', pooled, 'coreq')
 
@@ -360,7 +401,7 @@ class ClingoGenerator(PrologGenerator):
     aux_pred = f'aux_or_{self.aux_id}(Sem)'
     for op in subexprs:
       op_str = self.generate_expr(op, req_type)
-      self.aux_rules.append(f'{aux_pred} :- semester(Sem), {op_str}.')
+      self.aux_rules.append(f'{aux_pred} :- {op_str}.')
     return aux_pred
 
 COURSES_CSE_DEGREE = {    ## courses listed in the degree requirements.
@@ -400,7 +441,7 @@ COURSES_CSE_DEGREE = {    ## courses listed in the degree requirements.
 COURSES_CSE_DEGREE |= { ## missing prereq courses from the above courses
   'AMS 110', 'AMS 261', 'AMS 361', 'AMS 412',  ## ams
   'BME 120',  ## bme
-  'CHE 129', 'CHE 383',  ## che
+  'CHE 129', 'CHE 130', 'CHE 383',  ## che
   'ESE 124', 'ESE 280',  ## ese
   'ESG 111',  ## esg
   'ISE 108', 'ISE 208', 'ISE 218', 'ISE 334',  ## ise

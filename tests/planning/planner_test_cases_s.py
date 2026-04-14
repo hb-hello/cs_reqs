@@ -1,8 +1,8 @@
-from ortools_version.course_catalog import History
+from ortools_version.course_catalog import Taken
 
 
 def _course(cid, credits, grade, when, where='SB'):
-    return History(cid, credits, grade, when, where)
+    return Taken(cid, credits, grade, when, where)
 
 
 # CSE_AMS Two transcript from users2.yaml (through Spring 2024).

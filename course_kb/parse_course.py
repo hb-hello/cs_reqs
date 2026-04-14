@@ -400,7 +400,15 @@ def parse_req_text(text: str) -> And | Or | Requirement:
   re_permission = re.compile(r'''^permission\sof.*$''', re.IGNORECASE | re.VERBOSE)
 
   need_passed, grade_required = False, None
-  pass_with_grade = lambda cid: Passed(cid, grade_required)
+
+  def pass_with_grade(cid):
+    grade = grade_required.upper()
+    if grade == 'C':
+      return C_or_higher(cid)
+    elif grade == 'B':
+      return B_or_higher(cid)
+    else:
+      return Passed(cid, grade)
 
   for part in parts:            ## match each part with supported formats. each case is a full match
     part = part.strip()
@@ -508,3 +516,6 @@ if __name__ == "__main__":
 
   ## test: cse 101 (unsupported format)
   print(parse_req_text("Level 3 or higher on the mathematics placement examination"))
+
+  ## ams 151: B or higher
+  print(parse_req_text("B or higher in MAT 123 or level 5 on the mathematics placement examination"))

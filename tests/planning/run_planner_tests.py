@@ -4,6 +4,7 @@ import importlib
 import re
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -50,11 +51,6 @@ def to_checker_taken(history, planned_courses):
         taken.add(Taken(cid, catalog[cid].credits, 'C', when, 'SB'))
     return taken
 
-
-def clingo_sem_to_when(sem):
-    return 2024 + (sem - 1) // 4, ((sem - 1) % 4) + 1
-
-
 def validate_with_checker(history, planned_courses):
     import python_version.cs_reqs_2024 as checker
     from python_version.cs_reqs_2024 import degree_reqs
@@ -65,11 +61,11 @@ def validate_with_checker(history, planned_courses):
     return result, result['degree'][0]
 
 
-def check_must_include(schedule_courses, must_include):
+def must_include_missing(schedule_courses, must_include):
     return sorted(set(must_include) - set(schedule_courses))
 
 
-def check_must_exclude(schedule_courses, must_exclude):
+def must_exclude_added(schedule_courses, must_exclude):
     return sorted(set(must_exclude) & set(schedule_courses))
 
 
@@ -81,15 +77,17 @@ def run_ortools(history, attrs=None):
     must_include = set(attrs.get('must_include', set()))
     must_exclude = set(attrs.get('must_exclude', set()))
     start_sem = min((h.when for h in history), default=(1, 1))
-    with redirect_stdout(io.StringIO()):
-        checked, schedule, _ = plan_courses(
-            history,
-            Major('CSE'),
-            Standing('U4'),
-            starting_semester=start_sem,
-            must_include=must_include,
-            must_exclude=must_exclude,
-        )
+    # with redirect_stdout(io.StringIO()):
+    checked, schedule, _ = plan_courses(
+        history,
+        Major('CSE'),
+        Standing('U4'),
+        starting_semester=start_sem,
+        must_include=must_include,
+        must_exclude=must_exclude,
+    )
+    if checked is None:
+        return {'degree': (False, [])}, set(), {}, False, ['INFEASIBLE']
     checker_result, checker_ok = validate_with_checker(history, schedule)
     failed = [k for k, v in checker_result.items() if not v[0]]
     return normalize_checked(checked), set(schedule), schedule, checker_ok, failed
@@ -98,6 +96,11 @@ def run_ortools(history, attrs=None):
 def run_clingo_backend(history, attrs=None):
     from clingo_version.run_clingo import run_clingo
     from python_version.cs_reqs_2024 import Taken
+
+    attrs = attrs or {}
+    must_include = set(attrs.get('must_include', set()))
+    must_exclude = set(attrs.get('must_exclude', set()))
+    ## TODO: there's more
 
     taken = {
         Taken(h.id, h.credits, h.grade, h.when, h.where)
@@ -109,11 +112,12 @@ def run_clingo_backend(history, attrs=None):
             mode='plan',
             main_lp=str(ROOT / 'clingo_version' / 'cse_req_clingo.lp'),
             kb_lp=str(ROOT / 'course_kb' / 'kb_complete.lp'),
+            must_include=must_include,
+            must_exclude=must_exclude,
         )
 
     planned_courses = {}
     for sem, courses in schedule.items():
-        # when = clingo_sem_to_when(sem)
         for cid in courses:
             planned_courses[cid] = sem
 
@@ -123,55 +127,59 @@ def run_clingo_backend(history, attrs=None):
     return normalize_checked(checked), schedule_courses, planned_courses, checker_ok, failed
 
 
-def run_one(label, backend):
+def run_one(system, backend):
     passed = []
     failed = []
     skipped = []
 
-    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-        for name, func in ALL_TESTS:
-            try:
-                case = func()
-                if len(case) == 2:
-                    history, validate = case
-                    attrs = {}
-                elif len(case) == 3:
-                    history, validate, attrs = case
-                else:
-                    raise ValueError('test case must return (history, validate) or (history, validate, attrs)')
+    print(f"\nRunning tests in {system}...")
+    # with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+    for name, func in ALL_TESTS:
+        try:
+            case = func()
+            if len(case) == 2:
+                history, validate = case
+                attrs = {}
+            elif len(case) == 3:
+                history, validate, attrs = case
+            else:
+                raise ValueError('test case must return (history, validate) or (history, validate, attrs)')
 
-                approaches = set(attrs.get('approaches', []))
-                if approaches and label not in approaches:
-                    skipped.append(name)
-                    continue
+            approaches = set(attrs.get('approaches', []))
+            if approaches and system not in approaches:
+                skipped.append(name)
+                continue
 
-                checked, schedule_courses, schedule_by_course, checker_ok, checker_failed = backend(history, attrs)
-                if not checker_ok and not attrs.get('skip_checker_validation', False):
-                    failed.append((name, f"python checker rejected combined plan on: {checker_failed}"))
-                    continue
+            checked, schedule_courses, schedule_by_course, checker_ok, checker_failed = backend(history, attrs)
+            print(name)
+            if not checker_ok and not attrs.get('skip_checker_validation', False):
+                failed.append((name, f"python checker rejected combined plan on: {checker_failed}"))
+                continue
 
-                missing = check_must_include(schedule_courses, attrs.get('must_include', set()))
-                if missing:
-                    failed.append((name, f"missing must_include in planned schedule: {missing}"))
-                    continue
+            missing = must_include_missing(schedule_courses, attrs.get('must_include', set()))
+            if missing:
+                failed.append((name, f"missing must_include in planned schedule: {missing}"))
+                continue
 
-                present = check_must_exclude(schedule_courses, attrs.get('must_exclude', set()))
-                if present:
-                    failed.append((name, f"found must_exclude in planned schedule: {present}"))
-                    continue
+            added_excludes = must_exclude_added(schedule_courses, attrs.get('must_exclude', set()))
+            if added_excludes:
+                failed.append((name, f"found must_exclude in planned schedule: {added_excludes}"))
+                continue
 
-                validate(checked, schedule_courses, schedule_by_course)
-                passed.append(name)
-            except Exception as e:
-                failed.append((name, str(e)))
+            validate(checked, schedule_courses, schedule_by_course)
+            passed.append(name)
+        except Exception as e:
+            failed.append((name, str(e)))
 
     print(
-        f"\n-> {label}: passed {len(passed)} test cases, "
-        f"failed {len(failed)} test cases, skipped {len(skipped)} test cases"
+        f"\n-> {system}: passed {len(passed)} test cases, "
+        f"failed {len(failed)} test cases, skipped {len(skipped)} test cases: {skipped}"
     )
-    for name, error in failed:
-        print(f"   FAIL: {name}")
-        print(f"      - {error}")
+    if failed:
+        for name, error in failed:
+            print(f"   FAIL: {name}")
+            print(f"      - {error}")
+        print(schedule_courses)
 
 
 def run_all():
@@ -180,4 +188,10 @@ def run_all():
 
 
 if __name__ == '__main__':
-    run_all()
+    if len(sys.argv) > 1:
+        system = sys.argv[1]
+        if system == 'ortools': run_one('ortools_version', run_ortools)
+        elif system == 'clingo': run_one('clingo_version', run_clingo_backend)
+        else: print(f'unknown system: {system}, expected "ortools" or "clingo"')
+    else:
+        run_all()

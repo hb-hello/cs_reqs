@@ -2,7 +2,7 @@ from .solver import ORModel
 from .course_catalog import (
     catalog, upper_division, COURSE_OFFERED_TERMS,
     Passed, Taken, Major, Standing, UnsupportedRequirement, Permission,
-    CourseReq, And, Or, get_courses, get_reqs, Requirement, History
+    CourseReq, And, Or, get_courses, get_reqs, Requirement, Taken
 )
 
 def C_or_higher(grade): return grade in {'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'}
@@ -377,5 +377,5 @@ def fmt(cid, grades):
 if __name__ == '__main__':
     # Test: student has taken intro programming + CSE 220
     taken_ids = {'CSE 114', 'CSE 214', 'CSE 216', 'CSE 220'}
-    history   = [History(cid, catalog[cid].credits, "A", (1, 1), "SB") for cid in taken_ids]
+    history   = [Taken(cid, catalog[cid].credits, "A", (1, 1), "SB") for cid in taken_ids]
     plan_courses([], Major("CSE"), Standing("U4"), check=False)

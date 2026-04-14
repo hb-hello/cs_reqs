@@ -12,14 +12,20 @@
     "anti_req": {
       "Or": [
         {
-          "Taken": [
-            "CSE 114"
-          ]
+          "Not": {
+              "Passed": [
+                "CSE 114",
+                "C"
+              ]
+          }
         },
-        {
-          "Taken": [
-            "CSE 160"
-          ]
+        { 
+          "Not": {
+              "Passed": [
+                "CSE 160",
+                "C"
+              ]
+          }
         }
       ]
     },
@@ -4628,14 +4634,20 @@
     "anti_req": {
       "Or": [
         {
-          "Taken": [
-            "MAT 203"
-          ]
+          "Not": {
+            "Passed": [
+              "MAT 203",
+              "C"
+            ]
+          }
         },
         {
-          "Taken": [
-            "AMS 310"
-          ]
+          "Not": {
+            "Passed": [
+              "AMS 310",
+              "C"
+            ]
+          }
         }
       ]
     },
@@ -4972,7 +4984,7 @@
       "And": [
         {
           "Taken": [
-            "CHE 129"
+            "CHE 130"
           ]
         },
         {
@@ -5048,6 +5060,35 @@
     "category": null,
     "credits": "4",
     "grading": null,
+    "__type__": "Course"
+  },
+  {
+    "id": "CHE 130",
+    "title": "Problem Solving in General Chemistry",
+    "desc": "This course provides a structured environment for completing CHE 129 homework assignments and helping students develop the quantitative reasoning and problem solving skills needed in General Chemistry. Satisfactory/Unsatifactory grading only. Grading is based on attendance and participation. Required for students taking CHE 129 along with MAT 123.",
+    "prereq": null,
+    "coreq": {
+      "And": [
+        {
+          "Taken": [
+            "CHE 129"
+          ]
+        },
+        {
+          "Taken": [
+            "MAT 123"
+          ]
+        }
+      ]
+    },
+    "anti_req": null,
+    "pre_or_coreq": null,
+    "advisory_prereq": null,
+    "advisory_coreq": null,
+    "advisory_pre_or_coreq": null,
+    "category": null,
+    "credits": "1",
+    "grading": "S/U grading",
     "__type__": "Course"
   }
 ]
