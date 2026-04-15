@@ -79,28 +79,28 @@ upperdivCS(Id) :-
 wit(elect, Id) :- elective_req(), passed(Id), elective(Id).
 
 % Req 4. Calculus
-c(calc, 'AMS 151'). c(calc, 'AMS 161'). 
-c(calc2, 'MAT 125'). c(calc2, 'MAT 126'). c(calc2, 'MAT 127'). 
-c(calc3, 'MAT 131'). c(calc3, 'MAT 132'). 
-s(calculus, calc). s(calculus, calc2). s(calculus, calc3). 
-calc_req() :- 
+c(calc, 'AMS 151'). c(calc, 'AMS 161').
+c(calc2, 'MAT 125'). c(calc2, 'MAT 126'). c(calc2, 'MAT 127').
+c(calc3, 'MAT 131'). c(calc3, 'MAT 132').
+s(calc, calc). s(calc, calc2). s(calc, calc3).
+calc_req() :-
   (passed_all(calc); passed_all(calc2); passed_all(calc3)).
 
 % Req 5. Linear Algebra
-c(linalg, 'MAT 211'). 
-c(linalg2, 'AMS 210').
-s(linearAlgebra, linalg). s(linearAlgebra, linalg2).
-linalg_req() :- 
-  (passed_all(linalg); passed_all(linalg2)).
+c(alg1, 'MAT 211').
+c(alg2, 'AMS 210').
+s(alg, alg1). s(alg, alg2).
+alg_req() :-
+  (passed_all(alg1); passed_all(alg2)).
 
-% Req 6. Math Misc.
-c(finite, 'AMS 301').
-c(prob, 'AMS 310'). 
-c(prob2, 'AMS 311').
-s(mathmisc, finite). s(mathmisc, prob). s(mathmisc, prob2). 
-mathmisc_req() :- 
-  passed_all(finite),
-  (passed_all(prob); passed_all(prob2)).
+% Req 6. Statistics / Finite Math
+c(fmath, 'AMS 301').
+c(sta1, 'AMS 310').
+c(sta2, 'AMS 311').
+s(sta, fmath). s(sta, sta1). s(sta, sta2).
+sta_req() :-
+  passed_all(fmath),
+  (passed_all(sta1); passed_all(sta2)).
 
 % 7. At least one of the following natural science lecture/laboratory combinations:
 % BIO 201/204 or BIO 202/204 or BIO 203/204 or CHE 131/133 or CHE 152/154 or PHY 126/133 or 
@@ -174,7 +174,8 @@ wit(res23, Id) :- satisfied_residency_23, taken(Id, Creds, _, _, 'SBU'), passed(
 
 % ethics and communication courses
 c(ethics_comm, 'CSE 312'). c(ethics_comm, 'CSE 300').
-s(ethics, ethics_comm). 
+wit(ethics,  'CSE 312') :- passed('CSE 312').
+wit(writing, 'CSE 300') :- passed('CSE 300').
 all_requirements() :-
     intro_req(),
     advanced_req(),
@@ -182,18 +183,18 @@ all_requirements() :-
     satisfied_residency_123(),
     satisfied_residency_23(),
     calc_req(),
-    linalg_req(),
-    mathmisc_req(),
+    alg_req(),
+    sta_req(),
     sci_subseq_req(),
     passed_all(ethics_comm).
 
 
-% taken('CSE 215', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 214', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 114', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 216', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 220', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 4', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 0', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 20', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 2330', 3, 'A', (2024,2), 'SBU').
+taken('CSE 215', 3, 'A', (2024,2), 'SBU').
+taken('CSE 214', 3, 'A', (2024,2), 'SBU').
+taken('CSE 114', 3, 'A', (2024,2), 'SBU').
+taken('CSE 216', 3, 'A', (2024,2), 'SBU').
+taken('CSE 220', 3, 'A', (2024,2), 'SBU').
+taken('CSE 4', 3, 'A', (2024,2), 'SBU').
+taken('CSE 0', 3, 'A', (2024,2), 'SBU').
+taken('CSE 20', 3, 'A', (2024,2), 'SBU').
+taken('CSE 2330', 3, 'A', (2024,2), 'SBU').

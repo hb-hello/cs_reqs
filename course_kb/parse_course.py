@@ -168,8 +168,8 @@ re_course_list_parsers = {
   ## e.g. "AMS 151 or MAT 125 or 131"
   re.compile(r'''^[A-Z]{3}\s+\d{3}(?:\s+or\s+\d{3})*(?:\s+or\s+[A-Z]{3}\s+\d{3}(?:\s+or\s+\d{3})*)*$''', re.IGNORECASE | re.VERBOSE): parse_course_list_3,
 }
-
-re_any_course_list = re.compile(rf'{'|'.join(r.pattern for r in re_course_list_parsers)}', re.IGNORECASE | re.VERBOSE)
+temp = '|'.join(r.pattern for r in re_course_list_parsers)
+re_any_course_list = re.compile(rf'{temp}', re.IGNORECASE | re.VERBOSE)
 
 def build_node(node: And | Or, items: list[And|Or|Requirement]) -> And | Or | Requirement:
   if len(items) == 1: return items[0]

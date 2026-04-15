@@ -3,6 +3,9 @@ import re
 import time
 
 import pexpect
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 _PL_FILE_SWI = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cs_reqs_2024swi.pl')
 _PL_FILE_XSB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cs_reqs_2024xsb.pl')
@@ -16,6 +19,18 @@ def _normalize_where(where):
 
 # ── public API ────────────────────────────────────────────────────────────────
 
+def _parse_prolog_list(text):
+    """Parse a Prolog list written via write/1, e.g. ['CSE 114','CSE 373'] → list of strings."""
+    m = re.search(r'\[([^\]]*)\]', text)
+    if not m:
+        return []
+    inner = m.group(1).strip()
+    if not inner:
+        return []
+    items = re.findall(r"'([^']*)'|([^\s,]+)", inner)
+    return [a or b for a, b in items if a or b]
+
+
 def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False):
     if engine == 'swi':
         return run_swi(taken, with_witness=swi_with_witness, return_timing=return_timing)
@@ -28,8 +43,7 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         child.expect(r'\| \?-')
         return child.before.strip()
 
-    run_cmd(f"['{_PL_FILE_XSB}']" + ".")
-
+    run_cmd(f"['{_PL_FILE_XSB}'].")
     run_cmd("retractall(taken(_,_,_,_,_)).")
 
     for t in taken:
@@ -38,10 +52,6 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         run_cmd(f"assertz({fact}).")
 
     query_output = run_cmd("measure_wall(all_requirements).")
-
-    child.sendline('halt.')
-    child.expect(pexpect.EOF)
-
     ok = 'result(yes)' in query_output.lower()
     time_match = re.search(r"wall\s*time:\s*([-+0-9.eE]+)\s*(ms|s)", query_output.lower())
     if time_match:
@@ -50,9 +60,43 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         prolog_eval_s = raw / 1000.0 if unit == 'ms' else raw
     else:
         prolog_eval_s = None
+
+    # collect per-requirement witnesses
+    req_predicates = {
+        'intro':   'intro_req',
+        'adv':     'advanced_req',
+        'elect':   'elective_req',
+        'sci':     'sci_subseq_req',
+        'ethics':  "passed('CSE 312')",
+        'writing': "passed('CSE 300')",
+        'calc':    'calc_req',
+        'alg':     'alg_req',
+        'sta':     'sta_req',
+    }
+    checked = {}
+    for key, pred in req_predicates.items():
+        sat_out = run_cmd(f"({pred} -> write(yes) ; write(no)).")
+        sat = 'yes' in sat_out
+        wit_out = run_cmd(f"findall(Id, wit({key}, Id), Ids), write(Ids).")
+        courses = _parse_prolog_list(wit_out)
+        checked[key] = (sat, courses)
+
+    t123_out = run_cmd("credits_at_sb_cat123(T), write(T).")
+    t23_out  = run_cmd("credits_at_sb_cat23(T), write(T).")
+    t123_m = re.search(r'[\d.]+', t123_out)
+    t23_m  = re.search(r'[\d.]+', t23_out)
+    t123 = float(t123_m.group()) if t123_m else 0.0
+    t23  = float(t23_m.group())  if t23_m  else 0.0
+    checked['credits_at_SB'] = (t123 >= 24 and t23 >= 18,
+                                 [f'items123 = {int(t123)}', f'items23 = {int(t23)}'])
+    checked['degree'] = (ok, [])
+
+    child.sendline('halt.')
+    child.expect(pexpect.EOF)
+
     if return_timing:
-        return {'ok': ok, 'prolog_eval_s': prolog_eval_s, 'engine': 'xsb'}
-    return ok
+        return {'ok': ok, 'prolog_eval_s': prolog_eval_s, 'engine': 'xsb', 'checked': checked}
+    return checked
 
 
 def run_swi(taken, with_witness=True, return_timing=False):
@@ -62,6 +106,7 @@ def run_swi(taken, with_witness=True, return_timing=False):
     )
 
     import janus_swi as janus
+    print(_PL_FILE_SWI)
     janus.consult(_PL_FILE_SWI)
 
     t0 = time.perf_counter()
@@ -77,7 +122,7 @@ def run_swi(taken, with_witness=True, return_timing=False):
             return {'ok': ok, 'prolog_eval_s': elapsed, 'engine': 'swi'}
         return ok
 
-    reqs = ('intro', 'adv', 'elect', 'sci', 'ethics_comm', 'math')
+    reqs = ('intro', 'adv', 'elect', 'sci', 'ethics', 'writing', 'calc', 'alg', 'sta')
     queries = [('wit', req, 'Q') for req in reqs]
     queries.append(('all_requirements()', None, None))
     checked = {}
@@ -91,12 +136,13 @@ def run_swi(taken, with_witness=True, return_timing=False):
                 sat = d.get('truth', False)
                 if second and second in d:
                     courses.append(d[second])
-            checked[first if second else pred] = (sat, courses)
+        checked[first if second else pred] = (sat, courses)
     checked['degree'] = checked.pop('all_requirements()', checked.pop('all_requirements', (False, [])))
-    checked['ethics'] = checked.pop('ethics_comm')
-    checked['writing'] = checked['ethics']
-    checked['sta'] = checked.pop('math')
-    checked['calc'] = checked['sta']
+
+    t123 = janus.query_once("credits_at_sb_cat123(T)")['T']
+    t23  = janus.query_once("credits_at_sb_cat23(T)")['T']
+    checked['credits_at_SB'] = (t123 >= 24 and t23 >= 18,
+                                 [f'items123 = {int(t123)}', f'items23 = {int(t23)}'])
     elapsed = time.perf_counter() - t0
     if return_timing:
         return {
@@ -115,7 +161,14 @@ if __name__ == '__main__':
     import sys
     from collections import namedtuple
     from pprint import pprint
-    from tests.planning.planner_test_cases import FULL
+    FULL = {
+        'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220',                  ## intro
+        'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',       ## adv
+        'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
+        'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',                  ## calc, sta, alg
+        'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
+        'CSE 300', 'CSE 312',                                                   ## writing, ethics
+    }
     Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
     taken = [
         Taken('CSE 114', 3, 'A', (2024,2), 'SBU'),
@@ -127,7 +180,10 @@ if __name__ == '__main__':
 
     taken = [Taken(cid, 3, 'A', (2024,2), 'SB') for cid in FULL]
     # engine = sys.argv[1] if len(sys.argv) > 1 else 'xsb'
-    pprint(run_prolog(taken, 'swi', return_timing=True))
-    pprint(run_prolog(taken, 'xsb', return_timing=True))
+    try:
+        pprint(run_prolog(taken, 'swi', return_timing=True))
+    except Exception as e:
+        print(repr(e))
+    # pprint(run_prolog(taken, 'xsb', return_timing=True))
     # run_swi(taken)
 

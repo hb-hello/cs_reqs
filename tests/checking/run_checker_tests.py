@@ -4,6 +4,9 @@ import importlib
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 from pprint import pformat
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 # ── adapters ─────────────────────────────────────────────────────────────────
 
@@ -21,8 +24,8 @@ def check_ortools(taken):
     return checked
 
 def check_prolog(taken):
-    from prolog_version.run_prolog import run_prolog
-    return run_prolog(taken)
+    from prolog_version.run_prolog import run_swi
+    return run_swi(taken)
 
 def check_clingo(taken):
     from clingo_version.run_clingo import run_clingo
@@ -40,6 +43,7 @@ def collect_tests():
     modules = []
     for path in sorted(Path(__file__).parent.glob('checker_test_cases_*.py')):
         module_name = f"tests.checking.{path.stem}"
+        print(module_name)
         modules.append(importlib.import_module(module_name))
 
     tests = []
@@ -59,7 +63,7 @@ APPROACHES = [
     ('python_version',  check_python),
     ('ortools_version', check_ortools),
     ('clingo_version',  check_clingo),
-    # ('prolog_version',  check_prolog),
+    ('prolog_version',  check_prolog),
 ]
 
 def run_one(label, check_fn):
