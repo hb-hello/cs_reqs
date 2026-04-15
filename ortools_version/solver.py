@@ -1,5 +1,6 @@
 from ortools.sat.python import cp_model
 from course_kb.course_kb import Expr, Requirement, Or
+import random
 
 
 # use operator overloads to make expressions prettier? 
@@ -13,11 +14,12 @@ class ORModel:
         self._vars   = {}           # Requirements/classes converted to BoolVars or lambdas
         self._domains = {}          # var id -> domain size (upper bound; avoids Proto() calls)
         self._encoders = {}         # pred_class -> encode_dict (cached from class domain)
+        self._pinned = {}           # pred -> pinned bool value (0 or 1), for selector mirroring
         self.ignore  = tuple(ignore)
 
     # lazily build and cache the encode dict from a Requirement class's domain
     def _encoder(self, cls):
-        if cls not in self._encoders and isinstance(cls.domain, list):
+        if hasattr(cls, "domain") and cls not in self._encoders and isinstance(cls.domain, list):
             self._encoders[cls] = {v: i + 1 for i, v in enumerate(cls.domain)} | {None: 0}
         return self._encoders.get(cls)
 
@@ -70,6 +72,8 @@ class ORModel:
         else:
             iv, n = self._encode(pred, expr)  # scalar → pin
             self.model.add(iv == n)
+            if isinstance(pred, Requirement) and n in (0, 1):
+                self._pinned[pred] = n
 
     def _var(self, expr):
         return self[expr] if isinstance(expr, Requirement) else expr
@@ -134,8 +138,20 @@ class ORModel:
     # make a constraint unconditionally mandatory
     def require(self, expr):
         c = self.resolve(expr)
-        if c is not None:
-            self.model.add(c == 1)
+        if c is None or isinstance(c, int): return
+        if isinstance(c, cp_model.IntVar):  # covers BoolVar (bool is a domain-restricted IntVar)
+            self.model.add(c > 0)
+        else:                               # BoundedLinearExpression (e.g. sum >= 4)
+            self.model.add(c)\
+    
+    def require_with_wit(self, expr):
+        v, wit = self.resolve_with_wit(expr)
+        if v is None or isinstance(v, int): return
+        if isinstance(v, cp_model.IntVar):  # covers BoolVar (bool is a domain-restricted IntVar)
+            self.model.add(v > 0)
+        else:                               # BoundedLinearExpression (e.g. sum >= 4)
+            self.model.add(v)
+        return wit
 
     # recursively walk an And-Or expression and set up boolvars in the model
     def resolve(self, expr):
@@ -159,6 +175,40 @@ class ORModel:
         if isinstance(expr, Or): self.model.add_max_equality(v, ops)
         else:                    self.model.add_min_equality(v, ops)
         return v
+    
+    def leaves(self, expr):
+        if isinstance(expr, self.ignore): return set()
+        if isinstance(expr, Requirement):   return {expr}
+        else: return set().union(*(self.leaves(op) for op in expr.operands))
+
+    def resolve_with_wit(self, expr, chosen=None):
+        chosen = chosen if chosen is not None else {}
+
+        if isinstance(expr, self.ignore):
+            return None, chosen
+        if not isinstance(expr, Expr):
+            return expr, chosen  # raw BoolVar or linear expression
+        if isinstance(expr, Requirement):
+            if expr not in chosen:           # dedup: same req in multiple branches → one selector
+                chosen[expr] = self.model.new_bool_var(f"chosen_{id(expr)}")
+                self.implies(chosen[expr], self[expr])
+                if expr in self._pinned:     # mirror pin: history (1) or excluded (0)
+                    self.model.add(chosen[expr] == self._pinned[expr])
+            return chosen[expr], chosen
+
+        # recursively add constraints for operands
+        ops = [self.resolve_with_wit(op, chosen) for op in expr.operands]
+
+        # check if operands are to be ignored
+        ops = [o for o, _ in ops if o is not None]
+        if not ops: return 1, chosen        # all operands ignored makes it true
+        if len(ops) == 1: return ops[0], chosen
+
+        # create model variable to store the Or/And relation if there are multiple operands
+        v = self.model.new_bool_var(f"{'or' if isinstance(expr, Or) else 'and'}_{id(expr)}")
+        if isinstance(expr, Or): self.model.add_max_equality(v, ops)
+        else:                    self.model.add_min_equality(v, ops)
+        return v, chosen
 
     # returns an IntVar equal to the max of the given vars
     # hi: explicit upper bound — required when vars are linear expressions
@@ -193,6 +243,12 @@ class ORModel:
             self.model.add(result == 0).only_enforce_if(bv.negated())
         return result
 
+    # def select_subset(self, from_set):
+    #     # just generate a set of variables and return that set - index these variables in a different way somehow?
+    #     for var_key in from_set:
+    #         # var_key is of the form Passed(cid) maybe
+    #         self.implies(Trial_Subset(hash(var_key)), var_key) # assuming we don't need the var_key attr in Trial_Subset
+    #     return Trial_Subset # return the class, as in just return the constructor method
     # run the solver and return an ORSolver with the results
     def solve(self):
         return ORSolver(self)

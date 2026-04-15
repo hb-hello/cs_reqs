@@ -30,7 +30,6 @@ class Expr:
 ## Represent each requirement in requisites.
 class Requirement(Expr):
     name: str = ""     ## "taken", "passed", ...
-    domain = None      ## None for boolean, list of ordered domain
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)

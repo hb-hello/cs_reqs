@@ -161,6 +161,27 @@ _stub('MAT 200', 3)
 _stub('MAT 250', 3)
 
 
+def _filter_unknown_ids(expr, valid_ids):
+    if expr is None: return None
+    if isinstance(expr, (And, Or)):
+        ops = [_filter_unknown_ids(op, valid_ids) for op in expr.operands]
+        ops = [op for op in ops if op is not None]
+        if not ops: return None
+        if len(ops) == 1: return ops[0]
+        return type(expr)(*ops)
+    if isinstance(expr, Requirement):
+        return expr if course_of(expr) in valid_ids else None
+    return expr
+
+_valid_ids = set(catalog.keys())
+for _cid in list(catalog):
+    _c = catalog[_cid]
+    catalog[_cid] = Course(_c.id, _c.credits,
+        _filter_unknown_ids(_c.prereq,        _valid_ids),
+        _filter_unknown_ids(_c.coreq,         _valid_ids),
+        _filter_unknown_ids(_c.anti_req,      _valid_ids),
+        _filter_unknown_ids(_c.pre_or_coreq,  _valid_ids))
+
 # prereq options calculation for benchmarking
 
 def _req_course_ids(expr):

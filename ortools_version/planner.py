@@ -13,13 +13,19 @@ def C_or_higher(grade): return grade in {'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'}
 ## whether a class is upper-division, i.e., 300-level or above
 def upper_division(course): return int(course[4:]) >= 300
 
-class Semester(Requirement): pass   ## predicate to represent semester in which a course is taken
-class Grade(Requirement): pass   ## predicate to represent grade that student has achieved in a course
+class ReqWithDomain(Requirement):
+    default_domain = None
+    def __init__(self, cid, domain=None):
+        self._domain = domain
+        super().__init__(cid)
+    @property
+    def domain(self):
+        return self._domain if self._domain is not None else self.default_domain
+
+class Semester(ReqWithDomain): pass   ## predicate to represent grade that student has achieved in a course
+class Grade(ReqWithDomain): pass   ## predicate to represent grade that student has achieved in a course
 class SciSubset(Requirement): pass # to track the sci subset
-class Prereq(Requirement): pass
-class Coreq(Requirement): pass
-class PreOrCoreq(Requirement): pass
-class Antireq(Requirement): pass
+#TODO: fix domain (use ortools inbuilt domain instead)
 
 # pre-process raw history: one entry per course, best known grade, ignoring in-progress (None) entries
 def best_attempts(history):
@@ -76,6 +82,10 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     to_plan_from = catalog.keys() - (history_ids.keys() | must_exclude)
     to_plan_from &= course_offered_terms.keys()
 
+    # courses not in history and not plannable (not offered in any term) cannot be taken
+    for cid in catalog.keys() - to_plan_from - history_ids.keys():
+        or_model[TakenId(cid)] = 0
+
     for cid, h in history_ids.items():
         or_model[Grade(cid)]    = h.grade
         or_model[TakenId(cid)]    = 1
@@ -113,7 +123,9 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
 
     # PassedId(c, g) is true if the course was taken with grade >= g
     # this will be called when we process a PassedId(c, g) value
-    or_model[PassedId] = lambda c, g: or_model.at_least(Grade(c), g)
+
+    def passed(course, grade='C'): return or_model.at_least(Grade(course), grade)
+    or_model[PassedId] = passed
 
     # use actual credits earned from history if available, else for future courses get credits from the catalog
     credits = lambda c: history_ids[c].credits if c in history_ids else catalog[c].credits
@@ -157,7 +169,10 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         and c not in adv_courses | elect_exclude
     }
 
-    reqs["elect"] = or_model.at_least(sum(or_model.resolve(PassedId(c)) for c in electives), 4)
+    # reqs["elect"] = or_model.at_least(sum(or_model.resolve(PassedId(c)) for c in electives), 4)
+    elect_req, elect_wit = or_model.resolve_with_wit(Or(*map(PassedId, electives)))
+    or_model.implies(elect_req, sum(elect_wit.values()) >= 4)
+    reqs["elect"] = elect_req
 
     # 4. AMS 151, AMS 161 Applied Calculus I, II
     calc = {'AMS 151', 'AMS 161'}
@@ -183,7 +198,8 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     phy  = {'PHY 126', 'PHY 133'}; phy2 = {'PHY 131', 'PHY 133'}; phy3 = {'PHY 141', 'PHY 133'}
     sci_combs = [bio, bio2, bio3, che, che2, phy, phy2, phy3]
 
-    reqs["sci_combo"] = Or(*[And(*[SciSubset(cid) for cid in comb]) for comb in sci_combs])
+    # sci_combo = Or(*[And(*[SciSubset(cid) for cid in comb]) for comb in sci_combs])
+    sci_combo = Or(*[And(*[TakenId(cid) for cid in comb]) for comb in sci_combs])
 
     # 8. Additional natural science courses selected from above and following list
     # The courses selected in 7 and 8 must carry at least 9 credits total
@@ -195,23 +211,39 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
 
     sci_ids  = sorted(set().union(*sci_combs) | sci_more)
 
-    for cid in sci_ids:     # used is a subset of taken
-        or_model.implies(SciSubset(cid), TakenId(cid))
+    # for cid in sci_ids:     # used is a subset of taken
+    #     or_model.implies(SciSubset(cid), TakenId(cid))
 
-    # Grade(cid) is pinned for history courses, decision variable for future ones — apply works for both
-    sci_subset_grade_points = sum(or_model.apply(Grade(cid), 
-                                                 lambda g, cr=credits(cid): int(grade_points[g] * 100) * cr, 
-                                                 iff=SciSubset(cid)) 
-                                                 for cid in sci_ids)
+    # # Grade(cid) is pinned for history courses, decision variable for future ones — apply works for both
+    # sci_subset_grade_points = sum(or_model.apply(Grade(cid), 
+    #                                              lambda g, cr=credits(cid): int(grade_points[g] * 100) * cr, 
+    #                                              iff=SciSubset(cid)) 
+    #                                              for cid in sci_ids)
+    # # unique_credit_total: counts each sci course once (for 9-credit min and GPA denominator)
+    # sci_subset_credits = sum(or_model[SciSubset(cid)] * credits(cid) for cid in sci_ids)
+
+    # # The grade point average for the courses in Requirements 7 and 8 must be
+    # # at least 2.00.
+    # # GPA >= 2.0  i.e.,  weighted_sum >= 200 * total_credits  (scaled by 100)
+    # reqs["sci"] = And(sci_combo,
+    #                   or_model.at_least(sci_subset_credits, 9),
+    #                   or_model.at_least(sci_subset_grade_points, 200 * sci_subset_credits))
+
+    sci_sat, sci_wit = or_model.resolve_with_wit(And(sci_combo, Or(*map(TakenId, sci_ids))))
+    sci_subset_grade_points = sum(or_model.apply(Grade(course_of(leaf)), 
+                                                 lambda g, cr=credits(course_of(leaf)): int(grade_points[g] * 100) * cr, 
+                                                 iff=chosen) 
+                                                 for leaf, chosen in sci_wit.items())
     # unique_credit_total: counts each sci course once (for 9-credit min and GPA denominator)
-    sci_subset_credits = sum(or_model[SciSubset(cid)] * credits(cid) for cid in sci_ids)
+    sci_subset_credits = sum(chosen * credits(course_of(leaf)) for leaf, chosen in sci_wit.items())
+
+    or_model.implies(sci_sat, sci_subset_credits >= 9)
+    or_model.implies(sci_sat, sci_subset_grade_points >= 2 * 100 * sci_subset_credits)
 
     # The grade point average for the courses in Requirements 7 and 8 must be
     # at least 2.00.
     # GPA >= 2.0  i.e.,  weighted_sum >= 200 * total_credits  (scaled by 100)
-    reqs["sci"] = And(reqs["sci_combo"],
-                      or_model.at_least(sci_subset_credits, 9),
-                      or_model.at_least(sci_subset_grade_points, 200 * sci_subset_credits))
+    reqs["sci"] = sci_sat
 
     # 9. Professional Ethics
     ethics_courses = {'CSE 312'}
@@ -225,7 +257,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     witnesses = {req: get_reqs(expr) for req, expr in reqs.items()}
     # collect sci witness as the reqs entry is not a straightforward and/or expression
     witnesses["elect"] = {PassedId(c) for c in electives}
-    witnesses["sci"] = {SciSubset(c) for c in sci_ids}
+    witnesses["sci"] = {TakenId(c) for c in sci_ids}
 
     # At least 24 credits from items 1 to 3, and at least 18 from 2 and 3, at Stony Brook
     transfer_ids = {h.id for h in taken if h.where != 'SB'}
@@ -250,28 +282,23 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
 
         # courses that are actually set up in the model (history + plannable)
         available = history_ids.keys() | to_plan_from
-
-        # prereq/coreq lambdas: return 0 if the prereq course is not in the model,
-        # preventing ghost courses (e.g. MAT 141, PHY 121) from faking prereq satisfaction.
-        # prereq: must be taken before (<)
-        or_model[Prereq] = lambda cid, req: (
-            or_model.resolve(And(req, or_model.at_least(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 1)))
-            if course_of(req) in available else 0)
-        # coreq: must be taken same semester (= rather than <)
-        or_model[Coreq] = lambda cid, req: (
-            or_model.resolve(And(req, or_model.exactly(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 0)))
-            if course_of(req) in available else 0)
-        # pre_or_coreq: must be taken same semester or before (>= 0)
-        or_model[PreOrCoreq] = lambda cid, req: (
-            or_model.resolve(And(req, or_model.at_least(or_model[Semester(cid)] - or_model[Semester(course_of(req))], 0)))
-            if course_of(req) in available else 0)
-        # anti_req: cannot take this course if these courses are taken
-        or_model[Antireq] = lambda cid, req: or_model.resolve(req).negated()
-
+        
         for cid in to_plan_from:
-            for expr, pred in ((catalog[cid].prereq, Prereq), (catalog[cid].coreq, Coreq), (catalog[cid].pre_or_coreq, PreOrCoreq)):
-                if expr:
-                    or_model.implies(TakenId(cid), transform_leaves(expr, lambda req, c=cid, P=pred: P(c, req)))
+            if catalog[cid].prereq:
+                prereq, p_wit = or_model.resolve_with_wit(catalog[cid].prereq)
+                or_model.implies(TakenId(cid), prereq)
+                for leaf, chosen in p_wit.items():
+                    if leaf in available: or_model.implies(chosen, or_model[Semester(course_of(leaf))] < or_model[Semester(cid)])
+            if catalog[cid].coreq:
+                coreq, c_wit = or_model.resolve_with_wit(catalog[cid].coreq)
+                or_model.implies(TakenId(cid), coreq)
+                for leaf, chosen in c_wit.items():
+                    if leaf in available: or_model.implies(chosen, or_model[Semester(course_of(leaf))] == or_model[Semester(cid)])
+            if catalog[cid].pre_or_coreq:
+                pre_or_coreq, pc_wit = or_model.resolve_with_wit(catalog[cid].pre_or_coreq)
+                or_model.implies(TakenId(cid), pre_or_coreq)
+                for leaf, chosen in pc_wit.items():
+                    if leaf in available: or_model.implies(chosen, or_model[Semester(course_of(leaf))] <= or_model[Semester(cid)])
             if catalog[cid].anti_req: or_model.forbids(TakenId(cid), catalog[cid].anti_req)
 
         # enforce credit limit per semester using the same encoded semester domain
@@ -343,7 +370,7 @@ def fmt(cid, grades):
 
 if __name__ == '__main__':
     # Test: student has taken intro programming + CSE 220
-    taken_ids = {'CSE 114', 'CSE 214', 'CSE 216', 'CSE 220'}
+    taken_ids = {'CSE 114', 'CSE 214', 'CSE 215', 'CSE 216', 'CSE 220'}
     print([COURSE_OFFERED_TERMS[t] for t in taken_ids])
     history   = [Taken(cid, catalog[cid].credits, "A", (2024, 1), "SB") for cid in taken_ids]
     plan_courses(history, Major("CSE"), Standing("U4"), starting_semester=(2024, 2), ending_semester=(2025, 4), check=False, debug_print=True)
