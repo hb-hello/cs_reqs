@@ -130,3 +130,57 @@ def test_plan_coreq_160_161_mutual():
 
     # require planner to include CSE 160 and validate its coreq is scheduled
     return taken, validate, {'must_include': {'CSE 160'}}
+
+def test_plan_anti_must_take_with_no_credit():
+    taken = history(FULL)
+    
+    def validate(checked, schedule_courses, schedule_by_course, plan_credits):
+        assert 'CSE 101' in schedule_courses
+        assert plan_credits.get('CSE 101', 0) == 0, f'CSE 101 should be planned with 0 credits due to anti-req, but got {plan_credits.get("CSE 101")}'
+        assert checked['degree'][0]
+
+    return taken, validate, {'must_include': {'CSE 101'}, "approaches": {'clingo_version'}}
+
+# def test_plan_empty():
+#     taken = set()
+    
+#     def validate(checked, schedule_courses, schedule_by_course):
+#         assert len(schedule_courses) >= 1
+#         assert checked['degree'][0]
+#     return taken, validate
+
+# def test_plan_only_intro_1():
+#     ids = {'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220'}
+#     taken = history(ids)
+    
+#     def validate(checked, schedule_courses, schedule_by_course):
+#         assert len(schedule_courses) >= 1
+#         assert checked['degree'][0]
+#     return taken, validate
+
+# def test_plan_only_intro_2():
+#     ids = {'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215'}
+#     taken = history(ids)
+    
+#     def validate(checked, schedule_courses, schedule_by_course):
+#         assert len(schedule_courses) >= 1
+#         assert checked['degree'][0]
+#     return taken, validate
+
+# def test_plan_only_elect():
+#     ids = {'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355'}
+#     taken = history(ids)
+    
+#     def validate(checked, schedule_courses, schedule_by_course):
+#         assert len(schedule_courses) >= 1
+#         assert checked['degree'][0]
+#     return taken, validate
+
+# def test_plan_only_sci():
+#     ids = {'PHY 131', 'PHY 132', 'PHY 133', 'AST 203'}
+#     taken = history(ids)
+    
+#     def validate(checked, schedule_courses, schedule_by_course):
+#         assert len(schedule_courses) >= 1
+#         assert checked['degree'][0]
+#     return taken, validate

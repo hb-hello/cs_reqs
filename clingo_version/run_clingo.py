@@ -1,4 +1,5 @@
 from collections import defaultdict
+from dataclasses import dataclass, field
 import clingo
 import argparse
 import time
@@ -18,6 +19,20 @@ class ClingoContext:
 
   def course_prog(self, course_id):
     return clingo.String(course_id.string[:3])
+
+@dataclass
+class ClingoResult:
+  checked: dict
+  schedule: dict
+  stats: dict = field(default_factory=dict)
+  plan_credits: dict = field(default_factory=dict)
+
+  ## backwards compatibility, allow:
+  ## checked, schedule, stats = run_clingo(...)
+  def __iter__(self):
+    yield self.checked
+    yield self.schedule
+    yield self.stats
 
 def _collect_clingo_stats(ctrl, timed_out, model_count, min_cost):
   """Collect clingo statistics into a plain dict (single source of metrics)."""
@@ -115,16 +130,18 @@ def run_clingo(
   ## updated in on_model callback
   checked = {}
   schedule = {}
+  plan_credits = {}
   min_cost = None
   model_count = 0
   
   def on_model(model):    ## invoked for every model found
-    nonlocal checked, schedule, min_cost, model_count
+    nonlocal checked, schedule, min_cost, model_count, plan_credits
     model_count += 1
     ## reset checked when there are multiple models (in planning mode)
     checked = {item: [False, []] for item in items}  ## initialize all items to not passed
     planned_courses = {}
     schedule = defaultdict(list)
+    plan_credits = {}
     if model.cost is not None:
       cost = tuple(model.cost)
       if min_cost is None or cost < min_cost:
@@ -142,6 +159,11 @@ def run_clingo(
         sem = int_to_sem(semester_sym.number, min_sem)
         planned_courses[cid] = sem            ## record planned semester
         schedule[sem].append(cid)             ## add course to schedule
+      elif sym.name == "plan_credits":
+        cid_sym, credits_sym = sym.arguments
+        cid = str(cid_sym).strip('"')
+        credits = credits_sym.number
+        plan_credits[cid] = credits
 
     for sym in model.symbols(atoms=True):     ## collect witness
       if sym.name == "wit":
@@ -189,7 +211,11 @@ def run_clingo(
   #   stats['partial_reqs_sat']   = [k for k, (ok, _) in checked.items() if ok]
   #   stats['partial_reqs_unsat'] = [k for k, (ok, _) in checked.items() if not ok]
 
-  return checked, schedule, stats
+  return ClingoResult(
+    checked=checked, 
+    schedule=schedule, 
+    stats=stats, 
+    plan_credits=plan_credits)
 
 def run_planner_incremental(mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, timeout=10 * 60, **inputs):
   max_allowed_sems = inputs.get('num_sems', NUM_SEMS)
