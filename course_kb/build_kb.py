@@ -282,7 +282,7 @@ class PrologGenerator:
 
     for req_type in sorted(list(REQ_TYPES - REQ_TYPES_IGNORE)):
       req_value = getattr(course, req_type)
-      kb_rules.extend(self.generate_req_wo_has(req_type, req_value, course))
+      kb_rules.extend(self.generate_req_w_has(req_type, req_value, course))
     return list(dict.fromkeys(kb_rules))   ## deduplicate with order preserved
 
   def generate_expr(self, expr: Expr, req_type: str) -> str:
@@ -403,6 +403,15 @@ class ClingoGenerator(PrologGenerator):
       op_str = self.generate_expr(op, req_type)
       self.aux_rules.append(f'{aux_pred} :- {op_str}.')
     return aux_pred
+
+  def generate_not(self, expr: Not, req_type) -> str:
+    negated_expr = expr.subexprs[0]
+    if isinstance(negated_expr, Or):    ## de morgan for clingo
+      negated_and = And(
+        *[Not(sub) for sub in negated_expr.subexprs if not isinstance(sub, UnsupportedRequirement)]
+      )
+      return self.generate_and(negated_and, req_type)
+    return f'not {self.generate_expr(negated_expr, req_type)}'
 
 COURSES_CSE_DEGREE = {    ## courses listed in the degree requirements.
   'CSE 114', 'CSE 214', 'CSE 216',  ## prog
