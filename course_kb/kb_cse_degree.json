@@ -10,24 +10,22 @@
     },
     "coreq": null,
     "anti_req": {
-      "Or": [
-        {
-          "Not": {
-              "Passed": [
-                "CSE 114",
-                "C"
-              ]
+      "Not": {
+        "Or": [
+          {
+            "Passed": [
+              "CSE 114",
+              "C"
+            ]
+          },
+          { 
+            "Passed": [
+              "CSE 160",
+              "C"
+            ]
           }
-        },
-        { 
-          "Not": {
-              "Passed": [
-                "CSE 160",
-                "C"
-              ]
-          }
-        }
-      ]
+        ]
+      }
     },
     "pre_or_coreq": null,
     "advisory_prereq": null,
@@ -4632,24 +4630,22 @@
     },
     "coreq": null,
     "anti_req": {
-      "Or": [
-        {
-          "Not": {
+      "Not" : {
+        "Or" : [
+          {
+            "Passed": [
+              "AMS 310",
+              "C"
+            ]
+          },
+          {
             "Passed": [
               "MAT 203",
               "C"
             ]
           }
-        },
-        {
-          "Not": {
-            "Passed": [
-              "AMS 310",
-              "C"
-            ]
-          }
-        }
-      ]
+        ]
+      }
     },
     "pre_or_coreq": null,
     "advisory_prereq": null,

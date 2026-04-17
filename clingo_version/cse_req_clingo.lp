@@ -267,8 +267,21 @@ offered_in_range(Id) :- offered(Id, Sem), before(start_sem, Sem), before(Sem, fi
 {plan(Id, Sem) : offered(Id, Sem)} <= 1 :- 
   offered_in_range(Id), not taken_id(Id), not exclude(Id).
 
-%% exactly one credit option for each planned course
-{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
+%% 0 credits if antireq not satisfied.
+plan_credits(Id, 0) :- 
+  plan(Id, Sem), 
+  has_anti_req(Id), 
+  not anti_req(Id, Sem).
+
+%% if no anti req, or anti req satisfied, plan with credits.
+{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- 
+  plan(Id, _), 
+  not has_anti_req(Id).
+
+{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- 
+  plan(Id, Sem), 
+  has_anti_req(Id), 
+  anti_req(Id, Sem).
 
 %% assume course planned has grade A and taken in SB.
 %%  we could also make grade a variable and optimize for minimum grade needed.
@@ -282,7 +295,6 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 :- plan(Id, Sem), has_prereq(Id), not prereq(Id, Sem).
 :- plan(Id, Sem), has_coreq(Id), not coreq(Id, Sem).
 :- plan(Id, Sem), has_pre_or_coreq(Id), not pre_or_coreq(Id, Sem).
-:- plan(Id, Sem), has_anti_req(Id), not anti_req(Id, Sem).
 
 %% max credits per semester
 :- plan(_, Sem),
