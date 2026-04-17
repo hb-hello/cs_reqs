@@ -102,18 +102,19 @@ def get_kb_from_program(prog: str):
     print("Failed to retrieve course data. Status code:", resp.status_code)
     return []
 
-TYPE_KEY = "__type__"
 
 class ASTEncoder(json.JSONEncoder):
   def default(self, obj):
     if isinstance(obj, LogicalExpr):
       return {type(obj).__name__: obj.subexprs}
-      
     elif isinstance(obj, Requirement):
+      if len(obj.arguments) == 1: ## if only one argument, store it directly instead of a list
+        return {type(obj).__name__: obj.arguments[0]}
       return {type(obj).__name__: obj.arguments}
 
     return super().default(obj)
 
+TYPE_KEY = "__type__"
 class ASTDecoder(json.JSONDecoder):
   CLASS_MAP = {
     'Course': Course,
