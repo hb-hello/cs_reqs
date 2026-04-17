@@ -1,10 +1,54 @@
 from ortools.sat.python import cp_model
-from course_kb.course_kb import Expr, Requirement, Or
-import random
+from course_kb.course_kb import Expr, Requirement, LogicalExpr, Or
+from collections.abc import Iterable
 
+class Condition(Expr):
+    def __init__(self, *arguments): self.arguments = arguments
 
-# use operator overloads to make expressions prettier? 
-# lets us evaluate Pred(A) < Pred(B) to or_model[Pred(A)] < or_model[Pred(B)]
+def wit_expr(expr:cp_model.BoundedLinearExpression):
+    if isinstance(expr, cp_model.BoundedLinearExpression):
+        terms = [f"{c}*{v.name}" for c, v in zip(expr.coeffs, expr.vars)]
+        return f"{' + '.join(terms)} + {expr.offset} in {expr.bounds}"
+    if isinstance(expr, LogicalExpr):
+        # Inorder traversal: recursively format each child, then join with operator
+        parts = []
+        for child in expr.subexprs:
+            child_str = wit_expr(child, parent=expr)
+            if (isinstance(child, LogicalExpr) and
+                    not isinstance(child, Not) and
+                    type(child) != type(expr)):
+                child_str = f"({child_str})"
+            parts.append(child_str)
+        return f" {expr.op} ".join(parts)
+    else: return repr(expr)
+
+class Var(Requirement): # the "variable-representing" class represents a decision that the solver can take.
+    default_domain = None
+    # default_encoded = None
+    def __init__(self, *args, domain:Iterable=None):
+        self._domain = domain
+        # self._encoded = self._encode(domain) if isinstance(domain, Iterable) else {}
+        super().__init__(*args)
+    # @property
+    # def encoded(self):
+    #     if self._encoded is None:
+    #         if self.domain is None: 
+    #             if self.default_encoded is None: self.default_encoded = self._encode(self.default_domain)
+    #             return self.default_encoded
+    #         self._encoded = self._encode(self.domain)
+    #     return self._encoded
+
+    @property
+    def domain(self):
+        return self._domain if self._domain is not None else self.default_domain
+    
+    def __setattr__(self, name, value):
+        if name == "domain" and isinstance(value, Iterable): 
+            self._domain = value
+    #         self._encoded = self._encode(value)
+    # def _encode(domain:Iterable=None):
+    #     return {val: i + 1 for i, val in enumerate(domain)} if domain else {}
+    
 
 # stores, indexes and adds variables to the CP-SAT model
 class ORModel:
@@ -53,10 +97,6 @@ class ORModel:
     # allows the in operator to work naturally
     def __contains__(self, pred):
         return pred in self._vars
-
-    # return the BoolVar for a predicate, caching so each predicate maps to exactly one var
-    def val(self, pred):
-        return self[pred]
 
     # solver[PredClass] = lambda  → register query
     # solver[pred] = model_var    → store computed result
@@ -142,16 +182,50 @@ class ORModel:
         if isinstance(c, cp_model.IntVar):  # covers BoolVar (bool is a domain-restricted IntVar)
             self.model.add(c > 0)
         else:                               # BoundedLinearExpression (e.g. sum >= 4)
-            self.model.add(c)\
+            self.model.add(c)
     
     def require_with_wit(self, expr):
-        v, wit = self.resolve_with_wit(expr)
+        v, leaves = self._reify(expr)
         if v is None or isinstance(v, int): return
         if isinstance(v, cp_model.IntVar):  # covers BoolVar (bool is a domain-restricted IntVar)
             self.model.add(v > 0)
         else:                               # BoundedLinearExpression (e.g. sum >= 4)
             self.model.add(v)
-        return wit
+        return leaves
+    
+    def _reify(self, expr, leaves=None, name=None):
+        leaves = leaves if leaves is not None else {}   # to keep track of "leaf variables" as and when encountered
+        # if isinstance(expr, self.ignore):
+        #     return None
+        cond = Condition(f"{wit_expr(expr)} for {name if name else "unnamed"}")
+        if cond not in self._vars:
+            self._vars[cond] = self.model.new_bool_var(f"{type(cond)}_{id(cond)}")
+        
+        v = self._vars[cond]
+
+        if isinstance(expr, Requirement):
+            if expr not in leaves:           # dedup: same req in multiple branches → one selector
+                leaves[expr] = cond
+                self.implies(v, self[expr])
+                if expr in self._pinned:     # mirror pin: history (1) or excluded (0)
+                    self.model.add(v == self._pinned[expr])        
+
+        elif isinstance(expr, cp_model.BoundedLinearExpression):
+            # retreive all vars from BLE
+            # reify them and construct a new LE in domain on the selector/chosen vars
+            # maintain a var to req lookup and retreive the req from that (to make key of leaves) maybe a bidict for this?
+            self.model.add(expr).only_enforce_if(v)
+            for var in expr.vars:
+                _, leaves = self._reify(var, leaves, name)
+        
+        elif isinstance(expr, LogicalExpr):
+            ops = [self._reify(op, leaves, name)[0] for op in expr.operands if not isinstance(op, self.ignore)] # recurse
+            if not ops: return 1 # all operands ignored makes it true
+            if len(ops) == 1: return ops[0]
+            if isinstance(expr, Or): self.model.add_max_equality(v, ops)
+            else: self.model.add_min_equality(v, ops)
+
+        return v, leaves
 
     # recursively walk an And-Or expression and set up boolvars in the model
     def resolve(self, expr):
@@ -160,7 +234,7 @@ class ORModel:
         if not isinstance(expr, Expr):
             return expr  # raw BoolVar or linear expression
         if isinstance(expr, Requirement):
-            return self.val(expr)
+            return self[expr]
 
         # recursively add constraints for operands
         ops = [self.resolve(op) for op in expr.operands]
@@ -175,7 +249,7 @@ class ORModel:
         if isinstance(expr, Or): self.model.add_max_equality(v, ops)
         else:                    self.model.add_min_equality(v, ops)
         return v
-    
+
     def leaves(self, expr):
         if isinstance(expr, self.ignore): return set()
         if isinstance(expr, Requirement):   return {expr}
@@ -243,13 +317,6 @@ class ORModel:
             self.model.add(result == 0).only_enforce_if(bv.negated())
         return result
 
-    # def select_subset(self, from_set):
-    #     # just generate a set of variables and return that set - index these variables in a different way somehow?
-    #     for var_key in from_set:
-    #         # var_key is of the form Passed(cid) maybe
-    #         self.implies(Trial_Subset(hash(var_key)), var_key) # assuming we don't need the var_key attr in Trial_Subset
-    #     return Trial_Subset # return the class, as in just return the constructor method
-    # run the solver and return an ORSolver with the results
     def solve(self):
         return ORSolver(self)
 
@@ -288,3 +355,38 @@ class ORSolver:
         m = self.metrics()
         parts = [f"{k}={v}" for k, v in m.items()]
         print('Solver metrics: ' + (', '.join(parts) if parts else 'n/a'))
+
+class ReqWithDomain(Requirement):
+    default_domain = None
+    def __init__(self, cid, domain=None):
+        self._domain = domain
+        super().__init__(cid)
+    @property
+    def domain(self):
+        return self._domain if self._domain is not None else self.default_domain
+
+if __name__=='__main__':
+    m = ORModel()
+
+    class Color(ReqWithDomain): pass
+    Color.default_domain = ['red', 'green', 'blue', 'yellow']
+    countries = {'Belgium', 'France', 'Germany', 'Netherlands', 'Luxembourg', 'Denmark'}
+
+    for c in countries:
+        m.require(m[Color(c)] > 0)
+    w = []
+    m.require(m[Color('Belgium')] != m[Color('France')])
+    m.require(m[Color('Belgium')] != m[Color('Germany')])
+    m.require(m[Color('Belgium')] != m[Color('Netherlands')])
+    m.require(m[Color('Belgium')] != m[Color('Luxembourg')])
+    m.require(m[Color('Denmark')] != m[Color('Germany')])
+    m.require(m[Color('France')] != m[Color('Germany')])
+    m.require(m[Color('France')] != m[Color('Luxembourg')])
+    m.require(m[Color('Germany')] != m[Color('Luxembourg')])
+    m.require(m[Color('Germany')] != m[Color('Netherlands')])
+
+    sol = m.solve()
+    sol.print_metrics()
+
+    for c in countries:
+        print(f"{c}: {sol.value(Color(c))}")

@@ -15,3 +15,4 @@ benchmarks/**/*.json
 benchmarks/**/*.tex
 benchmarks/ortools/*
 .claude/
+course_kb/unsup.txt
