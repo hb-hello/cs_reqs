@@ -103,7 +103,11 @@ class And(LogicalExpr): pass
 
 ## Represent a list of disjuncts.
 class Or(LogicalExpr):  pass
-class Not(LogicalExpr): pass
+
+class Not(LogicalExpr):
+    def __init__(self, negated_expr):
+        self.negated_expr = negated_expr
+        super().__init__(negated_expr)
 
 ## requirements that appear as witnesses (course-level predicates, not student attributes)
 witness_types_ignore = (Major, Standing, Permission, UnsupportedRequirement)

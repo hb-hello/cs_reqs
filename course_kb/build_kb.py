@@ -102,10 +102,11 @@ def get_kb_from_program(prog: str):
     print("Failed to retrieve course data. Status code:", resp.status_code)
     return []
 
-
 class ASTEncoder(json.JSONEncoder):
   def default(self, obj):
     if isinstance(obj, LogicalExpr):
+      if isinstance(obj, Not):
+        return {type(obj).__name__: obj.negated_expr}
       return {type(obj).__name__: obj.subexprs}
     elif isinstance(obj, Requirement):
       if len(obj.arguments) == 1: ## if only one argument, store it directly instead of a list
@@ -115,6 +116,8 @@ class ASTEncoder(json.JSONEncoder):
     return super().default(obj)
 
 TYPE_KEY = "__type__"
+COURSE_TYPE_VALUE = "Course"
+
 class ASTDecoder(json.JSONDecoder):
   CLASS_MAP = {
     'Course': Course,
@@ -134,31 +137,92 @@ class ASTDecoder(json.JSONDecoder):
   def __init__(self, *args, **kwargs):
     kwargs['object_hook'] = self.object_hook
     super().__init__(*args, **kwargs)
+
+  def _decode_typed_object(self, d):
+    t = d.pop(TYPE_KEY)
+
+    if t == COURSE_TYPE_VALUE:
+      # Course JSON is sparse (None-valued keys omitted), so fill missing
+      # Course fields back with None before constructing the namedtuple.
+      course_dict = {field: d.get(field, None) for field in Course._fields}
+      return Course(**course_dict)
+
+    cls = self.CLASS_MAP.get(t)
+    if cls:
+      return cls(**d)
+
+    return d
+
+  def _decode_field(self, d):
+    ## decode AST nodes
+    ## NOTE: "len(d) == 1" means "single-key type-tagged AST node",
+    if len(d) != 1:
+      return d
+
+    k, v = next(iter(d.items()))
+    cls = self.CLASS_MAP.get(k)
+    if not cls:
+      return d
+
+    if issubclass(cls, LogicalExpr):
+      return cls(v)
+    elif issubclass(cls, Requirement):
+      if isinstance(v, (list, tuple)):
+        return cls(*v)
+      return cls(v)
+
+    return d
   
   def object_hook(self, d):
-    ## 1. Top-Level Course namedtuple (Has the "__type__" key)
     if TYPE_KEY in d:
-      t = d.pop(TYPE_KEY)
-      if t in self.CLASS_MAP:
-        return self.CLASS_MAP[t](**d)
-        
-    ## 2. Compact AST Nodes (It's a dictionary with exactly ONE key)
-    elif len(d) == 1:
-      k, v = list(d.items())[0]  ## Get the single key and its list of values
-      if k in self.CLASS_MAP:
-        cls = self.CLASS_MAP[k]
-        if issubclass(cls, LogicalExpr):
-          return cls(v)
-        elif issubclass(cls, Requirement):
-          return cls(*v)
-          
-    return d
+      return self._decode_typed_object(d)
+    return self._decode_field(d)
+
+def _all_subclasses(cls):
+  for subcls in cls.__subclasses__():
+    yield subcls
+    yield from _all_subclasses(subcls)
+
+def _compact_simple_json_objects(json_text: str) -> str:
+  """Compact requirement nodes to one-line objects.
+
+  Requirement examples:
+    {"Passed": ["CSE 216", "C"]}
+    {"Taken": "CSE 114"}
+
+  Logical nodes (`And`, `Or`, `Not`) remain pretty-printed.
+  """
+  _REQUIREMENT_KEYS = tuple(
+    sorted({subcls.__name__ for subcls in _all_subclasses(Requirement)})
+  )
+
+  _REQUIREMENT_ONE_KEY_OBJECT_RE = re.compile(
+    rf'(?P<indent>[ \t]*)\{{\n'
+    rf'[ \t]*"(?P<key>{"|".join(re.escape(name) for name in _REQUIREMENT_KEYS)})": (?P<val>.*?)\n'
+    rf'(?P=indent)\}}',
+    re.MULTILINE | re.DOTALL,
+  )
+
+  def _replace(m):
+    key = m.group('key')
+    if key not in _REQUIREMENT_KEYS:
+      return m.group(0)
+
+    try:
+      value = json.loads(m.group('val'))
+    except json.JSONDecodeError:
+      return m.group(0)
+
+    return f'{m.group("indent")}{json.dumps({key: value}, ensure_ascii=False)}'
+
+  return _REQUIREMENT_ONE_KEY_OBJECT_RE.sub(_replace, json_text)
 
 def serialize_kb_to_json(kb: list[Course], filepath):
   kb_ready_for_json = []
   for course in kb:
     d = course._asdict()
     d[TYPE_KEY] = type(course).__name__
+    d = {k: v for k, v in d.items() if v is not None}
     kb_ready_for_json.append(d)
 
   merged_kb = kb_ready_for_json
@@ -172,10 +236,19 @@ def serialize_kb_to_json(kb: list[Course], filepath):
     existing_ids = {entry.get('id') for entry in existing_kb if isinstance(entry, dict) and entry.get('id')}
     new_entries = [entry for entry in kb_ready_for_json if entry.get('id') not in existing_ids]
     merged_kb = existing_kb + new_entries
+    
+    ## remove None fields
+    merged_kb = [{k: v for k, v in entry.items() if v is not None} if isinstance(entry, dict) else entry for entry in merged_kb]
+
     added_count = len(new_entries)
 
+  json_text = _compact_simple_json_objects(
+    json.dumps(merged_kb, cls=ASTEncoder, indent=2)
+  )
+
   with open(filepath, 'w') as f:
-    json.dump(merged_kb, f, cls=ASTEncoder, indent=2)
+    f.write(json_text)
+    f.write('\n')
     print(f'JSON KB saved to {filepath} (added {added_count} new entries)')
 
 def deserialize_kb_from_json(filepath) -> list[Course]:
