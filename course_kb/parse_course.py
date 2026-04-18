@@ -87,7 +87,9 @@ def parse_req(child: Tag):
       (?:
           Anti-requisites?
         | Prerequisites?
+        | Prereqs?
         | Corequisites?
+        | Coreqs?
         | Pre\s*-?\s*or\s+Co\s*-?\s*requisites?
       )
   ):\s*(?P<value>.+)$
@@ -399,7 +401,7 @@ def parse_req_text(text: str) -> And | Or | Requirement:
 
   re_permission = re.compile(r'''^permission\sof.*$''', re.IGNORECASE | re.VERBOSE)
 
-  need_passed, grade_required = False, None
+  grade_required = 'D'  ## default grade requirement is D or higher if not specified.
 
   def pass_with_grade(cid):
     grade = grade_required.upper()
@@ -414,7 +416,6 @@ def parse_req_text(text: str) -> And | Or | Requirement:
     part = part.strip()
 
     if m := re.fullmatch(re_grade_or_higher_prefix, part):    ## course list with c or higher prefix
-      need_passed = True
       grade_required = m.group("grade").upper()  ## C, B, B+, etc.
       rest = m.group("rest")            ## rest should be a course list
       course_list_ast = parse_course_list_text(rest)
@@ -429,8 +430,7 @@ def parse_req_text(text: str) -> And | Or | Requirement:
           print("unsupported course list format in parse_course_list_text:", text)
           requirements.append(UnsupportedRequirement(part))
     elif m := re.fullmatch(re_any_course_list, part): ## course list
-      req = pass_with_grade if need_passed else Taken
-      requirements.append(apply_requirement_recursive(parse_course_list_text(part), req))
+      requirements.append(apply_requirement_recursive(parse_course_list_text(part), pass_with_grade))
     elif m := re.fullmatch(re_major, part):               ## major
       ### we assume the major requirement is a disjunction.
       ### therefore after the regex match, we find all the major codes and connect them with Or.
@@ -454,7 +454,7 @@ def parse_req_text(text: str) -> And | Or | Requirement:
     else:
       mixed_items = parse_mixed_or_list(part)
       if mixed_items is not None:
-        req = pass_with_grade if need_passed else Taken
+        req = pass_with_grade
         converted = [req(item) if isinstance(item, str) else item for item in mixed_items]
         requirements.append(build_node(Or, converted))
         continue
@@ -502,20 +502,43 @@ def parse_course_div(course_div: BeautifulSoup) -> dict:
   return course
 
 if __name__ == "__main__":
-  ## test: cse 237
-  print(parse_req_text("CSE 214 or CSE 230 or CSE 260; AMS 210 or MAT 211; CSE or ISE or DAS major"))
+  ## tests
 
-  ## test: cse 303
-  print(parse_req_text("C or higher: CSE 160 or CSE 214; CSE 150 or CSE 215; CSE major"))
+  def assert_parsed(req_text: str, expected_ast):
+    actual_ast = parse_req_text(req_text)
+    assert actual_ast == expected_ast, \
+           f"\nExpected AST:\n{expected_ast!r}\nActual AST:\n{actual_ast!r}"
 
-  ## test: cse 305
-  print(parse_req_text("C or higher: CSE 214, CSE 216 or CSE 260; CSE or DAS major"))
+  ## cse 237 (passed with D)
+  assert_parsed("CSE 214 or CSE 230 or CSE 260; AMS 210 or MAT 211; CSE or ISE or DAS major",
+    And([
+      Or([Passed("CSE 214", "D"), Passed("CSE 230", "D"), Passed("CSE 260", "D")]),
+      Or([Passed("AMS 210", "D"), Passed("MAT 211", "D")]),
+      Or([Major("CSE"), Major("ISE"), Major("DAS")])
+    ]))
 
-  ## test: cse 306
-  print(parse_req_text("C or higher: CSE 320 or ESE 280; CSE Major or ECE major."))
+  ## cse 303 (C or higher)
+  assert_parsed("C or higher: CSE 160 or CSE 214; CSE 150 or CSE 215; CSE major",
+    And([
+      Or([C_or_higher("CSE 160"), C_or_higher("CSE 214")]),
+      Or([C_or_higher("CSE 150"), C_or_higher("CSE 215")]),
+      Major("CSE")
+    ]))
 
-  ## test: cse 101 (unsupported format)
-  print(parse_req_text("Level 3 or higher on the mathematics placement examination"))
+  ## ams 151 (B or higher)
+  assert_parsed("B or higher in MAT 123 or level 5 on the mathematics placement examination",
+    Or([
+      B_or_higher("MAT 123"),
+      UnsupportedRequirement("level 5 on the mathematics placement examination")
+    ]))
 
-  ## ams 151: B or higher
-  print(parse_req_text("B or higher in MAT 123 or level 5 on the mathematics placement examination"))
+  ## cse 305 (ambiguous And/Or order, assume Or first (216 and 260 are the same))
+  assert_parsed("C or higher: CSE 214, CSE 216 or CSE 260; CSE or DAS major",
+    And([
+      And([C_or_higher("CSE 214"), Or([C_or_higher("CSE 216"), C_or_higher("CSE 260")])]),
+      Or([Major("CSE"), Major("DAS")])
+    ]))
+
+  ## cse 101 (unsupported)
+  assert_parsed("Level 3 or higher on the mathematics placement examination",
+    UnsupportedRequirement("Level 3 or higher on the mathematics placement examination"))

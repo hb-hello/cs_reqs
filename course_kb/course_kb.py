@@ -24,6 +24,8 @@ Course = namedtuple('Course',
                     ])
 
 class Expr:
+    def __init__(self, *arguments):
+        self.arguments = tuple(arguments) ## if want mutable, change to list
     def __eq__(self, other):    return type(self) is type(other) and self.arguments == other.arguments
     def __hash__(self):         return hash((type(self), tuple(self.arguments)))
 
@@ -36,7 +38,7 @@ class Requirement(Expr):
         cls.name = cls.__name__.lower()
 
     def __init__(self, *arguments):
-        self.arguments = list(arguments)
+        super().__init__(*arguments)
 
     def __repr__(self):
         arg_str = ",".join(repr(arg) for arg in self.arguments)
@@ -56,6 +58,13 @@ class Passed(Requirement):
         if type(self) is Passed:
             return f'Passed({self.course_id}, {self.min_grade})'
         return f'{type(self).__name__}({self.course_id})'
+    
+    def __eq__(self, other):  ## override so Passed(..., "C") == C_or_higher(...)
+        return (
+            isinstance(other, Passed)
+            and self.course_id == other.course_id
+            and self.min_grade == other.min_grade
+        )
 
 class C_or_higher(Passed):
     def __init__(self, course_id):
@@ -91,6 +100,7 @@ class LogicalExpr(Expr):
         if len(subexprs) == 1 and isinstance(subexprs[0], list):
             subexprs = subexprs[0]
         self.subexprs = list(subexprs)
+        super().__init__(*subexprs)
 
     @property
     def operands(self): return self.subexprs   ## for solver compatibilty, should we name it operands everywhere?
@@ -106,7 +116,7 @@ class Or(LogicalExpr):  pass
 
 class Not(LogicalExpr):
     def __init__(self, negated_expr):
-        self.negated_expr = negated_expr
+        self.negated_expr = negated_expr  ## for easier access to the negated expression
         super().__init__(negated_expr)
 
 ## requirements that appear as witnesses (course-level predicates, not student attributes)
