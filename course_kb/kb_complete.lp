@@ -5,8 +5,7 @@ unsupported_pre_or_coreq. %%% assume unsupported pre_or_coreqs are satisfied
 unsupported_anti_req.   %%% assume unsupported anti-reqs are satisfied
 credits("CSE 101", 4).
 has_anti_req("CSE 101").
-anti_req("CSE 101", Sem) :- offered("CSE 101", Sem), not passed_before("CSE 114", Sem).
-anti_req("CSE 101", Sem) :- offered("CSE 101", Sem), not passed_before("CSE 160", Sem).
+anti_req("CSE 101", Sem) :- offered("CSE 101", Sem), not passed_before("CSE 114", Sem),not passed_before("CSE 160", Sem).
 has_prereq("CSE 101").
 prereq("CSE 101", Sem) :- offered("CSE 101", Sem), unsupported_prereq.
 credits("CSE 102", 3).
@@ -432,8 +431,7 @@ has_prereq("WRT 102").
 prereq("WRT 102", Sem) :- offered("WRT 102", Sem), passed_before("WRT 101", Sem).
 credits("AMS 110", 3).
 has_anti_req("AMS 110").
-anti_req("AMS 110", Sem) :- offered("AMS 110", Sem), not passed_before("MAT 203", Sem).
-anti_req("AMS 110", Sem) :- offered("AMS 110", Sem), not passed_before("AMS 310", Sem).
+anti_req("AMS 110", Sem) :- offered("AMS 110", Sem), not passed_before("AMS 310", Sem),not passed_before("MAT 203", Sem).
 has_prereq("AMS 110").
 prereq("AMS 110", Sem) :- offered("AMS 110", Sem), taken_before("AMS 151", Sem).
 prereq("AMS 110", Sem) :- offered("AMS 110", Sem), taken_before("MAT 125", Sem).

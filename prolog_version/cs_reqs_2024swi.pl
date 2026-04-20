@@ -173,7 +173,7 @@ satisfied_residency_23() :- credits_at_sb_cat23(Total), Total >= 18.
 wit(res23, Id) :- satisfied_residency_23, taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
 % ethics and communication courses
-c(ethics_comm, 'CSE 312'). c(ethics_comm, 'CSE 300').
+c(ethics, 'CSE 312'). c(writing, 'CSE 300').
 wit(ethics,  'CSE 312') :- passed('CSE 312').
 wit(writing, 'CSE 300') :- passed('CSE 300').
 all_requirements() :-
@@ -186,15 +186,16 @@ all_requirements() :-
     alg_req(),
     sta_req(),
     sci_subseq_req(),
-    passed_all(ethics_comm).
+    passed_all(ethics),
+    passed_all(writing).
 
 
-taken('CSE 215', 3, 'A', (2024,2), 'SBU').
-taken('CSE 214', 3, 'A', (2024,2), 'SBU').
-taken('CSE 114', 3, 'A', (2024,2), 'SBU').
-taken('CSE 216', 3, 'A', (2024,2), 'SBU').
-taken('CSE 220', 3, 'A', (2024,2), 'SBU').
-taken('CSE 4', 3, 'A', (2024,2), 'SBU').
-taken('CSE 0', 3, 'A', (2024,2), 'SBU').
-taken('CSE 20', 3, 'A', (2024,2), 'SBU').
-taken('CSE 2330', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 215', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 214', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 114', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 216', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 220', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 4', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 0', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 20', 3, 'A', (2024,2), 'SBU').
+% taken('CSE 2330', 3, 'A', (2024,2), 'SBU').

@@ -40,24 +40,27 @@ def normalize_checked(checked):
         out[req] = (ok, sorted({normalize_witness(w) for w in witness}))
     return out
 
-def to_checker_taken(history, planned_courses):
+def to_checker_taken(history, planned_courses, planned_credits=None):
     from ortools_version.planner import catalog
     from python_version.cs_reqs_2024 import Taken
+
+    planned_credits = planned_credits or {}
 
     taken = set()
     for h in history:
         taken.add(Taken(h.id, h.credits, h.grade, h.when, h.where))
     for cid, when in planned_courses.items():
-        taken.add(Taken(cid, catalog[cid].credits, 'C', when, 'SB'))
+        credits = planned_credits.get(cid, catalog[cid].credits)
+        taken.add(Taken(cid, credits, 'C', when, 'SB'))
     return taken
 
-def validate_with_checker(history, planned_courses):
+def validate_with_checker(history, planned_courses, planned_credits=None):
     import python_version.cs_reqs_2024 as checker
     from python_version.cs_reqs_2024 import degree_reqs
 
     checker.w = {}
     with redirect_stdout(io.StringIO()):
-        result = degree_reqs(to_checker_taken(history, planned_courses))
+        result = degree_reqs(to_checker_taken(history, planned_courses, planned_credits=planned_credits))
     return result, result['degree'][0]
 
 
@@ -87,10 +90,15 @@ def run_ortools(history, attrs=None):
         must_exclude=must_exclude,
     )
     if checked is None:
-        return {'degree': (False, [])}, set(), {}, False, ['INFEASIBLE']
-    checker_result, checker_ok = validate_with_checker(history, schedule)
+        return {'degree': (False, [])}, set(), {}, {}, False, ['INFEASIBLE']
+
+    # OR-Tools credits are the catalog credits for planned courses.
+    from ortools_version.planner import catalog
+    plan_credits = {cid: catalog[cid].credits for cid in schedule}
+
+    checker_result, checker_ok = validate_with_checker(history, schedule, planned_credits=plan_credits)
     failed = [k for k, v in checker_result.items() if not v[0]]
-    return normalize_checked(checked), set(schedule), schedule, checker_ok, failed
+    return normalize_checked(checked), set(schedule), schedule, plan_credits, checker_ok, failed
 
 
 def run_clingo_backend(history, attrs=None):
@@ -107,7 +115,7 @@ def run_clingo_backend(history, attrs=None):
         for h in history
     }
     with redirect_stdout(io.StringIO()):
-        checked, schedule, _ = run_clingo(
+        result = run_clingo(
             taken_set=taken,
             mode='plan',
             main_lp=str(ROOT / 'clingo_version' / 'cse_req_clingo.lp'),
@@ -116,15 +124,24 @@ def run_clingo_backend(history, attrs=None):
             must_exclude=must_exclude,
         )
 
+    checked, schedule, _ = result
+    plan_credits = dict(result.plan_credits or {})
+
     planned_courses = {}
     for sem, courses in schedule.items():
         for cid in courses:
             planned_courses[cid] = sem
 
-    checker_result, checker_ok = validate_with_checker(history, planned_courses)
+    missing_credits = sorted(set(planned_courses) - set(plan_credits))
+    if missing_credits:
+        raise ValueError(
+            f"clingo backend did not return plan_credits for planned courses: {missing_credits}"
+        )
+
+    checker_result, checker_ok = validate_with_checker(history, planned_courses, planned_credits=plan_credits)
     failed = [k for k, v in checker_result.items() if not v[0]]
     schedule_courses = {cid for courses in schedule.values() for cid in courses}
-    return normalize_checked(checked), schedule_courses, planned_courses, checker_ok, failed
+    return normalize_checked(checked), schedule_courses, planned_courses, plan_credits, checker_ok, failed
 
 
 def run_one(system, backend):
@@ -150,7 +167,15 @@ def run_one(system, backend):
                 skipped.append(name)
                 continue
 
-            checked, schedule_courses, schedule_by_course, checker_ok, checker_failed = backend(history, attrs)
+            backend_out = backend(history, attrs)
+            if len(backend_out) == 5:
+                checked, schedule_courses, schedule_by_course, checker_ok, checker_failed = backend_out
+                plan_credits = {}
+            elif len(backend_out) == 6:
+                checked, schedule_courses, schedule_by_course, plan_credits, checker_ok, checker_failed = backend_out
+            else:
+                raise ValueError(f"backend must return 5 or 6 values, got {len(backend_out)}")
+
             print(name)
             if not checker_ok and not attrs.get('skip_checker_validation', False):
                 failed.append((name, f"python checker rejected combined plan on: {checker_failed}"))
@@ -166,7 +191,18 @@ def run_one(system, backend):
                 failed.append((name, f"found must_exclude in planned schedule: {added_excludes}"))
                 continue
 
-            validate(checked, schedule_courses, schedule_by_course)
+            sig = inspect.signature(validate)
+            positional = [
+                p for p in sig.parameters.values()
+                if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+            ]
+            has_varargs = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in sig.parameters.values())
+
+            if has_varargs or len(positional) >= 4:
+                validate(checked, schedule_courses, schedule_by_course, plan_credits)
+            else:
+                validate(checked, schedule_courses, schedule_by_course)
+
             passed.append(name)
         except Exception as e:
             failed.append((name, str(e)))

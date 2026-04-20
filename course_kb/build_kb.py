@@ -7,36 +7,7 @@ import os
 from bs4 import BeautifulSoup 
 from .course_kb import *
 from .parse_course import course_div_cleanup, parse_course_div, parse_req_text
-
-## all the courses in CSE that can't be handled by the current parsing logic.
-## we add them manually as overrides.
-OVERRIDES = {
-  # CSE 364: Advanced Multimedia Techniques
-  # Prerequisites: CSE/ISE 334
-  # 3 credits
-  "CSE 364": Course(
-    id="CSE 364", title="Advanced Multimedia Techniques",
-    desc="SKIPPED",
-    prereq=Or([Taken("CSE 334"), Taken("ISE 334")]),
-    coreq=None, anti_req=None, pre_or_coreq=None, advisory_prereq=None, advisory_coreq=None, advisory_pre_or_coreq=None,
-    credits="3",
-    category=None, ### ignore for now
-    grading=None
-  ),
-  # CSE 488: Internship in Computer Science
-  # Prerequisites: CSE major, U3 or U4 standing; permission of department
-  # SBC:     EXP+
-  # 3 credits, S/U grading
-  "CSE 488": Course(
-    id="CSE 488", title="Internship in Computer Science",
-    desc="SKIPPED",
-    prereq=And([Major("CSE"), Or([Standing("U3"), Standing("U4")]), Permission("permission of department")]),
-    coreq=None, anti_req=None, pre_or_coreq=None, advisory_prereq=None, advisory_coreq=None, advisory_pre_or_coreq=None,
-    credits="3",
-    category=None, ### ignore for now
-    grading="S/U"
-  ),
-}
+from .courses import COURSES_CSE_DEGREE, COURSES_OVERRIDES
 
 REQ_TYPES = {'prereq', 'coreq', 'pre_or_coreq', 'anti_req', 'advisory_prereq', 'advisory_coreq', 'advisory_pre_or_coreq'}
 REQ_TYPES_IGNORE = {'advisory_prereq', 'advisory_coreq', 'advisory_pre_or_coreq'}
@@ -83,9 +54,9 @@ def build_course_kb_from_html(html_input: str) -> list[Course]:
     clean_div = course_div_cleanup(div)                 ## div clean up
     raw_dict = parse_course_div(clean_div)              ## parse the cleaned div into a dictionary of course fields
     course = create_course_namedtuple(raw_dict)     ## convert dict to namedtuple
-    if course.id in OVERRIDES:                      ## apply overrides if exists
+    if course.id in COURSES_OVERRIDES:                      ## apply overrides if exists
       print(f"Applying override for course {course.id}")
-      course = OVERRIDES[course.id]
+      course = course._replace(**COURSES_OVERRIDES[course.id])
     kb.append(course)
 
   return kb
@@ -102,17 +73,21 @@ def get_kb_from_program(prog: str):
     print("Failed to retrieve course data. Status code:", resp.status_code)
     return []
 
-TYPE_KEY = "__type__"
-
 class ASTEncoder(json.JSONEncoder):
   def default(self, obj):
     if isinstance(obj, LogicalExpr):
+      if isinstance(obj, Not):
+        return {type(obj).__name__: obj.negated_expr}
       return {type(obj).__name__: obj.subexprs}
-      
     elif isinstance(obj, Requirement):
+      if len(obj.arguments) == 1: ## if only one argument, store it directly instead of a list
+        return {type(obj).__name__: obj.arguments[0]}
       return {type(obj).__name__: obj.arguments}
 
     return super().default(obj)
+
+TYPE_KEY = "__type__"
+COURSE_TYPE_VALUE = "Course"
 
 class ASTDecoder(json.JSONDecoder):
   CLASS_MAP = {
@@ -133,31 +108,92 @@ class ASTDecoder(json.JSONDecoder):
   def __init__(self, *args, **kwargs):
     kwargs['object_hook'] = self.object_hook
     super().__init__(*args, **kwargs)
+
+  def _decode_typed_object(self, d):
+    t = d.pop(TYPE_KEY)
+
+    if t == COURSE_TYPE_VALUE:
+      # Course JSON is sparse (None-valued keys omitted), so fill missing
+      # Course fields back with None before constructing the namedtuple.
+      course_dict = {field: d.get(field, None) for field in Course._fields}
+      return Course(**course_dict)
+
+    cls = self.CLASS_MAP.get(t)
+    if cls:
+      return cls(**d)
+
+    return d
+
+  def _decode_field(self, d):
+    ## decode AST nodes
+    ## NOTE: "len(d) == 1" means "single-key type-tagged AST node",
+    if len(d) != 1:
+      return d
+
+    k, v = next(iter(d.items()))
+    cls = self.CLASS_MAP.get(k)
+    if not cls:
+      return d
+
+    if issubclass(cls, LogicalExpr):
+      return cls(v)
+    elif issubclass(cls, Requirement):
+      if isinstance(v, (list, tuple)):
+        return cls(*v)
+      return cls(v)
+
+    return d
   
   def object_hook(self, d):
-    ## 1. Top-Level Course namedtuple (Has the "__type__" key)
     if TYPE_KEY in d:
-      t = d.pop(TYPE_KEY)
-      if t in self.CLASS_MAP:
-        return self.CLASS_MAP[t](**d)
-        
-    ## 2. Compact AST Nodes (It's a dictionary with exactly ONE key)
-    elif len(d) == 1:
-      k, v = list(d.items())[0]  ## Get the single key and its list of values
-      if k in self.CLASS_MAP:
-        cls = self.CLASS_MAP[k]
-        if issubclass(cls, LogicalExpr):
-          return cls(v)
-        elif issubclass(cls, Requirement):
-          return cls(*v)
-          
-    return d
+      return self._decode_typed_object(d)
+    return self._decode_field(d)
+
+def _all_subclasses(cls):
+  for subcls in cls.__subclasses__():
+    yield subcls
+    yield from _all_subclasses(subcls)
+
+def _compact_simple_json_objects(json_text: str) -> str:
+  """Compact requirement nodes to one-line objects.
+
+  Requirement examples:
+    {"Passed": ["CSE 216", "C"]}
+    {"Taken": "CSE 114"}
+
+  Logical nodes (`And`, `Or`, `Not`) remain pretty-printed.
+  """
+  _REQUIREMENT_KEYS = tuple(
+    sorted({subcls.__name__ for subcls in _all_subclasses(Requirement)})
+  )
+
+  _REQUIREMENT_ONE_KEY_OBJECT_RE = re.compile(
+    rf'(?P<indent>[ \t]*)\{{\n'
+    rf'[ \t]*"(?P<key>{"|".join(re.escape(name) for name in _REQUIREMENT_KEYS)})": (?P<val>.*?)\n'
+    rf'(?P=indent)\}}',
+    re.MULTILINE | re.DOTALL,
+  )
+
+  def _replace(m):
+    key = m.group('key')
+    if key not in _REQUIREMENT_KEYS:
+      return m.group(0)
+
+    try:
+      value = json.loads(m.group('val'))
+    except json.JSONDecodeError:
+      return m.group(0)
+
+    return f'{m.group("indent")}{json.dumps({key: value}, ensure_ascii=False)}'
+
+  return _REQUIREMENT_ONE_KEY_OBJECT_RE.sub(_replace, json_text)
 
 def serialize_kb_to_json(kb: list[Course], filepath):
   kb_ready_for_json = []
   for course in kb:
     d = course._asdict()
     d[TYPE_KEY] = type(course).__name__
+    d = {k: v for k, v in d.items() if v is not None}
     kb_ready_for_json.append(d)
 
   merged_kb = kb_ready_for_json
@@ -171,10 +207,19 @@ def serialize_kb_to_json(kb: list[Course], filepath):
     existing_ids = {entry.get('id') for entry in existing_kb if isinstance(entry, dict) and entry.get('id')}
     new_entries = [entry for entry in kb_ready_for_json if entry.get('id') not in existing_ids]
     merged_kb = existing_kb + new_entries
+    
+    ## remove None fields
+    merged_kb = [{k: v for k, v in entry.items() if v is not None} if isinstance(entry, dict) else entry for entry in merged_kb]
+
     added_count = len(new_entries)
 
+  json_text = _compact_simple_json_objects(
+    json.dumps(merged_kb, cls=ASTEncoder, indent=2)
+  )
+
   with open(filepath, 'w') as f:
-    json.dump(merged_kb, f, cls=ASTEncoder, indent=2)
+    f.write(json_text)
+    f.write('\n')
     print(f'JSON KB saved to {filepath} (added {added_count} new entries)')
 
 def deserialize_kb_from_json(filepath) -> list[Course]:
@@ -282,7 +327,7 @@ class PrologGenerator:
 
     for req_type in sorted(list(REQ_TYPES - REQ_TYPES_IGNORE)):
       req_value = getattr(course, req_type)
-      kb_rules.extend(self.generate_req_wo_has(req_type, req_value, course))
+      kb_rules.extend(self.generate_req_w_has(req_type, req_value, course))
     return list(dict.fromkeys(kb_rules))   ## deduplicate with order preserved
 
   def generate_expr(self, expr: Expr, req_type: str) -> str:
@@ -404,53 +449,14 @@ class ClingoGenerator(PrologGenerator):
       self.aux_rules.append(f'{aux_pred} :- {op_str}.')
     return aux_pred
 
-COURSES_CSE_DEGREE = {    ## courses listed in the degree requirements.
-  'CSE 114', 'CSE 214', 'CSE 216',  ## prog
-  'CSE 160', 'CSE 161', 'CSE 260', 'CSE 261',  ## prog2
-  'CSE 215',  ## dmath
-  'CSE 150',  ## dmath2
-  'CSE 220',  ## sys
-  'CSE 303',  ## theory
-  'CSE 350',  ## theory2
-  'CSE 373',  ## algo
-  'CSE 385',  ## algo2
-  'CSE 310', 'CSE 316', 'CSE 320', 'CSE 416',  ## common
-  'AMS 151', 'AMS 161',  ## calc
-  'MAT 125', 'MAT 126', 'MAT 127',  ## calc2
-  'MAT 131', 'MAT 132',  ## calc3
-  'MAT 211',  ## alg
-  'AMS 210',  ## alg2
-  'AMS 301',  ## fmath
-  'AMS 310',  ## sta
-  'AMS 311',  ## sta2
-  'BIO 201', 'BIO 204',  ## bio
-  'BIO 202', 'BIO 204',  ## bio2
-  'BIO 203', 'BIO 204',  ## bio3
-  'CHE 131', 'CHE 133',  ## che
-  'CHE 152', 'CHE 154',  ## che2
-  'PHY 126', 'PHY 133',  ## phy
-  'PHY 131', 'PHY 133',  ## phy2
-  'PHY 141', 'PHY 133',  ## phy3
-  'CSE 312',  ## ethics
-  'CSE 300',  ## writing
-  'WRT 101', 'WRT 102', ## needed for writing
-  'CSE 475', 'CSE 495', 'CSE 300', 'CSE 301', 'CSE 312',  ## elect_exclude
-  'AST 203', 'AST 205', 'CHE 132', 'CHE 321', 'CHE 322', 'CHE 331', 'CHE 332', 'GEO 102', 'GEO 103', 'GEO 112', 'GEO 123', 'GEO 122', 'PHY 125', 'PHY 127', 'PHY 132', 'PHY 134', 'PHY 142', 'PHY 251', 'PHY 252'  ## sci_more
-}
-
-COURSES_CSE_DEGREE |= { ## missing prereq courses from the above courses
-  'AMS 110', 'AMS 261', 'AMS 361', 'AMS 412',  ## ams
-  'BME 120',  ## bme
-  'CHE 129', 'CHE 130', 'CHE 383',  ## che
-  'ESE 124', 'ESE 280',  ## ese
-  'ESG 111',  ## esg
-  'ISE 108', 'ISE 208', 'ISE 218', 'ISE 334',  ## ise
-  'MAT 130', 'MAT 141', 'MAT 142', 'MAT 171',  ## mat calc & prep
-  'MAT 200', 'MAT 203', 'MAT 205', 'MAT 250',  ## mat intermediate
-  'MAT 303', 'MAT 307',  ## mat advanced
-  'MEC 102', 'MEC 262',  ## mec
-  'PHY 122', 'PHY 124'   ## phy
-}
+  def generate_not(self, expr: Not, req_type) -> str:
+    negated_expr = expr.subexprs[0]
+    if isinstance(negated_expr, Or):    ## de morgan for clingo
+      negated_and = And(
+        *[Not(sub) for sub in negated_expr.subexprs if not isinstance(sub, UnsupportedRequirement)]
+      )
+      return self.generate_and(negated_and, req_type)
+    return f'not {self.generate_expr(negated_expr, req_type)}'
 
 def main():
   parser = argparse.ArgumentParser(

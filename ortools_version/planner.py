@@ -26,6 +26,9 @@ class Semester(ReqWithDomain): pass   ## predicate to represent grade that stude
 class Grade(ReqWithDomain): pass   ## predicate to represent grade that student has achieved in a course
 class SciSubset(Requirement): pass # to track the sci subset
 #TODO: fix domain (use ortools inbuilt domain instead)
+#TODO: research interval vars for grades/passed
+# ergo ai, xsb + explainability
+
 
 # pre-process raw history: one entry per course, best known grade, ignoring in-progress (None) entries
 def best_attempts(history):
@@ -170,9 +173,9 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     }
 
     # reqs["elect"] = or_model.at_least(sum(or_model.resolve(PassedId(c)) for c in electives), 4)
-    elect_req, elect_wit = or_model.resolve_with_wit(Or(*map(PassedId, electives)))
-    or_model.implies(elect_req, sum(elect_wit.values()) >= 4)
-    reqs["elect"] = elect_req
+    # elect_wit = or_model.require_with_wit(Or(*map(PassedId, electives)))
+    elect_wit = or_model.require_with_wit(sum(or_model[PassedId(c)] for c in electives) >= 4)
+    # reqs["elect"] = elect_req
 
     # 4. AMS 151, AMS 161 Applied Calculus I, II
     calc = {'AMS 151', 'AMS 161'}
@@ -256,7 +259,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     # collect all reqs into witnesses
     witnesses = {req: get_reqs(expr) for req, expr in reqs.items()}
     # collect sci witness as the reqs entry is not a straightforward and/or expression
-    witnesses["elect"] = {PassedId(c) for c in electives}
+    # witnesses["elect"] = {PassedId(c) for c in electives}
     witnesses["sci"] = {TakenId(c) for c in sci_ids}
 
     # At least 24 credits from items 1 to 3, and at least 18 from 2 and 3, at Stony Brook
@@ -284,7 +287,8 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         available = history_ids.keys() | to_plan_from
         
         for cid in to_plan_from:
-            if catalog[cid].prereq:
+            if catalog[cid].prereq: #leaf: chosen
+                # tree, it has one root, and leaves
                 prereq, p_wit = or_model.resolve_with_wit(catalog[cid].prereq)
                 or_model.implies(TakenId(cid), prereq)
                 for leaf, chosen in p_wit.items():
@@ -299,7 +303,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
                 or_model.implies(TakenId(cid), pre_or_coreq)
                 for leaf, chosen in pc_wit.items():
                     if leaf in available: or_model.implies(chosen, or_model[Semester(course_of(leaf))] <= or_model[Semester(cid)])
-            if catalog[cid].anti_req: or_model.forbids(TakenId(cid), catalog[cid].anti_req)
+            if catalog[cid].anti_req: or_model.forbids(TakenId(cid), not(catalog[cid].anti_req)) # do before
 
         # enforce credit limit per semester using the same encoded semester domain
         # to avoid comparing against semesters that are outside Semester.domain.
@@ -350,7 +354,9 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         wit += sorted(req for req in witnesses[name] if isinstance(req, str))
         satisfied = bool(solution.value(req_vars[name])) if check and name in req_vars else True
         checked[name] = (satisfied, wit)
-        if debug_print: print(f"{name} : {', '.join(fmt(c, grades) for c in wit)}")
+        if debug_print: 
+            print(f"{name} : {', '.join(fmt(c, grades) for c in wit)}")
+    print(f"elect: {', '.join((course_of(leaf), solution.value(chosen)) for leaf, chosen in elect_wit.items())}")
 
     checked['degree'] = (all(v for v, _ in checked.values()), [])
 

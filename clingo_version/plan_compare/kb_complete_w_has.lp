@@ -5,8 +5,7 @@ unsupported_pre_or_coreq. %%% assume unsupported pre_or_coreqs are satisfied
 unsupported_anti_req.   %%% assume unsupported anti-reqs are satisfied
 credits("CSE 101", 4).
 has_anti_req("CSE 101").
-anti_req("CSE 101", Sem) :- offered("CSE 101", Sem), not passed_before("CSE 114", Sem).
-anti_req("CSE 101", Sem) :- offered("CSE 101", Sem), not passed_before("CSE 160", Sem).
+anti_req("CSE 101", Sem) :- offered("CSE 101", Sem), not passed_before("CSE 114", Sem),not passed_before("CSE 160", Sem).
 has_prereq("CSE 101").
 prereq("CSE 101", Sem) :- offered("CSE 101", Sem), unsupported_prereq.
 credits("CSE 102", 3).
@@ -266,7 +265,7 @@ credits("AMS 210", 3).
 has_prereq("AMS 210").
 prereq("AMS 210", Sem) :- offered("AMS 210", Sem), taken_before("AMS 151", Sem).
 prereq("AMS 210", Sem) :- offered("AMS 210", Sem), taken_before("MAT 131", Sem).
-prereq("AMS 210", Sem) :- offered("AMS 210", Sem), taken_same("MAT 126").
+prereq("AMS 210", Sem) :- offered("AMS 210", Sem), taken_together("MAT 126").
 credits("AMS 301", 3).
 has_prereq("AMS 301").
 prereq("AMS 301", Sem) :- offered("AMS 301", Sem), taken_before("AMS 210", Sem).
@@ -291,7 +290,7 @@ prereq("MAT 123", Sem) :- offered("MAT 123", Sem), unsupported_prereq.
 credits("MAT 125", 3).
 has_prereq("MAT 125").
 prereq("MAT 125", Sem) :- offered("MAT 125", Sem), passed_before("MAT 123", Sem).
-prereq("MAT 125", Sem) :- offered("MAT 125", Sem), taken_same("MAT 130").
+prereq("MAT 125", Sem) :- offered("MAT 125", Sem), taken_together("MAT 130").
 credits("MAT 126", 3).
 has_prereq("MAT 126").
 prereq("MAT 126", Sem) :- offered("MAT 126", Sem), passed_before("MAT 125", Sem).
@@ -314,7 +313,7 @@ has_prereq("MAT 211").
 prereq("MAT 211", Sem) :- offered("MAT 211", Sem), passed_before("AMS 151", Sem).
 prereq("MAT 211", Sem) :- offered("MAT 211", Sem), passed_before("MAT 131", Sem).
 prereq("MAT 211", Sem) :- offered("MAT 211", Sem), passed_before("MAT 141", Sem).
-prereq("MAT 211", Sem) :- offered("MAT 211", Sem), taken_same("MAT 126").
+prereq("MAT 211", Sem) :- offered("MAT 211", Sem), taken_together("MAT 126").
 credits("BIO 201", 3).
 has_prereq("BIO 201").
 prereq("BIO 201", Sem) :- offered("BIO 201", Sem), unsupported_prereq.
@@ -322,16 +321,16 @@ credits("BIO 202", 3).
 has_prereq("BIO 202").
 prereq("BIO 202", Sem) :- offered("BIO 202", Sem), passed_before("CHE 129", Sem).
 prereq("BIO 202", Sem) :- offered("BIO 202", Sem), passed_before("CHE 131", Sem).
-prereq("BIO 202", Sem) :- offered("BIO 202", Sem), taken_same("CHE 152").
+prereq("BIO 202", Sem) :- offered("BIO 202", Sem), taken_together("CHE 152").
 credits("BIO 203", 3).
 has_prereq("BIO 203").
 prereq("BIO 203", Sem) :- offered("BIO 203", Sem), taken_before("CHE 129", Sem).
 prereq("BIO 203", Sem) :- offered("BIO 203", Sem), taken_before("CHE 131", Sem).
-prereq("BIO 203", Sem) :- offered("BIO 203", Sem), taken_same("CHE 152").
+prereq("BIO 203", Sem) :- offered("BIO 203", Sem), taken_together("CHE 152").
 credits("BIO 204", 2).
 has_prereq("BIO 204").
 prereq("BIO 204", Sem) :- offered("BIO 204", Sem), taken_before("CHE 129", Sem),taken_before("CHE 131", Sem).
-prereq("BIO 204", Sem) :- offered("BIO 204", Sem), taken_same("CHE 152").
+prereq("BIO 204", Sem) :- offered("BIO 204", Sem), taken_together("CHE 152").
 credits("CHE 131", 4).
 has_coreq("CHE 131").
 coreq("CHE 131", Sem) :- offered("CHE 131", Sem), unsupported_coreq.
@@ -432,8 +431,7 @@ has_prereq("WRT 102").
 prereq("WRT 102", Sem) :- offered("WRT 102", Sem), passed_before("WRT 101", Sem).
 credits("AMS 110", 3).
 has_anti_req("AMS 110").
-anti_req("AMS 110", Sem) :- offered("AMS 110", Sem), not passed_before("MAT 203", Sem).
-anti_req("AMS 110", Sem) :- offered("AMS 110", Sem), not passed_before("AMS 310", Sem).
+anti_req("AMS 110", Sem) :- offered("AMS 110", Sem), not passed_before("AMS 310", Sem),not passed_before("MAT 203", Sem).
 has_prereq("AMS 110").
 prereq("AMS 110", Sem) :- offered("AMS 110", Sem), taken_before("AMS 151", Sem).
 prereq("AMS 110", Sem) :- offered("AMS 110", Sem), taken_before("MAT 125", Sem).
