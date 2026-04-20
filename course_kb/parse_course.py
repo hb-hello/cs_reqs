@@ -76,28 +76,53 @@ def parse_req(child: Tag):
   ## parse the requisites (prerequisite/corequisite/antirequisite) from <p> tag.
   ## input: a tag object in beautifulsoup
   ## output: boolean indicating whether parsing is successful, and
-  ##         a dictionary with key requisite names, e.g. 'Prerequisite', 'Corequisite', etc. 
+  ##         a dictionary keyed by Course field names, e.g. 'prereq', 'coreq', etc.
   ##           if parsing is successful (otherwise None).
+
+  req_field_patterns = [
+     ('prereq',
+      re.compile(r'^(?:mandatory\s+)?pre(?:-|\s)?(?:reqs?|requisites?)$', re.IGNORECASE)),
+     ('coreq',
+      re.compile(r'^(?:mandatory\s+)?co(?:-|\s)?(?:reqs?|requisites?)$', re.IGNORECASE)),
+     ('pre_or_coreq',
+      re.compile(r'^(?:mandatory\s+)?pre\s*-?\s*or\s+co(?:-|\s)?(?:reqs?|requisites?)$', re.IGNORECASE)),
+     ('anti_req',
+      re.compile(r'^anti(?:-|\s)?requisites?$', re.IGNORECASE)),
+     ('advisory_prereq',
+      re.compile(r'^advisory\s+pre(?:-|\s)?(?:reqs?|requisites?)$', re.IGNORECASE)),
+     ('advisory_coreq',
+      re.compile(r'^advisory\s+co(?:-|\s)?(?:reqs?|requisites?)$', re.IGNORECASE)),
+     ('advisory_pre_or_coreq',
+      re.compile(r'^advisory\s+pre\s*-?\s*or\s+co(?:-|\s)?(?:reqs?|requisites?)$', re.IGNORECASE)),
+  ]
 
   ## compiled regex patterns for requisites
   re_requisite = re.compile(r'''
   ^
   (?P<requisite>
-      (?:Advisory\s+)?          # optional "Advisory" at the beginning
+      (?:Mandatory\s+)?
+      (?:Advisory\s+)?
       (?:
-          Anti-requisites?
-        | Prerequisites?
-        | Prereqs?
-        | Corequisites?
-        | Coreqs?
-        | Pre\s*-?\s*or\s+Co\s*-?\s*requisites?
+          Pre(?:-|\s)?(?:reqs?|requisites?)
+        | Co(?:-|\s)?(?:reqs?|requisites?)
+        | Pre\s*-?\s*or\s+Co(?:-|\s)?(?:reqs?|requisites?)
+        |  Anti(?:-|\s)?requisites?
       )
   ):\s*(?P<value>.+)$
   ''', re.IGNORECASE | re.VERBOSE | re.DOTALL)   ## dotall to match newlines 
 
   if child.name != "p": return False, None  ## only process <p> tags for requisites.
   m = re_requisite.fullmatch(child.get_text(" ", strip=True))
-  if m: return True, {m.group("requisite"): m.group("value")}
+  if m:
+    requisite_label = m.group("requisite").strip().lower()
+    field = None
+    for target_field, pat in req_field_patterns:
+      if pat.fullmatch(requisite_label):
+        field = target_field
+        break
+    if field is None:
+      return False, None
+    return True, {field: m.group("value")}
   return False, None
 
 def parse_credits(child: Tag):
@@ -317,7 +342,7 @@ def apply_requirement_recursive(node: And | Or, requirement: Requirement) -> And
 #   return UnsupportedRequirement(str(d))
 
 
-def parse_req_text(text: str) -> And | Or | Requirement:
+def parse_req_text(text: str, is_coreq=False) -> And | Or | Requirement:
   ## parse prerequisite/corequisite/antirequisite text. 
   ## input:  text string for requsites (pre/co/anti/advisory)
   ## output: a structured representation of the requisites.
@@ -401,20 +426,20 @@ def parse_req_text(text: str) -> And | Or | Requirement:
 
   re_permission = re.compile(r'''^permission\sof.*$''', re.IGNORECASE | re.VERBOSE)
 
-  grade_required = 'D'  ## default grade requirement is D or higher if not specified.
+  ## for corequisites, we don't require a grade, just taken. otherwise, default passing grade is D
+  grade_required = None if is_coreq else 'D'
 
   def pass_with_grade(cid):
+    if grade_required == None:
+      return Taken(cid)
+
     grade = grade_required.upper()
-    if grade == 'C':
-      return C_or_higher(cid)
-    elif grade == 'B':
-      return B_or_higher(cid)
-    else:
-      return Passed(cid, grade)
+    if grade == 'B': return B_or_higher(cid)
+    if grade == 'C': return C_or_higher(cid)
+    return Passed(cid, grade)
 
   for part in parts:            ## match each part with supported formats. each case is a full match
     part = part.strip()
-
     if m := re.fullmatch(re_grade_or_higher_prefix, part):    ## course list with c or higher prefix
       grade_required = m.group("grade").upper()  ## C, B, B+, etc.
       rest = m.group("rest")            ## rest should be a course list
@@ -468,9 +493,8 @@ def parse_req_text(text: str) -> And | Or | Requirement:
 def parse_course_div(course_div: BeautifulSoup) -> dict: 
   ## parse course div after preprocessing
   ## input: a course div object in beautifulsoup after cleanup
-  ## output: a dictionary with course fields: id, desc, credits, grading, and requisites.
-  ###        for requisites, we keep the original string as is. if it's 'Prerequisite:' in the text
-  ###        then the key is 'Prerequisite'. Similiar for other requisites.
+  ## output: a dictionary with course fields: id, desc, credits, grading, and requisites
+  ##         keyed by Course field names (e.g. prereq/coreq/...).
   course = {}
 
   children = course_div.find_all(recursive=False) ## get all tag children

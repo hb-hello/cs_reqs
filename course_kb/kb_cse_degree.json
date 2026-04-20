@@ -3,9 +3,7 @@
     "id": "CSE 101",
     "title": "Computer Science Principles",
     "desc": "Introduces central ideas of computing and computer science, instills practices of algorithmic and computational thinking, and engages students in the creative aspects of the field. Also introduces appropriate computing technology as a means for solving computational problems and exploring creative endeavors. Includes weekly computer programming assignments, but assumes no previous programming experience. May not be taken by students with credit for CSE 114 or CSE 160.",
-    "prereq": {
-      "UnsupportedRequirement": "Level 3 or higher on the mathematics placement examination"
-    },
+    "prereq": {"UnsupportedRequirement": "Level 3 or higher on the mathematics placement examination"},
     "anti_req": {
       "Not": {
         "Or": [
@@ -23,7 +21,7 @@
     "desc": "An introduction to the design of Web pages, specifically the development of browser and device independent HTML, with an emphasis on the XHTML standards. Includes the use of style sheets (CSS) and tools for page layout and verification.  HTML is presented as a mark-up language, exploring the rules of HTML elements and attributes. Students learn the separation of page viewing information from the HTML through CSS style sheets as well as the use of block layout without using HTML tables. Addresses HTML display properties including text, color, image, and graphic elements as well as approaches to HTML validation and techniques.",
     "advisory_prereq": {
       "Or": [
-        {"Taken": "CSE 101"},
+        {"Passed": ["CSE 101", "D"]},
         {"UnsupportedRequirement": "basic computer skills"}
       ]
     },
@@ -34,9 +32,7 @@
     "id": "CSE 110",
     "title": "Introduction to Computer Science",
     "desc": "An introduction to fundamentals of computer science. Topics covered include algorithmic design, problem-solving techniques for computer programming, fundamentals of digital logic and computer organization, the role of the operating system, introductory programming methodology including variables, assignment statements, control statements and subroutines (methods), programming paradigms, the compilation process, theoretical limits of computation, social and ethical issues.  Intended for students who have not taken any college-level computer science course containing programming assignments in a high-level programming language.",
-    "prereq": {
-      "UnsupportedRequirement": "Level 3 or higher on the mathematics placement examination"
-    },
+    "prereq": {"UnsupportedRequirement": "Level 3 or higher on the mathematics placement examination"},
     "credits": "3",
     "__type__": "Course"
   },
@@ -46,9 +42,9 @@
     "desc": "Introduction to the mathematical foundations of computer science. Topics include logic (propositional and predicate); proof techniques (induction/recursion, contradiction, and others); and key concepts of mathematical structures (sequences, sets, functions, relations, and graphs). Not for credit in addition to CSE 215.",
     "prereq": {
       "Or": [
-        {"Taken": "AMS 151"},
-        {"Taken": "MAT 125"},
-        {"Taken": "MAT 131"},
+        {"Passed": ["AMS 151", "D"]},
+        {"Passed": ["MAT 125", "D"]},
+        {"Passed": ["MAT 131", "D"]},
         {"UnsupportedRequirement": "level 6 on the mathematics placement examination"}
       ]
     },
@@ -59,13 +55,11 @@
     "id": "CSE 114",
     "title": "Introduction to Object-Oriented Programming",
     "desc": "An introduction to procedural and object-oriented  programming methodology. Topics include program structure, conditional and iterative programming, procedures, arrays and records, object classes, encapsulation, information hiding, inheritance, polymorphism, file I/O, and exceptions. Includes required laboratory. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
-    "prereq": {
-      "UnsupportedRequirement": "Level 5 or higher on the math placement exam"
-    },
+    "prereq": {"UnsupportedRequirement": "Level 5 or higher on the math placement exam"},
     "advisory_prereq": {
       "Or": [
-        {"Taken": "CSE 101"},
-        {"Taken": "ISE 108"}
+        {"Passed": ["CSE 101", "D"]},
+        {"Passed": ["ISE 108", "D"]}
       ]
     },
     "credits": "4",
@@ -75,9 +69,7 @@
     "id": "CSE 130",
     "title": "Introduction to Programming in C",
     "desc": "Introduces programming concepts using the C language.  Variables, data types, and expressions.  Conditional and iterative statements, functions, and structures.  Pointers, arrays, and strings.  Scope of variables and program organization.  Includes programming projects of an interdisciplinary nature.  Suitable as an introductory programming course for non-CSE majors.",
-    "prereq": {
-      "UnsupportedRequirement": "Level 3 or higher on the mathematics placement examination"
-    },
+    "prereq": {"UnsupportedRequirement": "Level 3 or higher on the mathematics placement examination"},
     "credits": "3",
     "__type__": "Course"
   },
@@ -98,15 +90,9 @@
     "id": "CSE 160",
     "title": "Computer Science A: Honors",
     "desc": "First part of a two-semester sequence, CSE 160 and CSE 260.  An introduction to procedural and object-oriented programming methodology and basic data structures. Topics include program structure, conditional and iterative programming, procedures, arrays, object classes, encapsulation, information hiding, inheritance, polymorphism, file I/O, exceptions and simple data structures, such as lists, queues and stacks.",
-    "prereq": {
-      "UnsupportedRequirement": "Honors in Computer Science or the Honors College or the WISE Honors Program or University Scholars or the Simons STEM Scholars Program."
-    },
-    "coreq": {
-      "Taken": "CSE 161"
-    },
-    "advisory_prereq": {
-      "Taken": "CSE 101"
-    },
+    "prereq": {"UnsupportedRequirement": "Honors in Computer Science or the Honors College or the WISE Honors Program or University Scholars or the Simons STEM Scholars Program."},
+    "coreq": {"Taken": "CSE 161"},
+    "advisory_prereq": {"Passed": ["CSE 101", "D"]},
     "credits": "3",
     "__type__": "Course"
   },
@@ -114,9 +100,7 @@
     "id": "CSE 161",
     "title": "Laboratory for Computer Science A: Honors",
     "desc": "Must be taken concurrently with lecture component, CSE 160; a common grade for both courses will be assigned. Laboratory sessions will focus on development of pragmatic programming skills and use of programming environments and tools in a supervised setting.",
-    "coreq": {
-      "Taken": "CSE 160"
-    },
+    "coreq": {"Taken": "CSE 160"},
     "credits": "1",
     "__type__": "Course"
   },
@@ -145,12 +129,7 @@
     "id": "CSE 214",
     "title": "Data Structures",
     "desc": "An extension of programming methodology to data storage and manipulation on complex data sets. Topics include: programming and applications of data structures; stacks, queues, lists, binary trees, heaps, priority queues, balanced trees and graphs. Recursive programming is heavily utilized. Fundamental sorting and searching algorithms are examined along with informal efficiency comparisons.",
-    "prereq": {
-      "Passed": [
-        "CSE 114",
-        "C"
-      ]
-    },
+    "prereq": {"C_or_higher": "CSE 114"},
     "credits": "4",
     "__type__": "Course"
   },
@@ -160,9 +139,9 @@
     "desc": "Introduction to the logical and mathematical foundations of computer science. Topics include functions, relations, and sets; recursion; elementary logic; and mathematical induction and other proof techniques. Not for credit in addition to CSE 113.",
     "prereq": {
       "Or": [
-        {"Taken": "AMS 151"},
-        {"Taken": "MAT 125"},
-        {"Taken": "MAT 131"}
+        {"Passed": ["AMS 151", "D"]},
+        {"Passed": ["MAT 125", "D"]},
+        {"Passed": ["MAT 131", "D"]}
       ]
     },
     "credits": "4",
@@ -174,7 +153,7 @@
     "desc": "Intermediate-level programming concepts and paradigms, including  functional programming, object-orientation, basics of type systems, memory management, program and data abstractions, parameter passing, modularity, and parallel programming. Includes weekly recitations, which provide students with experience in the practice of programming in a variety of high-level languages.",
     "prereq": {
       "And": [
-        {"Passed": ["CSE 214", "C"]},
+        {"C_or_higher": "CSE 214"},
         {"Major": "CSE"}
       ]
     },
@@ -186,7 +165,10 @@
     "title": "Systems Fundamentals I",
     "desc": "Introduces systems-level programming concepts using the C language and assembly language, and explores the correspondence of programming constructs in these languages. Topics include internal data representation, basic instructions and control structures, bitwise operations, arithmetic operations, memory management, pointers, function calls and parameter passing, linking and loading. Included is an overview of foundational topics in computer architecture, organization and networks.",
     "prereq": {
-      "UnsupportedRequirement": "C or higher in CSE 214 or co-requisite CSE 260 and CSE major"
+      "Or": [
+        {"C_or_higher": "CSE 214"},
+        {"UnsupportedRequirement": "co-requisite CSE 260 and CSE major"}
+      ]
     },
     "credits": "4",
     "__type__": "Course"
@@ -197,12 +179,12 @@
     "desc": "Intermediate programming concepts using the C language in a UNIX environment. Files, systems calls, stream I/O, the C preprocessor, bitwise operations, the use of makefiles, advanced formatting of input and output, conversions. Introduction to object-oriented programming using C++; classes, objects, inheritance, aggregation, and overloading. Suitable for all majors.",
     "prereq": {
       "Or": [
-        {"Taken": "CSE 130"},
-        {"Taken": "CSE 220"},
-        {"Taken": "ESE 124"},
-        {"Taken": "ESG 111"},
-        {"Taken": "BME 120"},
-        {"Taken": "MEC 102"}
+        {"Passed": ["CSE 130", "D"]},
+        {"Passed": ["CSE 220", "D"]},
+        {"Passed": ["ESE 124", "D"]},
+        {"Passed": ["ESG 111", "D"]},
+        {"Passed": ["BME 120", "D"]},
+        {"Passed": ["MEC 102", "D"]}
       ]
     },
     "credits": "3",
@@ -212,12 +194,8 @@
     "id": "CSE 260",
     "title": "Computer Science B: Honors",
     "desc": "Second part of a two-semester sequence, CSE 160 and CSE 260. Applies object-oriented programming methodology to data storage and manipulation on complex data sets, such as, binary trees, heaps, priority queues, balanced trees and graphs. Recursive programming is heavily utilized. Fundamental sorting and searching algorithms are examined along with informal efficiency comparisons. Intermediate-level programming language concepts and paradigms, including functional programming, basics of type systems, program and data abstractions, and modularity.",
-    "prereq": {
-      "Taken": "CSE 160"
-    },
-    "coreq": {
-      "Taken": "CSE 261"
-    },
+    "prereq": {"Passed": ["CSE 160", "D"]},
+    "coreq": {"Taken": "CSE 261"},
     "credits": "3",
     "__type__": "Course"
   },
@@ -225,9 +203,7 @@
     "id": "CSE 261",
     "title": "Laboratory for Computer Science B: Honors",
     "desc": "Must be taken concurrently with lecture component, CSE 260; a common grade for both courses will be assigned. Weekly laboratories provide students with experience in the practice of programming in a variety of high-level languages such as Java, Scala, Haskell, Python or Javascript.",
-    "coreq": {
-      "Taken": "CSE 260"
-    },
+    "coreq": {"Taken": "CSE 260"},
     "credits": "1",
     "__type__": "Course"
   },
@@ -237,7 +213,7 @@
     "desc": "Principles of professional technical communications for Computer Science and Information Systems majors. Topics include writing business communications, user manuals, press releases, literature reviews, and research abstracts. Persuasive oral communications and effective presentation techniques, to address a range of audiences, will also be covered. This course satisfies the upper-division writing requirement for CSE and ISE majors.",
     "prereq": {
       "And": [
-        {"Taken": "WRT 102"},
+        {"Passed": ["WRT 102", "D"]},
         {
           "Or": [
             {"Major": "CSE"},
@@ -267,9 +243,7 @@
         {"Standing": "U4"}
       ]
     },
-    "advisory_prereq": {
-      "UnsupportedRequirement": "one course in computing"
-    },
+    "advisory_prereq": {"UnsupportedRequirement": "one course in computing"},
     "credits": "3",
     "__type__": "Course"
   },
@@ -281,14 +255,14 @@
       "And": [
         {
           "Or": [
-            {"Passed": ["CSE 160", "C"]},
-            {"Passed": ["CSE 214", "C"]}
+            {"C_or_higher": "CSE 160"},
+            {"C_or_higher": "CSE 214"}
           ]
         },
         {
           "Or": [
-            {"Passed": ["CSE 150", "C"]},
-            {"Passed": ["CSE 215", "C"]}
+            {"C_or_higher": "CSE 150"},
+            {"C_or_higher": "CSE 215"}
           ]
         },
         {"Major": "CSE"}
@@ -305,17 +279,17 @@
       "And": [
         {
           "Or": [
-            {"Passed": ["CSE 216", "C"]},
-            {"Passed": ["CSE 260", "C"]}
+            {"C_or_higher": "CSE 216"},
+            {"C_or_higher": "CSE 260"}
           ]
         },
-        {"Passed": ["CSE 220", "C"]}
+        {"C_or_higher": "CSE 220"}
       ]
     },
     "advisory_prereq": {
       "Or": [
-        {"Taken": "CSE 303"},
-        {"Taken": "CSE 350"}
+        {"Passed": ["CSE 303", "D"]},
+        {"Passed": ["CSE 350", "D"]}
       ]
     },
     "credits": "3",
@@ -329,11 +303,11 @@
       "And": [
         {
           "And": [
-            {"Passed": ["CSE 214", "C"]},
+            {"C_or_higher": "CSE 214"},
             {
               "Or": [
-                {"Passed": ["CSE 216", "C"]},
-                {"Passed": ["CSE 260", "C"]}
+                {"C_or_higher": "CSE 216"},
+                {"C_or_higher": "CSE 260"}
               ]
             }
           ]
@@ -357,8 +331,8 @@
       "And": [
         {
           "Or": [
-            {"Passed": ["CSE 320", "C"]},
-            {"Passed": ["ESE 280", "C"]}
+            {"C_or_higher": "CSE 320"},
+            {"C_or_higher": "ESE 280"}
           ]
         },
         {
@@ -380,11 +354,11 @@
       "And": [
         {
           "And": [
-            {"Passed": ["CSE 214", "C"]},
+            {"C_or_higher": "CSE 214"},
             {
               "Or": [
-                {"Passed": ["CSE 216", "C"]},
-                {"Passed": ["CSE 260", "C"]}
+                {"C_or_higher": "CSE 216"},
+                {"C_or_higher": "CSE 260"}
               ]
             }
           ]
@@ -408,14 +382,14 @@
       "And": [
         {
           "Or": [
-            {"Passed": ["CSE 214", "C"]},
-            {"Passed": ["CSE 260", "C"]}
+            {"C_or_higher": "CSE 214"},
+            {"C_or_higher": "CSE 260"}
           ]
         },
         {
           "Or": [
-            {"Passed": ["CSE 220", "C"]},
-            {"Passed": ["ISE 218", "C"]}
+            {"C_or_higher": "CSE 220"},
+            {"C_or_higher": "ISE 218"}
           ]
         },
         {
@@ -426,6 +400,7 @@
         }
       ]
     },
+    "advisory_pre_or_coreq": {"Passed": ["AMS 310", "D"]},
     "credits": "3",
     "__type__": "Course"
   },
@@ -437,10 +412,10 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 230"},
-            {"Taken": "CSE 260"},
-            {"Taken": "ISE 208"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 230", "D"]},
+            {"Passed": ["CSE 260", "D"]},
+            {"Passed": ["ISE 208", "D"]}
           ]
         },
         {
@@ -487,14 +462,14 @@
       "And": [
         {
           "Or": [
-            {"Passed": ["CSE 214", "C"]},
-            {"Passed": ["CSE 260", "C"]}
+            {"C_or_higher": "CSE 214"},
+            {"C_or_higher": "CSE 260"}
           ]
         },
         {
           "Or": [
-            {"Passed": ["CSE 216", "C"]},
-            {"Passed": ["CSE 307", "C"]}
+            {"C_or_higher": "CSE 216"},
+            {"C_or_higher": "CSE 307"}
           ]
         },
         {"Major": "CSE"}
@@ -509,7 +484,7 @@
     "desc": "This course introduces essential concepts of operating systems, compilers, concurrency, and performance analysis, focused around several cross-cutting examples, such as memory management, error handling, and threaded programming. In this course, operating systems concepts are considered from the point of view of the application programmer, and the focus is on APIs for interacting with an operating system. A companion course, CSE 306, considers operating systems from the point of view of the OS kernel implementer.",
     "prereq": {
       "And": [
-        {"Passed": ["CSE 220", "C"]},
+        {"C_or_higher": "CSE 220"},
         {"Major": "CSE"}
       ]
     },
@@ -522,10 +497,10 @@
     "desc": "A survey course designed to introduce students to Human-Computer Interaction and prepare them for further study in the specialized topics of their choice.  Students will have the opportunity to delve deeper in the course through a course project, and through a two-three week special topic selected at the instructor's discretion. Course is cross-listed as CSE 323, EST 323 and ISE 323.",
     "prereq": {
       "Or": [
-        {"Taken": "CSE 214"},
-        {"Taken": "CSE 230"},
-        {"Taken": "CSE 260"},
-        {"Taken": "ISE 208"}
+        {"Passed": ["CSE 214", "D"]},
+        {"Passed": ["CSE 230", "D"]},
+        {"Passed": ["CSE 260", "D"]},
+        {"Passed": ["ISE 208", "D"]}
       ]
     },
     "credits": "3",
@@ -537,9 +512,9 @@
     "desc": "This multidisciplinary class surveys how computer science and computer technology are used in sculpture. Case studies with slides, videos, and software demonstrations illustrate a range of approaches of sculptors incorporating computers in their creative process. Various state-of-the art fabrication technologies are studied (with site visits if available on campus). Mathematical foundations are emphasized so students can recognize them when analyzing sculpture and choose the right tool when designing. In the weekly laboratory, these ideas are reinforced with projects using a range of available software and inexpensive construction materials, e.g., paper, cardboard, and foamcore.",
     "prereq": {
       "Or": [
-        {"Taken": "CSE 110"},
-        {"Taken": "CSE 101"},
-        {"Taken": "CSE 114"}
+        {"Passed": ["CSE 110", "D"]},
+        {"Passed": ["CSE 101", "D"]},
+        {"Passed": ["CSE 114", "D"]}
       ]
     },
     "credits": "3",
@@ -553,15 +528,15 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 230"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 230", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
           "Or": [
-            {"Taken": "AMS 210"},
-            {"Taken": "MAT 211"}
+            {"Passed": ["AMS 210", "D"]},
+            {"Passed": ["MAT 211", "D"]}
           ]
         },
         {
@@ -582,7 +557,7 @@
     "desc": "An introduction to computer graphics including graphics application programming; data structures for graphics; representing and specifying color; fundamental hardware and software concepts for calligraphic and raster displays; two-dimensional, geometric transformations; introduction to three-dimensional graphics; graphics standards; and input devices, interaction handling, and user-computer interface.",
     "prereq": {
       "And": [
-        {"Passed": ["CSE 220", "C"]},
+        {"C_or_higher": "CSE 220"},
         {
           "Or": [
             {"Major": "CSE"},
@@ -600,13 +575,11 @@
     "desc": "Introduces the basic concepts and terminology of computer security. Covers basic security topics such as cryptography, operating systems security, network security, and language-based security.",
     "prereq": {
       "And": [
-        {"Taken": "CSE 220"},
+        {"Passed": ["CSE 220", "D"]},
         {"Major": "CSE"}
       ]
     },
-    "advisory_pre_or_coreq": {
-      "Taken": "CSE 320"
-    },
+    "advisory_pre_or_coreq": {"Passed": ["CSE 320", "D"]},
     "credits": "3",
     "__type__": "Course"
   },
@@ -618,20 +591,20 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
           "Or": [
-            {"Taken": "MAT 211"},
-            {"Taken": "AMS 210"}
+            {"Passed": ["MAT 211", "D"]},
+            {"Passed": ["AMS 210", "D"]}
           ]
         },
         {
           "Or": [
-            {"Taken": "AMS 110"},
-            {"Taken": "AMS 310"}
+            {"Passed": ["AMS 110", "D"]},
+            {"Passed": ["AMS 310", "D"]}
           ]
         },
         {
@@ -654,8 +627,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
@@ -701,8 +674,8 @@
       "And": [
         {
           "Or": [
-            {"Passed": ["CSE 214", "C"]},
-            {"Passed": ["CSE 260", "C"]}
+            {"C_or_higher": "CSE 214"},
+            {"C_or_higher": "CSE 260"}
           ]
         },
         {"Major": "CSE"}
@@ -719,8 +692,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
@@ -749,15 +722,15 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 113"},
-            {"Taken": "CSE 150"},
-            {"Taken": "CSE 215"}
+            {"Passed": ["CSE 113", "D"]},
+            {"Passed": ["CSE 150", "D"]},
+            {"Passed": ["CSE 215", "D"]}
           ]
         },
         {
           "Or": [
-            {"Taken": "AMS 210"},
-            {"Taken": "MAT 211"}
+            {"Passed": ["AMS 210", "D"]},
+            {"Passed": ["MAT 211", "D"]}
           ]
         },
         {"UnsupportedRequirement": "Honors in Computer Science or the Honors College or the WISE Honors Program or University Scholars or the Simons STEM Scholars Program."}
@@ -774,11 +747,11 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
-        {"Taken": "AMS 310"},
+        {"Passed": ["AMS 310", "D"]},
         {
           "Or": [
             {"Major": "CSE"},
@@ -798,8 +771,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 316"},
-            {"Taken": "CSE 351"}
+            {"Passed": ["CSE 316", "D"]},
+            {"Passed": ["CSE 351", "D"]}
           ]
         },
         {
@@ -821,8 +794,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 316"},
-            {"Taken": "CSE 351"}
+            {"Passed": ["CSE 316", "D"]},
+            {"Passed": ["CSE 351", "D"]}
           ]
         },
         {
@@ -835,9 +808,9 @@
     },
     "pre_or_coreq": {
       "Or": [
-        {"Taken": "AMS 310"},
-        {"Taken": "AMS 311"},
-        {"Taken": "AMS 412"}
+        {"Passed": ["AMS 310", "D"]},
+        {"Passed": ["AMS 311", "D"]},
+        {"Passed": ["AMS 412", "D"]}
       ]
     },
     "credits": "3",
@@ -851,8 +824,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 316"},
-            {"Taken": "CSE 351"}
+            {"Passed": ["CSE 316", "D"]},
+            {"Passed": ["CSE 351", "D"]}
           ]
         },
         {
@@ -872,7 +845,7 @@
     "desc": "The design and analysis of efficient algorithms to solve geometric problems that arise in computer graphics, robotics, geographical information systems, manufacturing, and optimization. Topics include convex hulls, triangulation, Voronoi diagrams, visibility, intersection, robot motion planning, and arrangements. This course is offered as both  AMS 345 and CSE 355.",
     "prereq": {
       "And": [
-        {"Taken": "AMS 301"},
+        {"Passed": ["AMS 301", "D"]},
         {"UnsupportedRequirement": "programming knowledge of C or C++ or Java"}
       ]
     },
@@ -885,8 +858,8 @@
     "desc": "Creating online services capable of handling millions of users requires a different mindset compared to traditional software development and deployment. Rather than building monolithic software packages from the ground up, bringing up modern online services calls for architecting systems by gluing together mature existing technologies deployed across many unreliable servers, working in concert to provide high-availability robust services. In this course, students will be exposed to the concepts and technologies behind deploying and scaling online services on the computing resources available in modern datacenters.",
     "prereq": {
       "And": [
-        {"Passed": ["CSE 316", "C"]},
-        {"Passed": ["CSE 320", "C"]},
+        {"C_or_higher": "CSE 316"},
+        {"C_or_higher": "CSE 320"},
         {"Major": "CSE"}
       ]
     },
@@ -901,11 +874,11 @@
       "And": [
         {
           "Or": [
-            {"Passed": ["CSE 316", "C"]},
-            {"Passed": ["CSE 351", "C"]}
+            {"C_or_higher": "CSE 316"},
+            {"C_or_higher": "CSE 351"}
           ]
         },
-        {"Passed": ["AMS 310", "C"]},
+        {"C_or_higher": "AMS 310"},
         {
           "Or": [
             {"Major": "CSE"},
@@ -923,13 +896,11 @@
     "desc": "This course will describe the principles and practice of securing software systems. Topics will include: software vulnerabilities; static and dynamic analysis techniques for vulnerability detection; exploit detection and prevention; secure software development techniques and defensive programming; malware detection and analysis; security policies and sandboxing; information flow.",
     "prereq": {
       "And": [
-        {"Taken": "CSE 220"},
+        {"Passed": ["CSE 220", "D"]},
         {"Major": "CSE"}
       ]
     },
-    "advisory_pre_or_coreq": {
-      "Taken": "CSE 320"
-    },
+    "advisory_pre_or_coreq": {"Passed": ["CSE 320", "D"]},
     "credits": "3",
     "__type__": "Course"
   },
@@ -939,13 +910,11 @@
     "desc": "This course will cover all aspects of web security, including browser security, web server security, and web application security. Topics include: SOP and JavaScript; application and protocol vulnerabilities; probing, surveillance, and tracking; penetration testing; modern social engineering techniques; monetary incentives and monetization.",
     "prereq": {
       "And": [
-        {"Taken": "CSE 220"},
+        {"Passed": ["CSE 220", "D"]},
         {"Major": "CSE"}
       ]
     },
-    "advisory_pre_or_coreq": {
-      "Taken": "CSE 320"
-    },
+    "advisory_pre_or_coreq": {"Passed": ["CSE 320", "D"]},
     "credits": "3",
     "__type__": "Course"
   },
@@ -955,13 +924,11 @@
     "desc": "The course covers the latest security technologies for mobile platforms (e.g., Android and iOS). It first introduces the security issues plaguing mobile apps and discusses defensive mechanisms, such as code signing, app permissions, and sandbox. It then peeks into mobile OS, explaining how jailbreaking/rooting works and the internals of iOS/Android security designs. Finally, it surveys modern hardware-level security features, such as secure booting, TrustZone, and biometrics.",
     "prereq": {
       "And": [
-        {"Taken": "CSE 220"},
+        {"Passed": ["CSE 220", "D"]},
         {"Major": "CSE"}
       ]
     },
-    "advisory_pre_or_coreq": {
-      "Taken": "CSE 320"
-    },
+    "advisory_pre_or_coreq": {"Passed": ["CSE 320", "D"]},
     "credits": "3",
     "__type__": "Course"
   },
@@ -971,24 +938,22 @@
     "desc": "Hands-on course with the goal of understanding various security problems in depth, through a more adversarial way of thinking. By focusing on finding and exploiting vulnerabilities, the course will cover a broad range of topics, including the ethics of offensive security, reverse engineering, software vulnerability discovery and exploitation, malicious code analysis, network traffic interception and manipulation, reconnaissance and information gathering, physical security, and social engineering. All topics will be covered from a highly practical perspective, following a hands-on approach and tutorial-like sessions, along with programming assignments.",
     "prereq": {
       "And": [
-        {"Taken": "CSE 220"},
+        {"Passed": ["CSE 220", "D"]},
         {"Major": "CSE"}
       ]
     },
-    "advisory_pre_or_coreq": {
-      "Taken": "CSE 320"
-    },
+    "advisory_pre_or_coreq": {"Passed": ["CSE 320", "D"]},
     "credits": "3",
     "__type__": "Course"
   },
   {
     "id": "CSE 364",
     "title": "Advanced Multimedia Techniques",
-    "desc": "SKIPPED",
+    "desc": "Digital media production techniques for high-bandwidth applications such as electronic magazine illustration, broadcast television, and motion picture special effects. Students explore techniques such as 3D modeling and character animation, video compositing, and high-resolution image processing in a state-of-the art multimedia computing laboratory. High-capacity mutlimedia storage, high-speed networks, and new technologies such as DVD, HDTV, and broadband will be reviewed. This course is offered as both CSE 364 and  ISE 364.",
     "prereq": {
       "Or": [
-        {"Taken": "CSE 334"},
-        {"Taken": "ISE 334"}
+        {"Passed": ["CSE 334", "D"]},
+        {"Passed": ["ISE 334", "D"]}
       ]
     },
     "credits": "3",
@@ -1002,14 +967,14 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
           "Or": [
-            {"Taken": "MAT 211"},
-            {"Taken": "AMS 210"}
+            {"Passed": ["MAT 211", "D"]},
+            {"Passed": ["AMS 210", "D"]}
           ]
         },
         {
@@ -1029,7 +994,7 @@
     "desc": "The fundamentals of wireless communication. Link, network and transcript layer protocols for wireless and mobile networking. Cellular networks. Wireless LANs. Wireless multihop networks. Mobile applications.",
     "prereq": {
       "And": [
-        {"Taken": "CSE 310"},
+        {"Passed": ["CSE 310", "D"]},
         {"Major": "CSE"}
       ]
     },
@@ -1042,11 +1007,11 @@
     "desc": "A survey of the logical foundations of mathematics: development of propositional calculus and quantification theory, the notions of a proof and of a model, the completeness theorem, Goedel's incompleteness theorem. This course is offered as both CSE 371 and MAT 371.",
     "prereq": {
       "Or": [
-        {"Taken": "CSE 113"},
-        {"Taken": "CSE 150"},
-        {"Taken": "CSE 215"},
-        {"Taken": "MAT 200"},
-        {"Taken": "MAT 250"}
+        {"Passed": ["CSE 113", "D"]},
+        {"Passed": ["CSE 150", "D"]},
+        {"Passed": ["CSE 215", "D"]},
+        {"Passed": ["MAT 200", "D"]},
+        {"Passed": ["MAT 250", "D"]}
       ]
     },
     "credits": "3",
@@ -1060,23 +1025,23 @@
       "And": [
         {
           "Or": [
-            {"Passed": ["CSE 113", "C"]},
-            {"Passed": ["CSE 150", "C"]},
-            {"Passed": ["CSE 215", "C"]},
-            {"Passed": ["MAT 200", "C"]},
-            {"Passed": ["MAT 250", "C"]}
+            {"C_or_higher": "CSE 113"},
+            {"C_or_higher": "CSE 150"},
+            {"C_or_higher": "CSE 215"},
+            {"C_or_higher": "MAT 200"},
+            {"C_or_higher": "MAT 250"}
           ]
         },
         {
           "Or": [
-            {"Passed": ["MAT 211", "C"]},
-            {"Passed": ["AMS 210", "C"]}
+            {"C_or_higher": "MAT 211"},
+            {"C_or_higher": "AMS 210"}
           ]
         },
         {
           "Or": [
-            {"Passed": ["CSE 214", "C"]},
-            {"Passed": ["CSE 260", "C"]}
+            {"C_or_higher": "CSE 214"},
+            {"C_or_higher": "CSE 260"}
           ]
         },
         {
@@ -1097,7 +1062,7 @@
     "desc": "Focuses on several aspects of producing commercial-grade system software: reliability, portability, security, and survivability.   Uses Unix and C, heavily used in industry when developing systems and embedded systems code. Emphasizes techniques and tools to produce reliable, secure, and highly portable code.  Requires substantial programming as well as a course project.",
     "prereq": {
       "And": [
-        {"Passed": ["CSE 320", "C"]},
+        {"C_or_higher": "CSE 320"},
         {"Major": "CSE"}
       ]
     },
@@ -1112,15 +1077,15 @@
       "And": [
         {
           "Or": [
-            {"Taken": "AMS 161"},
-            {"Taken": "MAT 127"},
-            {"Taken": "MAT 132"}
+            {"Passed": ["AMS 161", "D"]},
+            {"Passed": ["MAT 127", "D"]},
+            {"Passed": ["MAT 132", "D"]}
           ]
         },
         {
           "Or": [
-            {"Taken": "AMS 210"},
-            {"Taken": "MAT 211"}
+            {"Passed": ["AMS 210", "D"]},
+            {"Passed": ["MAT 211", "D"]}
           ]
         }
       ]
@@ -1136,16 +1101,16 @@
       "And": [
         {
           "Or": [
-            {"Taken": "AMS 161"},
-            {"Taken": "MAT 127"},
-            {"Taken": "MAT 132"}
+            {"Passed": ["AMS 161", "D"]},
+            {"Passed": ["MAT 127", "D"]},
+            {"Passed": ["MAT 132", "D"]}
           ]
         },
         {
           "Or": [
-            {"Taken": "AMS 210"},
-            {"Taken": "MAT 211"},
-            {"Taken": "MEC 262"}
+            {"Passed": ["AMS 210", "D"]},
+            {"Passed": ["MAT 211", "D"]},
+            {"Passed": ["MEC 262", "D"]}
           ]
         }
       ]
@@ -1159,7 +1124,7 @@
     "desc": "An introduction to the fundamental concepts of computer game programming. Students design and develop original games for PCs applying proven game design and software engineering principles.",
     "prereq": {
       "And": [
-        {"Taken": "CSE 220"},
+        {"Passed": ["CSE 220", "D"]},
         {"Major": "CSE"}
       ]
     },
@@ -1172,7 +1137,7 @@
     "desc": "This course explores the concepts and technologies behind making 3D, networked games. This will include the examination of game engine creation as well as the use of middleware to build graphically sophisticated game systems.",
     "prereq": {
       "And": [
-        {"Taken": "CSE 220"},
+        {"Passed": ["CSE 220", "D"]},
         {"Major": "CSE"}
       ]
     },
@@ -1187,23 +1152,23 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 113"},
-            {"Taken": "CSE 150"},
-            {"Taken": "CSE 215"},
-            {"Taken": "MAT 200"},
-            {"Taken": "MAT 250"}
+            {"Passed": ["CSE 113", "D"]},
+            {"Passed": ["CSE 150", "D"]},
+            {"Passed": ["CSE 215", "D"]},
+            {"Passed": ["MAT 200", "D"]},
+            {"Passed": ["MAT 250", "D"]}
           ]
         },
         {
           "Or": [
-            {"Taken": "AMS 210"},
-            {"Taken": "MAT 211"}
+            {"Passed": ["AMS 210", "D"]},
+            {"Passed": ["MAT 211", "D"]}
           ]
         },
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {"UnsupportedRequirement": "Honors in Computer Science or the Honors College or the WISE Honors Program or University Scholars or Simons STEM Scholars."}
@@ -1220,8 +1185,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
@@ -1243,8 +1208,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
@@ -1266,8 +1231,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
@@ -1289,8 +1254,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
@@ -1312,8 +1277,8 @@
       "And": [
         {
           "Or": [
-            {"Taken": "CSE 214"},
-            {"Taken": "CSE 260"}
+            {"Passed": ["CSE 214", "D"]},
+            {"Passed": ["CSE 260", "D"]}
           ]
         },
         {
@@ -1333,7 +1298,7 @@
     "desc": "Introduces the basic concepts and modern tools and techniques of software engineering. Emphasizes the development of reliable and maintainable software via system requirements and specifications, software design methodologies including object-oriented design, implementation, integration, and testing; software project management; life-cycle documentation; software maintenance; and consideration of human factor issues.",
     "prereq": {
       "And": [
-        {"Passed": ["CSE 316", "C"]},
+        {"C_or_higher": "CSE 316"},
         {"Standing": "U4"},
         {"Major": "CSE"}
       ]
@@ -1359,16 +1324,14 @@
     "id": "CSE 487",
     "title": "Research in Computer Science",
     "desc": "An independent research project with faculty supervision. Only three credits of research electives (AMS 487, CSE 487, BME 499, ESE 499, ESM 499, ISE 487, and MEC 499) may be counted toward technical elective requirements. May not be taken for more than six credits.",
-    "prereq": {
-      "Permission": "Permission of instructor and department"
-    },
+    "prereq": {"Permission": "Permission of instructor and department"},
     "credits": "0-3",
     "__type__": "Course"
   },
   {
     "id": "CSE 488",
     "title": "Internship in Computer Science",
-    "desc": "SKIPPED",
+    "desc": "Participation in local, state, national, or international private enterprise, public agencies, or nonprofit institutions. To obtain permission to register for the courses, students are required to submit proof that the work is related to their studies and the work will include a minimum of 180 hours during the semester. During the semester, the student will submit progress reports and a final report on their experience to the client and to the department. May be repeated up to a limit of 12 credits but can only be used once as a technical elective to satisfy CSE major requirements.",
     "prereq": {
       "And": [
         {"Major": "CSE"},
@@ -1404,9 +1367,31 @@
     "desc": "A two-semester research project carried out under the supervision of a computer science faculty member. Students must submit a written project report and make a presentation to the department at the year-end Honors Project Colloquium.",
     "prereq": {
       "And": [
-        {"Taken": "CSE 495"},
+        {"Passed": ["CSE 495", "D"]},
         {"Permission": "permission of instructor and department"}
       ]
+    },
+    "credits": "3",
+    "__type__": "Course"
+  },
+  {
+    "id": "AMS 110",
+    "title": "Probability and Statistics in the Life Sciences",
+    "desc": "A survey of probability theory and statistical techniques with applications to biological and biomedical situations. Topics covered include Markov chain models; binomial, Poisson, normal, exponential, and chi square random variables; tests of hypotheses; confidence intervals; tests; and analysis of variance, regression, and contingency tables. May not be taken for credit in addition to AMS 310. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
+    "prereq": {
+      "Or": [
+        {"Passed": ["AMS 151", "D"]},
+        {"Passed": ["MAT 125", "D"]},
+        {"Passed": ["MAT 131", "D"]}
+      ]
+    },
+    "anti_req": {
+      "Not": {
+        "Or": [
+          {"Passed": ["AMS 310", "C"]},
+          {"Passed": ["MAT 203", "C"]}
+        ]
+      }
     },
     "credits": "3",
     "__type__": "Course"
@@ -1417,7 +1402,7 @@
     "desc": "A review of functions and their applications; analytic methods of differentiation; interpretations and applications of differentiation; introduction to integration. Intended for CEAS majors. Not for credit in addition to MAT 125 or 126 or 131 or 141 or 171. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["MAT 123", "B"]},
+        {"B_or_higher": "MAT 123"},
         {"UnsupportedRequirement": "level 5 on the mathematics placement examination"}
       ]
     },
@@ -1430,8 +1415,8 @@
     "desc": "Analytic and numerical methods of integration; interpretations and applications of integration; differential equations models and elementary solution techniques; phase planes; Taylor series and Fourier series. Intended for CEAS majors. Not for credit in addition to MAT 127, MAT 132, MAT 142, or MAT 171. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["AMS 151", "C"]},
-        {"Passed": ["MAT 131", "C"]},
+        {"C_or_higher": "AMS 151"},
+        {"C_or_higher": "MAT 131"},
         {"UnsupportedRequirement": "level 7 on the mathematics placement examination"}
       ]
     },
@@ -1444,8 +1429,8 @@
     "desc": "An introduction to the theory and use of vectors and matrices. Matrix theory including systems of linear equations. Theory of Euclidean and abstract vector spaces. Eigenvectors and eigenvalues. Linear transformations. May not be taken for credit in addition to MAT 211.",
     "prereq": {
       "Or": [
-        {"Taken": "AMS 151"},
-        {"Taken": "MAT 131"},
+        {"Passed": ["AMS 151", "D"]},
+        {"Passed": ["MAT 131", "D"]},
         {"Coregister": "MAT 126"},
         {"UnsupportedRequirement": "level 7 or higher on the mathematics placement exam"}
       ]
@@ -1454,15 +1439,30 @@
     "__type__": "Course"
   },
   {
+    "id": "AMS 261",
+    "title": "Applied Calculus III",
+    "desc": "Vector algebra and analytic geometry in two and three dimensions; multivariable differential calculus and tangent planes; multivariable integral calculus; optimization and Lagrange multipliers; vector calculus including Green's and Stokes's theorems. May not be taken for credit in addition to MAT 203 or 205.",
+    "prereq": {
+      "Or": [
+        {"Passed": ["AMS 161", "D"]},
+        {"Passed": ["MAT 127", "D"]},
+        {"Passed": ["MAT 132", "D"]},
+        {"UnsupportedRequirement": "MPE level 9"}
+      ]
+    },
+    "credits": "4",
+    "__type__": "Course"
+  },
+  {
     "id": "AMS 301",
     "title": "Finite Mathematical Structures",
     "desc": "An introduction to graph theory and combinatorial analysis. The emphasis is on solving applied problems rather than on theorems and proofs. Techniques used in problem solving include generating functions, recurrence relations, and network flows. This course develops the type of mathematical thinking that is fundamental to computer science and operations research.",
     "prereq": {
       "Or": [
-        {"Taken": "AMS 210"},
-        {"Taken": "MAT 211"},
-        {"Taken": "AMS 361"},
-        {"Taken": "MAT 303"}
+        {"Passed": ["AMS 210", "D"]},
+        {"Passed": ["MAT 211", "D"]},
+        {"Passed": ["AMS 361", "D"]},
+        {"Passed": ["MAT 303", "D"]}
       ]
     },
     "credits": "3",
@@ -1474,9 +1474,9 @@
     "desc": "A survey of data analysis, probability theory, and statistics. Stem and leaf displays, box plots, schematic plots, fitting straight line relationships, discrete and continuous probability distributions, conditional distributions, binomial distribution, normal and t distributions, confidence intervals, and significance tests. May not be taken for credit in addition to ECO 320. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Taken": "AMS 161"},
-        {"Taken": "MAT 132"},
-        {"Taken": "MAT 127"}
+        {"Passed": ["AMS 161", "D"]},
+        {"Passed": ["MAT 132", "D"]},
+        {"Passed": ["MAT 127", "D"]}
       ]
     },
     "credits": "3",
@@ -1490,8 +1490,8 @@
       "Or": [
         {
           "And": [
-            {"Taken": "AMS 301"},
-            {"Taken": "AMS 310"}
+            {"Passed": ["AMS 301", "D"]},
+            {"Passed": ["AMS 310", "D"]}
           ]
         },
         {"Permission": "permission of instructor"}
@@ -1507,11 +1507,38 @@
     "__type__": "Course"
   },
   {
+    "id": "AMS 361",
+    "title": "Applied Calculus IV: Differential Equations",
+    "desc": "Homogeneous and inhomogeneous linear differential equations; systems of linear differential equations; solution with power series and Laplace transforms; partial differential equations and Fourier series. May not be taken for credit in addition to the equivalent MAT 303.",
+    "prereq": {
+      "Or": [
+        {"Passed": ["AMS 161", "D"]},
+        {"Passed": ["MAT 127", "D"]},
+        {"Passed": ["MAT 132", "D"]},
+        {"UnsupportedRequirement": "MPE level 9"}
+      ]
+    },
+    "credits": "4",
+    "__type__": "Course"
+  },
+  {
+    "id": "AMS 412",
+    "title": "Mathematical Statistics",
+    "desc": "Estimation, confidence intervals, Neyman Pearson lemma, likelihood ratio test, hypothesis testing, chi square test, regression, analysis of variance, nonparametric methods.",
+    "prereq": {"Passed": ["AMS 311", "D"]},
+    "credits": "3",
+    "__type__": "Course"
+  },
+  {
     "id": "MAT 123",
     "title": "Precalculus",
     "desc": "Comprehensive preparation for the regular calculus sequences. Careful development of rational, exponential, logarithmic, and trigonometric functions, and their applications. Asymptotics and curve sketching. General modeling examples. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
-      "UnsupportedRequirement": "C or better in MAP 103 or level 3 on the mathematics placement exam or corequisite MAT 119 (Prerequisite must be met within one year prior to beginning the course.)"
+      "Or": [
+        {"C_or_higher": "MAP 103"},
+        {"UnsupportedRequirement": "level 3 on the mathematics placement exam"},
+        {"UnsupportedRequirement": "corequisite MAT 119 (Prerequisite must be met within one year prior to beginning the course.)"}
+      ]
     },
     "credits": "3",
     "__type__": "Course"
@@ -1522,7 +1549,7 @@
     "desc": "Differential calculus, emphasizing conceptual understanding, computations and applications, for students who have the necessary background from 12th-year high school mathematics. Limits and continuous functions. Differentiation of elementary algebraic, trigonometric, exponential and logarithmic functions; graphing; modeling; and maximization. L'Hospital's rule.  May not be taken for credit in addition to MAT 131 or 141 or AMS 151. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["MAT 123", "C"]},
+        {"C_or_higher": "MAT 123"},
         {"UnsupportedRequirement": "level 4 on the mathematics placement examination"},
         {"Coregister": "MAT 130"}
       ]
@@ -1536,10 +1563,10 @@
     "desc": "A continuation of MAT 125, covering integral calculus: Riemann sums, the fundamental theorem, symbolic and numeric methods of integration, area under a curve, volume, applications such as work and probability, improper integrals. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["MAT 125", "C"]},
-        {"Passed": ["MAT 131", "C"]},
-        {"Passed": ["MAT 141", "C"]},
-        {"Passed": ["AMS 151", "C"]},
+        {"C_or_higher": "MAT 125"},
+        {"C_or_higher": "MAT 131"},
+        {"C_or_higher": "MAT 141"},
+        {"C_or_higher": "AMS 151"},
         {"UnsupportedRequirement": "level 6 on the mathematics placement examination"}
       ]
     },
@@ -1552,11 +1579,27 @@
     "desc": "A continuation of MAT 126, covering: sequences, series, Taylor series, differential equations and modeling.  May not be taken for credit in addition to MAT 132, MAT 142, MAT 171, or AMS 161. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["MAT 126", "C"]},
+        {"C_or_higher": "MAT 126"},
         {"UnsupportedRequirement": "level 8 on the mathematics placement examination"}
       ]
     },
     "credits": "3",
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 130",
+    "title": "Trigonometry and Logarithms",
+    "desc": "Inverse functions, exponential and logarithmic functions, radian measure of angles and trigonometric functions. Taught as a companion to MAT 125.",
+    "prereq": {
+      "Or": [
+        {"Passed": ["MAT 122", "D"]},
+        {"UnsupportedRequirement": "level 3 or higher on the mathematics placement examination"},
+        {"Permission": "permission of instructor"}
+      ]
+    },
+    "coreq": {"Taken": "MAT 125"},
+    "credits": "1",
+    "grading": "S/U grading",
     "__type__": "Course"
   },
   {
@@ -1565,7 +1608,7 @@
     "desc": "The differential calculus and integral calculus, emphasizing conceptual understanding, computations and applications, for students who have the necessary background from 12th-year high school mathematics.  Differentiation of elementary algebraic; trigonometric, exponential, and logarithmic functions; graphing; modelling and maximization; L'Hospital's rule; the Riemann integral; and the Fundamental Theorem of Calculus. May not be taken for credit in addition to MAT 125 or 141 or AMS 151. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["MAT 123", "B"]},
+        {"B_or_higher": "MAT 123"},
         {"UnsupportedRequirement": "level 5 on the mathematics placement examination"}
       ]
     },
@@ -1578,10 +1621,34 @@
     "desc": "A continuation of MAT 131, covering symbolic and numeric methods of integration; area under a curve; volume; applications such as work and probability; sequences; series; Taylor series; differential equations; and modelling. May not be taken for credit in addition to MAT 127, MAT 142, MAT 171, or AMS 161. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["AMS 151", "C"]},
-        {"Passed": ["MAT 131", "C"]},
-        {"Passed": ["MAT 141", "C"]},
+        {"C_or_higher": "AMS 151"},
+        {"C_or_higher": "MAT 131"},
+        {"C_or_higher": "MAT 141"},
         {"UnsupportedRequirement": "level 7 on the mathematics placement examination"}
+      ]
+    },
+    "credits": "4",
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 200",
+    "title": "Logic, Language and Proof",
+    "desc": "A basic course in the logic of mathematics, the construction of proofs and the writing of proofs. The mathematical content is primarily logic and proofs, set theory,  combinatorics, functions and relations. There is considerable focus on writing. May not be taken for credit in addition to MAT 250.",
+    "prereq": {"UnsupportedRequirement": "Level 4 on the mathematics placement examination or equivalent course or permission of the instructor"},
+    "credits": "3",
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 203",
+    "title": "Calculus III with Applications",
+    "desc": "Vector algebra in two and three dimensions, multivariate differential and integral calculus, optimization, vector calculus including the theorems of Green, Gauss, and Stokes. Applications to economics, engineering, and all sciences, with emphasis on numerical and graphical solutions; use of graphing calculators or computers. May not be taken for credit in addition to AMS 261.",
+    "prereq": {
+      "Or": [
+        {"C_or_higher": "MAT 127"},
+        {"C_or_higher": "MAT 132"},
+        {"C_or_higher": "MAT 142"},
+        {"C_or_higher": "AMS 161"},
+        {"UnsupportedRequirement": "level 9 on the mathematics placement examination"}
       ]
     },
     "credits": "4",
@@ -1604,15 +1671,54 @@
     "__type__": "Course"
   },
   {
+    "id": "MAT 250",
+    "title": "Introduction to Advanced Mathematics",
+    "desc": "An introduction to the Advanced Track mathematics program. Provides the core of basic of propositional logic, quantifiers, proofs, sets, functions, cardinality, relations, equivalence relations and quotient sets, order relations, combinatorics. Number systems: natural numbers, integers, rational, real and complex numbers. MAT 250 is primarily intended for students in the Advanced Track program. It serves as an alternative to MAT 200 and may not be taken for credit in addition to MAT 200. Students wishing to enroll in MAT 250 should instead enroll in a corresponding section of MAT 200. In approximately the 3rd week, an assessment will be held and qualified students will be offered the option of moving to MAT 250. Formerly offered as MAT 150; not for credit in addition to MAT 150.",
+    "prereq": {
+      "Or": [
+        {"Passed": ["MAT 131", "D"]},
+        {"UnsupportedRequirement": "MAT 131 equivalent"},
+        {"UnsupportedRequirement": "level 7 or higher on mathematics placement examination"}
+      ]
+    },
+    "credits": "4",
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 303",
+    "title": "Calculus IV with Applications",
+    "desc": "Homogeneous and inhomogeneous linear differential equations; systems of linear differential equations; series solutions; Laplace transforms; Fourier series. Applications to economics, engineering, and all sciences with emphasis on numerical and graphical solutions; use of computers. May not be taken for credit in addition to AMS 361 or MAT 308.",
+    "prereq": {
+      "Or": [
+        {"C_or_higher": "MAT 127"},
+        {"C_or_higher": "MAT 132"},
+        {"C_or_higher": "MAT 142"},
+        {"C_or_higher": "AMS 161"},
+        {"UnsupportedRequirement": "level 9 on the mathematics placement examination"}
+      ]
+    },
+    "credits": "4",
+    "__type__": "Course"
+  },
+  {
+    "id": "MAT 307",
+    "title": "Multivariable Calculus with Linear Algebra",
+    "desc": "Introduction to linear algebra: vectors, matrices, systems of linear equations,  bases and dimension, dot product, determinants. Multivariate differential and integral calculus, divergence and curl, line and surface integrals, theorems of Green, Gauss, and Stokes. More theoretical and intensive than MAT 203, this course is primarily intended for math majors. Together with MAT 308, it forms a 2-semester sequence covering the same material as the 3-semester sequence of MAT 203, MAT 211 and MAT 303. May not be taken for credit in addition to MAT 203 or AMS 261.",
+    "prereq": {
+      "Or": [
+        {"Passed": ["MAT 127", "D"]},
+        {"Passed": ["MAT 132", "D"]}
+      ]
+    },
+    "credits": "4",
+    "__type__": "Course"
+  },
+  {
     "id": "BIO 201",
     "title": "Fundamentals of Biology: Organisms to Ecosystems",
     "desc": "An introduction to the major concepts in evolution, ecology, and biodiversity at the genetic, organismal, community, and ecosystem levels. Topics are presented in relation to five overall themes: Nature and Process of Science, Evolution, Information Flow, Systems, and Structure-Function. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
-    "prereq": {
-      "UnsupportedRequirement": "Level 4 or higher on the mathematics placement examination or Corequisite MAT 123 or higher"
-    },
-    "advisory_prereq": {
-      "UnsupportedRequirement": "High School Biology"
-    },
+    "prereq": {"UnsupportedRequirement": "Level 4 or higher on the mathematics placement examination or Corequisite MAT 123 or higher"},
+    "advisory_prereq": {"UnsupportedRequirement": "High School Biology"},
     "credits": "3",
     "__type__": "Course"
   },
@@ -1636,11 +1742,12 @@
     "desc": "The fundamentals of cell and organ physiology in mammalian and non-mammalian organisms. The structure and function of cell membranes and the physiology of cell to cell signaling, cellular respiration, and homeostasis of organs and organisms are examined with an emphasis on the comparative physiology of vertebrates and invertebrates. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Taken": "CHE 129"},
-        {"Taken": "CHE 131"},
+        {"Passed": ["CHE 129", "D"]},
+        {"Passed": ["CHE 131", "D"]},
         {"Coregister": "CHE 152"}
       ]
     },
+    "pre_or_coreq": {"UnsupportedRequirement": "MAT 125 or higher or AMS 151 or higher"},
     "credits": "3",
     "__type__": "Course"
   },
@@ -1652,26 +1759,57 @@
       "Or": [
         {
           "And": [
-            {"Taken": "CHE 129"},
-            {"Taken": "CHE 131"}
+            {"Passed": ["CHE 129", "D"]},
+            {"Passed": ["CHE 131", "D"]}
           ]
         },
         {"Coregister": "CHE 152"}
+      ]
+    },
+    "pre_or_coreq": {
+      "Or": [
+        {"Passed": ["BIO 201", "D"]},
+        {"Passed": ["BIO 202", "D"]},
+        {"Passed": ["BIO 203", "D"]}
       ]
     },
     "credits": "2",
     "__type__": "Course"
   },
   {
+    "id": "CHE 129",
+    "title": "General Chemistry IA",
+    "desc": "This is the initial course of the four-semester General-Chemistry/Organic-Chemistry sequence CHE 129/132/321/322. This sequence provides the necessary foundation for students who wish to pursue further coursework in chemistry. The General Chemistry Courses provide a broad introduction to the fundamental principles of chemistry, including substantial illustrative material drawn from the chemistry of inorganic, organic, and biochemical systems. The emphasis is on basic concepts, problem-solving, and factual material. Students will be placed into CHE 129 based on their performance in the Online Chemistry Placement and Preparation (OCPP) process. Specifically, CHE 129 is for students with chemistry knowledge above the required OCPP minimum but who do not meet the math corequisite of CHE 131. The level and content of CHE 129 match that of CHE 131, but since the corequisite differs, students must also attend a CHE 130 session each week. CHE 130 builds essential skills in information processing, critical and analytical thinking, quantitative reasoning, and problem solving. The CHE 129 four-semester sequence is inappropriate for students who satisfy the corequisites of CHE 131. It is also inappropriate for students who have completed an AP course in chemistry and received a score of 4 or 5; such students must enroll in CHE 152. Three lecture hours, one 80-minute workshop, and one CHE 130 session per week. CHE 129 may not be taken for credit in addition to CHE 131 or CHE 152. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
+    "prereq": {"UnsupportedRequirement": "Online Chemistry Placement and Preparation (OCPP) Process. For information on the OCPP, copy and paste the following link into your browser. go.stonybrook.edu/ocpp"},
+    "coreq": {
+      "And": [
+        {"Taken": "MAT 123"},
+        {"Taken": "CHE 130"}
+      ]
+    },
+    "credits": "4",
+    "__type__": "Course"
+  },
+  {
+    "id": "CHE 130",
+    "title": "Problem Solving in General Chemistry",
+    "desc": "This course provides a structured environment for completing CHE 129 homework assignments and helping students develop the quantitative reasoning and problem solving skills needed in General Chemistry. Satisfactory/Unsatifactory grading only. Grading is based on attendance and participation. Required for students taking CHE 129 along with MAT 123.",
+    "coreq": {
+      "And": [
+        {"Taken": "CHE 129"},
+        {"Taken": "MAT 123"}
+      ]
+    },
+    "credits": "1",
+    "grading": "S/U grading",
+    "__type__": "Course"
+  },
+  {
     "id": "CHE 131",
     "title": "General Chemistry IB",
     "desc": "This is the initial course in the four-semester General-Chemistry/Organic-Chemistry sequence CHE 131/132/321/322. This sequence provides the necessary foundation for students who wish to pursue further coursework in Chemistry. The General Chemistry courses provide a broad introduction to the fundamental principles of chemistry, including substantial illustrative material drawn from the chemistry of inorganic, organic, and biochemical systems. The emphasis is on basic concepts, problem-solving, and factual material. The principal topics covered are stoichiometry, the states of matter, chemical equilibrium and introductory thermodynamics, electrochemistry, chemical kinetics, electron structure and chemical bonding, and chemical periodicity. Students will be placed into CHE 131 based on their performance in an Online Chemistry Placement and Preparation (OCPP) process. The four-semester sequence is inappropriate for students who have completed an AP course in chemistry and received a score of 4 or 5; these students are placed into CHE 152. Three lecture hours and one 80-minute workshop per week. May not be taken for credit in addition to CHE 129 or CHE 152. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
-    "prereq": {
-      "UnsupportedRequirement": "Online Chemistry Placement and Preparation (OCPP) Process. For information on the OCPP, copy and paste the following link into your browser. go.stonybrook.edu/ocpp"
-    },
-    "coreq": {
-      "UnsupportedRequirement": "Corequisite: MAT 125 or higher"
-    },
+    "prereq": {"UnsupportedRequirement": "Online Chemistry Placement and Preparation (OCPP) Process. For information on the OCPP, copy and paste the following link into your browser. go.stonybrook.edu/ocpp"},
+    "coreq": {"UnsupportedRequirement": "Corequisite: MAT 125 or higher"},
     "credits": "4",
     "__type__": "Course"
   },
@@ -1698,6 +1836,12 @@
     "id": "CHE 133",
     "title": "General Chemistry Laboratory I",
     "desc": "Designed to familiarize students with (1) some chemical and physical properties of substances, (2) techniques of quantitative chemistry, and (3) scientific methodology. Three hours of laboratory or related activity per week. CHE 133 and CHE 134 may not be taken for credit in addition to CHE 154. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
+    "pre_or_coreq": {
+      "Or": [
+        {"Passed": ["CHE 129", "D"]},
+        {"Passed": ["CHE 131", "D"]}
+      ]
+    },
     "credits": "1",
     "__type__": "Course"
   },
@@ -1718,9 +1862,7 @@
     "id": "CHE 154",
     "title": "Molecular Science Laboratory I",
     "desc": "Designed to familiarize students with chemical and physical properties of substances, techniques of quantitative chemistry, and aspects of scientific methodology. Four hours of lab per week. CHE 154 may not be taken for credit in addition to CHE 134. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
-    "coreq": {
-      "Taken": "CHE 152"
-    },
+    "coreq": {"Taken": "CHE 152"},
     "credits": "2",
     "__type__": "Course"
   },
@@ -1728,12 +1870,7 @@
     "id": "CHE 321",
     "title": "Organic Chemistry I",
     "desc": "An introduction to the structure, reactivity, and properties of organic compounds is presented using modern views of chemical bonding. These fundamental ideas are applied to topics ranging from synthetic chemistry to complex functional structures such as lipid bilayers. CHE 321 may not be taken for credit in addition to",
-    "prereq": {
-      "Passed": [
-        "CHE 132",
-        "C"
-      ]
-    },
+    "prereq": {"C_or_higher": "CHE 132"},
     "credits": "4",
     "__type__": "Course"
   },
@@ -1741,12 +1878,7 @@
     "id": "CHE 322",
     "title": "Organic Chemistry IIA",
     "desc": "Discussion of the structure, reactivity, and properties of organic compounds introduced in CHE 321 is continued. The chemistry of substances important in biology, medicine, and technology is emphasized. CHE 322 may not be taken for credit in addition to CHE 332. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
-    "prereq": {
-      "Passed": [
-        "CHE 321",
-        "C"
-      ]
-    },
+    "prereq": {"C_or_higher": "CHE 321"},
     "credits": "4",
     "__type__": "Course"
   },
@@ -1754,15 +1886,8 @@
     "id": "CHE 331",
     "title": "Molecular Science II",
     "desc": "Topics include the structural, mechanistic and synthetic aspects of organic chemistry, transition metal chemistry, catalysis, supramolecular chemistry, and polymer chemistry. This is the second course in a three semester sequence.  Students with a strong background prior to entering the University can take the 152-331-332 sequence, which covers the same material as 131-132-321-322. Three lecture hours and one 80-minute workshop per week. The laboratory component, CHE 383, must be taken the same semester as the CHE 331 lecture. May not be taken for credit in addition to CHE 321.",
-    "prereq": {
-      "Passed": [
-        "CHE 152",
-        "C"
-      ]
-    },
-    "coreq": {
-      "Taken": "CHE 383"
-    },
+    "prereq": {"C_or_higher": "CHE 152"},
+    "coreq": {"Taken": "CHE 383"},
     "credits": "4",
     "__type__": "Course"
   },
@@ -1770,10 +1895,28 @@
     "id": "CHE 332",
     "title": "Molecular Science III",
     "desc": "Topics include advanced structural, mechanistic and synthetic aspects of organic chemistry, the organic chemistry of biological pathways and biosynthesis. This is the final course in a three semester sequence.  Students with a strong background prior to entering the University can take the 152-331-332 sequence, which covers the same material as 131-132-321-322. Three lecture hours and one 80-minute workshop per week. May not be taken for credit in addition to CHE 322.",
-    "prereq": {
-      "Passed": [
-        "CHE 331",
-        "C"
+    "prereq": {"C_or_higher": "CHE 331"},
+    "credits": "4",
+    "__type__": "Course"
+  },
+  {
+    "id": "CHE 383",
+    "title": "Introductory Synthetic and Spectroscopic Laboratory Techniques",
+    "desc": "Fundamental laboratory techniques including methods of separation, purification, synthesis, and analysis. Emphasis is on organic with an introduction to inorganic problems. For students in the Molecular Sciences sequence. Not for credit in addition to CHE 327. Three lecture hours and one 80-minute workshop per week. The lecture component, CHE 331, must be taken the same semester as the CHE 383 laboratory. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
+    "prereq": {"Passed": ["CHE 154", "D"]},
+    "coreq": {"Taken": "CHE 331"},
+    "credits": "2",
+    "__type__": "Course"
+  },
+  {
+    "id": "PHY 122",
+    "title": "Physics for the Life Sciences II",
+    "desc": "Second part of an introduction to physics with applications to biology, primarily for students majoring in biological sciences or pre-clinical programs. Topics include electromagnetism, optics, acoustics, and radiation phenomena. Strong algebra skills and knowledge of the ideas of calculus are required. Three lecture hours and two laboratory hours per week. PHY 122 may not be taken for credit in addition to PHY 127, 132, or 142. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
+    "prereq": {"C_or_higher": "PHY 121"},
+    "pre_or_coreq": {
+      "Or": [
+        {"Passed": ["CHE 132", "D"]},
+        {"Passed": ["CHE 152", "D"]}
       ]
     },
     "credits": "4",
@@ -1785,8 +1928,16 @@
     "desc": "First of a three-part sequence intended for physical-sciences or engineering majors. It focuses on the mechanics of point particles and simple oscillators, and emphasizes motion in one and two dimensions and the concepts",
     "prereq": {
       "Or": [
-        {"Taken": "MAT 125"},
+        {"Passed": ["MAT 125", "D"]},
         {"UnsupportedRequirement": "level 4 on the mathematics placement examination"}
+      ]
+    },
+    "pre_or_coreq": {
+      "Or": [
+        {"Passed": ["MAT 125", "D"]},
+        {"Passed": ["MAT 131", "D"]},
+        {"Passed": ["MAT 141", "D"]},
+        {"Passed": ["AMS 151", "D"]}
       ]
     },
     "credits": "3",
@@ -1798,11 +1949,12 @@
     "desc": "Second or third of a three-part sequence for physical-sciences or engineering majors. It focuses on the mechanics of rigid bodies, on fluids, waves, thermodynamics, and optics. Three lecture hours and one recitation hour per week.  Associated Labs (PHY 133 or PHY 134) are offered separately. Not for credit in addition to PHY 132, or PHY 142. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["PHY 125", "C"]},
-        {"Passed": ["PHY 131", "C"]},
-        {"Passed": ["PHY 141", "C"]}
+        {"C_or_higher": "PHY 125"},
+        {"C_or_higher": "PHY 131"},
+        {"C_or_higher": "PHY 141"}
       ]
     },
+    "pre_or_coreq": {"UnsupportedRequirement": "MAT 126, 132, 142, 171 or AMS 161 or level 7 or higher on math placement exam"},
     "credits": "3",
     "__type__": "Course"
   },
@@ -1812,11 +1964,12 @@
     "desc": "Second or third of a three-part sequence for physical-sciences or engineering majors. It focuses on electromagnetism using the concepts of vector fields and scalar potentials, and on DC and AC electric circuits. Calculus is used concurrently with its development in MAT 126. Three lecture hours and one recitation hour per week. Associated Labs (PHY 133 or PHY 134) are offered separately. Not for credit in addition to PHY 122, PHY 132, or PHY 142. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["PHY 125", "C"]},
-        {"Passed": ["PHY 131", "C"]},
-        {"Passed": ["PHY 141", "C"]}
+        {"C_or_higher": "PHY 125"},
+        {"C_or_higher": "PHY 131"},
+        {"C_or_higher": "PHY 141"}
       ]
     },
+    "pre_or_coreq": {"UnsupportedRequirement": "MAT 126, 132, 142, 171 or AMS 161 or level 7 or higher on math placement exam"},
     "credits": "3",
     "__type__": "Course"
   },
@@ -1824,8 +1977,14 @@
     "id": "PHY 131",
     "title": "Classical Physics I",
     "desc": "First part of a two-semester physics sequence for physical-sciences or engineering majors who have a strong mathematics background and are ready for a fast learning pace. It covers mechanics, wave motion, kinetic theory, and thermodynamics. Calculus is used concurrently with its development in MAT 131. Three lecture hours and one recitation hour per week. The Laboratory component, PHY 133 (Lab 1), could be taken concurrently. Not for credit in addition to PHY 121, PHY 125, or PHY 141. Advanced Placement Physics or a very strong course in high school Physics is recommended. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
-    "prereq": {
-      "UnsupportedRequirement": "MAT 123 or level 5 on the mathematics placement examination"
+    "prereq": {"UnsupportedRequirement": "MAT 123 or level 5 on the mathematics placement examination"},
+    "pre_or_coreq": {
+      "Or": [
+        {"Passed": ["MAT 125", "D"]},
+        {"Passed": ["MAT 131", "D"]},
+        {"Passed": ["MAT 141", "D"]},
+        {"Passed": ["AMS 151", "D"]}
+      ]
     },
     "credits": "3",
     "__type__": "Course"
@@ -1836,8 +1995,17 @@
     "desc": "Second part of a two-semester physics sequence for physical-sciences or engineering majors who have a strong mathematics background and are ready for a fast learning pace. It covers electromagnetism, electric circuit theory, and optics. Calculus is used concurrently with its development in MAT 132. Three lecture hours and one recitation hour per week. The Laboratory component, PHY 134, may be taken concurrently. Not for credit in addition to PHY 122, PHY 127, or PHY 142. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
-        {"Passed": ["PHY 131", "C"]},
-        {"Passed": ["PHY 141", "C"]}
+        {"C_or_higher": "PHY 131"},
+        {"C_or_higher": "PHY 141"}
+      ]
+    },
+    "pre_or_coreq": {
+      "Or": [
+        {"Passed": ["MAT 132", "D"]},
+        {"Passed": ["MAT 142", "D"]},
+        {"Passed": ["MAT 126", "D"]},
+        {"Passed": ["MAT 171", "D"]},
+        {"Passed": ["AMS 161", "D"]}
       ]
     },
     "credits": "3",
@@ -1851,12 +2019,12 @@
       "Or": [
         {
           "And": [
-            {"Taken": "PHY 125"},
-            {"Taken": "PHY 126"}
+            {"Passed": ["PHY 125", "D"]},
+            {"Passed": ["PHY 126", "D"]}
           ]
         },
-        {"Taken": "PHY 131"},
-        {"Taken": "PHY 141"}
+        {"Passed": ["PHY 131", "D"]},
+        {"Passed": ["PHY 141", "D"]}
       ]
     },
     "credits": "1",
@@ -1866,10 +2034,17 @@
     "id": "PHY 134",
     "title": "Classical Physics Laboratory II",
     "desc": "Two and one half hours of laboratory per week that corresponds to the content of PHY 132 or PHY 126+127. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
-    "prereq": {
-      "Passed": [
-        "PHY 133",
-        "C"
+    "prereq": {"C_or_higher": "PHY 133"},
+    "pre_or_coreq": {
+      "And": [
+        {
+          "And": [
+            {"Passed": ["PHY 126", "D"]},
+            {"Passed": ["PHY 127", "D"]}
+          ]
+        },
+        {"UnsupportedRequirement": "or PHY 132"},
+        {"UnsupportedRequirement": "or corequisite PHY 142"}
       ]
     },
     "credits": "1",
@@ -1879,6 +2054,20 @@
     "id": "PHY 141",
     "title": "Classical Physics I: Honors",
     "desc": "First part of a demanding two-semester sequence for students with the strongest background, interests, and abilities in science and mathematics. The topics covered in PHY 141 are similar to those in PHY 131 but are treated in more depth in a small-class setting. Students may transfer to PHY 131 at any time during the first half of each semester without penalty. Three lecture hours and  one recitation hour per week. PHY 141 may not be taken for credit in addition to PHY 121, PHY 125, or PHY 131. Advanced Placement Physics or a very strong course in high school Physics is recommended. This course has an associated fee.  Please see www.stonybrook.edu/coursefees for more information.",
+    "prereq": {"UnsupportedRequirement": "Level 6 on Math Placement, or B or higher in MAT 131 or 141 or AMS 151, or B+ or higher in MAT 125, or instructor permission (priority given to students in Honors or WISE programs)"},
+    "pre_or_coreq": {
+      "And": [
+        {
+          "Or": [
+            {"Passed": ["MAT 131", "D"]},
+            {"Passed": ["MAT 141", "D"]},
+            {"Passed": ["MAT 126", "D"]},
+            {"Passed": ["AMS 151", "D"]}
+          ]
+        },
+        {"Passed": ["PHY 133", "D"]}
+      ]
+    },
     "credits": "3",
     "__type__": "Course"
   },
@@ -1890,6 +2079,20 @@
       "Or": [
         {"Passed": ["PHY 141", "C"]},
         {"Permission": "permission of department"}
+      ]
+    },
+    "pre_or_coreq": {
+      "And": [
+        {
+          "Or": [
+            {"Passed": ["MAT 132", "D"]},
+            {"Passed": ["MAT 142", "D"]},
+            {"Passed": ["MAT 127", "D"]},
+            {"Passed": ["MAT 171", "D"]},
+            {"Passed": ["AMS 161", "D"]}
+          ]
+        },
+        {"Passed": ["PHY 134", "D"]}
       ]
     },
     "credits": "3",
@@ -1905,21 +2108,21 @@
           "Or": [
             {
               "And": [
-                {"Taken": "PHY 122"},
-                {"Taken": "PHY 124"}
+                {"Passed": ["PHY 122", "D"]},
+                {"Passed": ["PHY 124", "D"]}
               ]
             },
             {
               "And": [
-                {"Taken": "PHY 126"},
-                {"Taken": "PHY 127"}
+                {"Passed": ["PHY 126", "D"]},
+                {"Passed": ["PHY 127", "D"]}
               ]
             },
-            {"Taken": "PHY 132"},
-            {"Taken": "PHY 142"}
+            {"Passed": ["PHY 132", "D"]},
+            {"Passed": ["PHY 142", "D"]}
           ]
         },
-        {"Taken": "PHY 134"},
+        {"Passed": ["PHY 134", "D"]},
         {
           "Or": [
             {"Passed": ["MAT 126", "C"]},
@@ -1933,10 +2136,10 @@
     },
     "pre_or_coreq": {
       "Or": [
-        {"Taken": "MAT 203"},
-        {"Taken": "MAT 205"},
-        {"Taken": "AMS 261"},
-        {"Taken": "MAT 307"}
+        {"Passed": ["MAT 203", "D"]},
+        {"Passed": ["MAT 205", "D"]},
+        {"Passed": ["AMS 261", "D"]},
+        {"Passed": ["MAT 307", "D"]}
       ]
     },
     "credits": "3",
@@ -1946,9 +2149,7 @@
     "id": "PHY 252",
     "title": "Modern Physics Laboratory",
     "desc": "Students perform some of the pivotal experiments of the 20th century. It is recommended that students take the lecture component, PHY 251, concurrently. Two hours of laboratory per week. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
-    "pre_or_coreq": {
-      "Taken": "PHY 251"
-    },
+    "pre_or_coreq": {"Passed": ["PHY 251", "D"]},
     "credits": "1",
     "__type__": "Course"
   },
@@ -1970,6 +2171,7 @@
     "id": "GEO 112",
     "title": "Physical Geology Laboratory",
     "desc": "Rock and mineral identification, introduction to topographic and geologic maps. Not for credit in addition to GEO 122.",
+    "pre_or_coreq": {"Passed": ["GEO 102", "D"]},
     "credits": "1",
     "__type__": "Course"
   },
@@ -1977,9 +2179,7 @@
     "id": "GEO 122",
     "title": "Physical Geology",
     "desc": "The nature of the earth and of the processes that shape it: the earth's external and internal energy; minerals and rocks; external processes and the evolution of the landscape; internal processes and the structure of the earth; the earth compared with other planets; sources of materials and energy. Laboratory includes study of minerals and rocks; landforms as shown on topographical maps and aerial photographs; geologic structures inferred from maps and block diagrams; problem sets. Two lectures and one three-hour laboratory and recitation per week. Not for credit in addition to GEO 102.",
-    "advisory_prereq": {
-      "UnsupportedRequirement": "high school chemistry and high school physics"
-    },
+    "advisory_prereq": {"UnsupportedRequirement": "high school chemistry and high school physics"},
     "credits": "4",
     "__type__": "Course"
   },
@@ -1989,12 +2189,12 @@
     "desc": "A survey of the physical nature of the universe for the student with some background in physics and mathematics. May not be taken for credit in addition to AST 101. Optional evening observing sessions with be held during the semester.",
     "prereq": {
       "Or": [
-        {"Taken": "PHY 125"},
-        {"Taken": "PHY 133"},
-        {"Taken": "PHY 131"},
-        {"Taken": "PHY 133"},
-        {"Taken": "PHY 141"},
-        {"Taken": "PHY 133"}
+        {"Passed": ["PHY 125", "D"]},
+        {"Passed": ["PHY 133", "D"]},
+        {"Passed": ["PHY 131", "D"]},
+        {"Passed": ["PHY 133", "D"]},
+        {"Passed": ["PHY 141", "D"]},
+        {"Passed": ["PHY 133", "D"]}
       ]
     },
     "credits": "4",
@@ -2006,12 +2206,12 @@
     "desc": "An introduction to the solar system for the student with a background in mathematics or physical sciences. A survey of the planets, comets, asteroids, and interplanetary medium, based upon the latest scientific discoveries. Not for credit in addition to AST 105 or GEO 106.",
     "prereq": {
       "Or": [
-        {"Taken": "PHY 125"},
-        {"Taken": "PHY 133"},
-        {"Taken": "PHY 131"},
-        {"Taken": "PHY 133"},
-        {"Taken": "PHY 141"},
-        {"Taken": "PHY 133"}
+        {"Passed": ["PHY 125", "D"]},
+        {"Passed": ["PHY 133", "D"]},
+        {"Passed": ["PHY 131", "D"]},
+        {"Passed": ["PHY 133", "D"]},
+        {"Passed": ["PHY 141", "D"]},
+        {"Passed": ["PHY 133", "D"]}
       ]
     },
     "credits": "3",
@@ -2021,9 +2221,7 @@
     "id": "WRT 101",
     "title": "Introductory Writing Workshop",
     "desc": "An introduction to the foundations of writing, offering students a variety of rhetorical strategies and helping them develop creative and critical thinking, fluency, and correctness. Coursework creates ample opportunities for significant practice in reading, writing, and critical analysis. Emphasis on writing as a revision-based process. WRT 101 prepares students for WRT 102 and postsecondary academic writing. This course may be repeated until a satisfactory grade is achieved.",
-    "prereq": {
-      "UnsupportedRequirement": "Writing Placement Score of 3 or WAE 194 with a C or higher"
-    },
+    "prereq": {"UnsupportedRequirement": "Writing Placement Score of 3 or WAE 194 with a C or higher"},
     "credits": "3",
     "grading": "ABC/U grading",
     "__type__": "Course"
@@ -2044,214 +2242,6 @@
     },
     "credits": "3",
     "grading": "ABC/U grading",
-    "__type__": "Course"
-  },
-  {
-    "id": "AMS 110",
-    "title": "Probability and Statistics in the Life Sciences",
-    "desc": "A survey of probability theory and statistical techniques with applications to biological and biomedical situations. Topics covered include Markov chain models; binomial, Poisson, normal, exponential, and chi square random variables; tests of hypotheses; confidence intervals; tests; and analysis of variance, regression, and contingency tables. May not be taken for credit in addition to AMS 310. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
-    "prereq": {
-      "Or": [
-        {"Taken": "AMS 151"},
-        {"Taken": "MAT 125"},
-        {"Taken": "MAT 131"}
-      ]
-    },
-    "anti_req": {
-      "Not": {
-        "Or": [
-          {"Passed": ["AMS 310", "C"]},
-          {"Passed": ["MAT 203", "C"]}
-        ]
-      }
-    },
-    "credits": "3",
-    "__type__": "Course"
-  },
-  {
-    "id": "AMS 261",
-    "title": "Applied Calculus III",
-    "desc": "Vector algebra and analytic geometry in two and three dimensions; multivariable differential calculus and tangent planes; multivariable integral calculus; optimization and Lagrange multipliers; vector calculus including Green's and Stokes's theorems. May not be taken for credit in addition to MAT 203 or 205.",
-    "prereq": {
-      "Or": [
-        {"Taken": "AMS 161"},
-        {"Taken": "MAT 127"},
-        {"Taken": "MAT 132"},
-        {"UnsupportedRequirement": "MPE level 9"}
-      ]
-    },
-    "credits": "4",
-    "__type__": "Course"
-  },
-  {
-    "id": "AMS 361",
-    "title": "Applied Calculus IV: Differential Equations",
-    "desc": "Homogeneous and inhomogeneous linear differential equations; systems of linear differential equations; solution with power series and Laplace transforms; partial differential equations and Fourier series. May not be taken for credit in addition to the equivalent MAT 303.",
-    "prereq": {
-      "Or": [
-        {"Taken": "AMS 161"},
-        {"Taken": "MAT 127"},
-        {"Taken": "MAT 132"},
-        {"UnsupportedRequirement": "MPE level 9"}
-      ]
-    },
-    "credits": "4",
-    "__type__": "Course"
-  },
-  {
-    "id": "AMS 412",
-    "title": "Mathematical Statistics",
-    "desc": "Estimation, confidence intervals, Neyman Pearson lemma, likelihood ratio test, hypothesis testing, chi square test, regression, analysis of variance, nonparametric methods.",
-    "prereq": {
-      "Taken": "AMS 311"
-    },
-    "credits": "3",
-    "__type__": "Course"
-  },
-  {
-    "id": "MAT 130",
-    "title": "Trigonometry and Logarithms",
-    "desc": "Inverse functions, exponential and logarithmic functions, radian measure of angles and trigonometric functions. Taught as a companion to MAT 125.",
-    "prereq": {
-      "Or": [
-        {"Taken": "MAT 122"},
-        {"UnsupportedRequirement": "level 3 or higher on the mathematics placement examination"},
-        {"Permission": "permission of instructor"}
-      ]
-    },
-    "credits": "1",
-    "grading": "S/U grading",
-    "__type__": "Course"
-  },
-  {
-    "id": "MAT 200",
-    "title": "Logic, Language and Proof",
-    "desc": "A basic course in the logic of mathematics, the construction of proofs and the writing of proofs. The mathematical content is primarily logic and proofs, set theory,  combinatorics, functions and relations. There is considerable focus on writing. May not be taken for credit in addition to MAT 250.",
-    "prereq": {
-      "UnsupportedRequirement": "Level 4 on the mathematics placement examination or equivalent course or permission of the instructor"
-    },
-    "credits": "3",
-    "__type__": "Course"
-  },
-  {
-    "id": "MAT 203",
-    "title": "Calculus III with Applications",
-    "desc": "Vector algebra in two and three dimensions, multivariate differential and integral calculus, optimization, vector calculus including the theorems of Green, Gauss, and Stokes. Applications to economics, engineering, and all sciences, with emphasis on numerical and graphical solutions; use of graphing calculators or computers. May not be taken for credit in addition to AMS 261.",
-    "prereq": {
-      "Or": [
-        {"Passed": ["MAT 127", "C"]},
-        {"Passed": ["MAT 132", "C"]},
-        {"Passed": ["MAT 142", "C"]},
-        {"Passed": ["AMS 161", "C"]},
-        {"UnsupportedRequirement": "level 9 on the mathematics placement examination"}
-      ]
-    },
-    "credits": "4",
-    "__type__": "Course"
-  },
-  {
-    "id": "MAT 250",
-    "title": "Introduction to Advanced Mathematics",
-    "desc": "An introduction to the Advanced Track mathematics program. Provides the core of basic of propositional logic, quantifiers, proofs, sets, functions, cardinality, relations, equivalence relations and quotient sets, order relations, combinatorics. Number systems: natural numbers, integers, rational, real and complex numbers. MAT 250 is primarily intended for students in the Advanced Track program. It serves as an alternative to MAT 200 and may not be taken for credit in addition to MAT 200. Students wishing to enroll in MAT 250 should instead enroll in a corresponding section of MAT 200. In approximately the 3rd week, an assessment will be held and qualified students will be offered the option of moving to MAT 250. Formerly offered as MAT 150; not for credit in addition to MAT 150.",
-    "prereq": {
-      "Or": [
-        {"Taken": "MAT 131"},
-        {"UnsupportedRequirement": "MAT 131 equivalent"},
-        {"UnsupportedRequirement": "level 7 or higher on mathematics placement examination"}
-      ]
-    },
-    "credits": "4",
-    "__type__": "Course"
-  },
-  {
-    "id": "MAT 303",
-    "title": "Calculus IV with Applications",
-    "desc": "Homogeneous and inhomogeneous linear differential equations; systems of linear differential equations; series solutions; Laplace transforms; Fourier series. Applications to economics, engineering, and all sciences with emphasis on numerical and graphical solutions; use of computers. May not be taken for credit in addition to AMS 361 or MAT 308.",
-    "prereq": {
-      "Or": [
-        {"Passed": ["MAT 127", "C"]},
-        {"Passed": ["MAT 132", "C"]},
-        {"Passed": ["MAT 142", "C"]},
-        {"Passed": ["AMS 161", "C"]},
-        {"UnsupportedRequirement": "level 9 on the mathematics placement examination"}
-      ]
-    },
-    "credits": "4",
-    "__type__": "Course"
-  },
-  {
-    "id": "MAT 307",
-    "title": "Multivariable Calculus with Linear Algebra",
-    "desc": "Introduction to linear algebra: vectors, matrices, systems of linear equations,  bases and dimension, dot product, determinants. Multivariate differential and integral calculus, divergence and curl, line and surface integrals, theorems of Green, Gauss, and Stokes. More theoretical and intensive than MAT 203, this course is primarily intended for math majors. Together with MAT 308, it forms a 2-semester sequence covering the same material as the 3-semester sequence of MAT 203, MAT 211 and MAT 303. May not be taken for credit in addition to MAT 203 or AMS 261.",
-    "prereq": {
-      "Or": [
-        {"Taken": "MAT 127"},
-        {"Taken": "MAT 132"}
-      ]
-    },
-    "credits": "4",
-    "__type__": "Course"
-  },
-  {
-    "id": "CHE 129",
-    "title": "General Chemistry IA",
-    "desc": "This is the initial course of the four-semester General-Chemistry/Organic-Chemistry sequence CHE 129/132/321/322. This sequence provides the necessary foundation for students who wish to pursue further coursework in chemistry. The General Chemistry Courses provide a broad introduction to the fundamental principles of chemistry, including substantial illustrative material drawn from the chemistry of inorganic, organic, and biochemical systems. The emphasis is on basic concepts, problem-solving, and factual material. Students will be placed into CHE 129 based on their performance in the Online Chemistry Placement and Preparation (OCPP) process. Specifically, CHE 129 is for students with chemistry knowledge above the required OCPP minimum but who do not meet the math corequisite of CHE 131. The level and content of CHE 129 match that of CHE 131, but since the corequisite differs, students must also attend a CHE 130 session each week. CHE 130 builds essential skills in information processing, critical and analytical thinking, quantitative reasoning, and problem solving. The CHE 129 four-semester sequence is inappropriate for students who satisfy the corequisites of CHE 131. It is also inappropriate for students who have completed an AP course in chemistry and received a score of 4 or 5; such students must enroll in CHE 152. Three lecture hours, one 80-minute workshop, and one CHE 130 session per week. CHE 129 may not be taken for credit in addition to CHE 131 or CHE 152. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
-    "prereq": {
-      "UnsupportedRequirement": "Online Chemistry Placement and Preparation (OCPP) Process. For information on the OCPP, copy and paste the following link into your browser. go.stonybrook.edu/ocpp"
-    },
-    "coreq": {
-      "And": [
-        {"Taken": "CHE 130"},
-        {"Taken": "MAT 123"}
-      ]
-    },
-    "credits": "4",
-    "__type__": "Course"
-  },
-  {
-    "id": "CHE 383",
-    "title": "Introductory Synthetic and Spectroscopic Laboratory Techniques",
-    "desc": "Fundamental laboratory techniques including methods of separation, purification, synthesis, and analysis. Emphasis is on organic with an introduction to inorganic problems. For students in the Molecular Sciences sequence. Not for credit in addition to CHE 327. Three lecture hours and one 80-minute workshop per week. The lecture component, CHE 331, must be taken the same semester as the CHE 383 laboratory. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
-    "prereq": {
-      "Taken": "CHE 154"
-    },
-    "coreq": {
-      "Taken": "CHE 331"
-    },
-    "credits": "2",
-    "__type__": "Course"
-  },
-  {
-    "id": "PHY 122",
-    "title": "Physics for the Life Sciences II",
-    "desc": "Second part of an introduction to physics with applications to biology, primarily for students majoring in biological sciences or pre-clinical programs. Topics include electromagnetism, optics, acoustics, and radiation phenomena. Strong algebra skills and knowledge of the ideas of calculus are required. Three lecture hours and two laboratory hours per week. PHY 122 may not be taken for credit in addition to PHY 127, 132, or 142. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
-    "prereq": {
-      "Passed": [
-        "PHY 121",
-        "C"
-      ]
-    },
-    "pre_or_coreq": {
-      "Or": [
-        {"Taken": "CHE 132"},
-        {"Taken": "CHE 152"}
-      ]
-    },
-    "credits": "4",
-    "__type__": "Course"
-  },
-  {
-    "id": "CHE 130",
-    "title": "Problem Solving in General Chemistry",
-    "desc": "This course provides a structured environment for completing CHE 129 homework assignments and helping students develop the quantitative reasoning and problem solving skills needed in General Chemistry. Satisfactory/Unsatifactory grading only. Grading is based on attendance and participation. Required for students taking CHE 129 along with MAT 123.",
-    "coreq": {
-      "And": [
-        {"Taken": "CHE 129"},
-        {"Taken": "MAT 123"}
-      ]
-    },
-    "credits": "1",
-    "grading": "S/U grading",
     "__type__": "Course"
   }
 ]
