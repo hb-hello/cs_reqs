@@ -2243,5 +2243,25 @@
     "credits": "3",
     "grading": "ABC/U grading",
     "__type__": "Course"
+  },
+  {
+    "id": "MAP 101",
+    "title": "Fundamentals of Arithmetic and Algebra",
+    "desc": "Arithmetic: fractions, decimals, and percent. Algebra: signed numbers, monomials, linear equations in one unknown, and word problems. This course is intended for students who have never studied algebra. Does not satisfy the entry skill in mathematics requirement or the D.E.C. category C requirement. Students who have otherwise satisfied D.E.C. category C may not register for this course. Overqualified students as determined by a placement test may be deregistered and directed to transfer to another course. Does not count toward graduation. A through C/Unsatisfactory grading only. The Pass/No Credit option may not be used.",
+    "credits": "3",
+    "__type__": "Course"
+  },
+  {
+    "id": "MAP 103",
+    "title": "Proficiency Algebra",
+    "desc": "An intensive review of high school algebra as preparation for calculus and other mathematics. Facility with exponents, basic graphing, solving linear and quadratic equations in one variable, solving linear systems in two variables, polynomials, factorization of algebraic expressions, binomial theorem, and inequalities. Algebraic manipulations, analytic geometry of lines. Does not count toward graduation. A through C/Unsatisfactory grading only. The Pass/No Credit option may not be used. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
+    "advisory_prereq": {
+      "Or": [
+        {"UnsupportedRequirement": "Level 2 on the mathematics placement examination"},
+        {"Passed": ["MAP 101", "D"]}
+      ]
+    },
+    "credits": "3",
+    "__type__": "Course"
   }
 ]

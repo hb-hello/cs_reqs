@@ -138,8 +138,8 @@ class ASTDecoder(json.JSONDecoder):
     if issubclass(cls, LogicalExpr):
       return cls(v)
     elif issubclass(cls, Requirement):
-      if cls in (C_or_higher, B_or_higher):
-        return cls(v)
+      if cls is C_or_higher: return Passed(v, "C")
+      if cls is B_or_higher: return Passed(v, "B")
       if isinstance(v, (list, tuple)):
         return cls(*v)
       return cls(v)

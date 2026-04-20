@@ -34,7 +34,7 @@ COURSES_CSE_DEGREE = {
   'CSE 475', 'CSE 495', 'CSE 300', 'CSE 301', 'CSE 312',  ## elect_exclude
   'AST 203', 'AST 205', 'CHE 132', 'CHE 321', 'CHE 322', 'CHE 331', 'CHE 332', 'GEO 102', 'GEO 103', 'GEO 112', 'GEO 123', 'GEO 122', 'PHY 125', 'PHY 127', 'PHY 132', 'PHY 134', 'PHY 142', 'PHY 251', 'PHY 252',  ## sci_more
   ## missing prereq courses from the above courses
-  'MAT 123',
+  'MAT 123', 'MAP 101', 'MAP 103', ## mat basics
   'AMS 110', 'AMS 261', 'AMS 361', 'AMS 412',  ## ams
   'BME 120',  ## bme
   'CHE 129', 'CHE 130', 'CHE 383',  ## che
