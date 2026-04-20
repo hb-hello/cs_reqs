@@ -14,29 +14,25 @@ REQ_TYPES_IGNORE = {'advisory_prereq', 'advisory_coreq', 'advisory_pre_or_coreq'
 
 def create_course_namedtuple(raw_course_dict : dict) -> Course:
   ## from course dictionary (returned by parse_course_div) to course namedtuple
-  ## input: dictionary with keys like 'id', 'desc', 'Prerequisite', ..
-
-  ## helper function to check multiple possible string keys for requisites
-  ## e.g., "Prerequisite" vs "Prerequisites"
+  ## input: dictionary with normalized field keys like 'id', 'desc', 'prereq', ...
   print("parsing course:", raw_course_dict.get('id'))
-  def get_parsed_req(possible_keys):
-    lower_dict = {k.lower(): v for k, v in raw_course_dict.items()}
-    for key in possible_keys:
-      if key.lower() in lower_dict:
-        return parse_req_text(lower_dict[key.lower()])
-    return None
+
+  def get_parsed_req(req: str):
+    req_text = raw_course_dict.get(req)
+    is_coreq = req in ['coreq', 'advisory_coreq']
+    return parse_req_text(req_text, is_coreq) if req_text else None
 
   return Course(
     id=raw_course_dict.get('id'),
     title=raw_course_dict.get('title'),
     desc=raw_course_dict.get('desc'),
-    prereq=get_parsed_req(['Prerequisite', 'Prerequisites']),
-    coreq=get_parsed_req(['Corequisite', 'Corequisites']),
-    pre_or_coreq=get_parsed_req(['Pre- or Co-requisite', 'Pre- or Co-requisites', 'Pre- or corequisite', 'Pre- or corequisites']),
-    anti_req=get_parsed_req(['Anti-requisite', 'Anti-requisites']),
-    advisory_prereq=get_parsed_req(['Advisory Prerequisite', 'Advisory Prerequisites']),
-    advisory_coreq=get_parsed_req(['Advisory Corequisite', 'Advisory Corequisites']),
-    advisory_pre_or_coreq=get_parsed_req(['Advisory pre-or corequisite', 'Advisory pre-or corequisites', 'Advisory Pre-or corequisite']),
+    prereq=get_parsed_req('prereq'),
+    coreq=get_parsed_req('coreq'),
+    pre_or_coreq=get_parsed_req('pre_or_coreq'),
+    anti_req=get_parsed_req('anti_req'),
+    advisory_prereq=get_parsed_req('advisory_prereq'),
+    advisory_coreq=get_parsed_req('advisory_coreq'),
+    advisory_pre_or_coreq=get_parsed_req('advisory_pre_or_coreq'),
     category=raw_course_dict.get('category'),
     credits=raw_course_dict.get('credits'),
     grading=raw_course_dict.get('grading')
@@ -79,6 +75,8 @@ class ASTEncoder(json.JSONEncoder):
       if isinstance(obj, Not):
         return {type(obj).__name__: obj.negated_expr}
       return {type(obj).__name__: obj.subexprs}
+    elif isinstance(obj, (C_or_higher, B_or_higher)):
+     return {type(obj).__name__: obj.course_id}
     elif isinstance(obj, Requirement):
       if len(obj.arguments) == 1: ## if only one argument, store it directly instead of a list
         return {type(obj).__name__: obj.arguments[0]}
@@ -96,6 +94,8 @@ class ASTDecoder(json.JSONDecoder):
     'Or': Or,
     'Not': Not,
     'Passed': Passed,
+    'C_or_higher': C_or_higher,
+    'B_or_higher': B_or_higher,
     'Taken': Taken,
     'Coregister': Coregister,
     'Major': Major,
@@ -138,6 +138,8 @@ class ASTDecoder(json.JSONDecoder):
     if issubclass(cls, LogicalExpr):
       return cls(v)
     elif issubclass(cls, Requirement):
+      if cls is C_or_higher: return Passed(v, "C")
+      if cls is B_or_higher: return Passed(v, "B")
       if isinstance(v, (list, tuple)):
         return cls(*v)
       return cls(v)
@@ -168,7 +170,7 @@ def _compact_simple_json_objects(json_text: str) -> str:
   )
 
   _REQUIREMENT_ONE_KEY_OBJECT_RE = re.compile(
-    rf'(?P<indent>[ \t]*)\{{\n'
+    rf'(?P<indent>[ \t]*)(?P<prefix>"[^"\n]+":\s*)?\{{\n'
     rf'[ \t]*"(?P<key>{"|".join(re.escape(name) for name in _REQUIREMENT_KEYS)})": (?P<val>.*?)\n'
     rf'(?P=indent)\}}',
     re.MULTILINE | re.DOTALL,
@@ -184,7 +186,8 @@ def _compact_simple_json_objects(json_text: str) -> str:
     except json.JSONDecodeError:
       return m.group(0)
 
-    return f'{m.group("indent")}{json.dumps({key: value}, ensure_ascii=False)}'
+    prefix = m.group('prefix') or ''
+    return f'{m.group("indent")}{prefix}{json.dumps({key: value}, ensure_ascii=False)}'
 
   return _REQUIREMENT_ONE_KEY_OBJECT_RE.sub(_replace, json_text)
 
