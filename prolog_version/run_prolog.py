@@ -122,22 +122,27 @@ def run_swi(taken, with_witness=True, return_timing=False):
             return {'ok': ok, 'prolog_eval_s': elapsed, 'engine': 'swi'}
         return ok
 
-    reqs = ('intro', 'adv', 'elect', 'sci', 'ethics', 'writing', 'calc', 'alg', 'sta')
-    queries = [('wit', req, 'Q') for req in reqs]
-    queries.append(('all_requirements()', None, None))
+    req_predicates = {
+        'intro':   'intro_req()',
+        'adv':     'advanced_req()',
+        'elect':   'elective_req()',
+        'sci':     'sci_subseq_req()',
+        'ethics':  "passed('CSE 312')",
+        'writing': "passed('CSE 300')",
+        'calc':    'calc_req()',
+        'alg':     'alg_req()',
+        'sta':     'sta_req()',
+    }
     checked = {}
-    for pred, first, second in queries:
-        arg = (first if first else '') + (f', {second}' if second else '')
-        goal = pred if not arg else f"{pred}({arg})"
-        sat = False
+    for req, pred in req_predicates.items():
+        sat = janus.query_once(pred).get('truth', False)
         courses = []
-        with janus.query(goal) as results:
+        with janus.query(f"wit({req}, Q)") as results:
             for d in results:
-                sat = d.get('truth', False)
-                if second and second in d:
-                    courses.append(d[second])
-        checked[first if second else pred] = (sat, courses)
-    checked['degree'] = checked.pop('all_requirements()', checked.pop('all_requirements', (False, [])))
+                if 'Q' in d:
+                    courses.append(d['Q'])
+        checked[req] = (sat, courses)
+    checked['degree'] = (janus.query_once("all_requirements()").get('truth', False), [])
 
     t123 = janus.query_once("credits_at_sb_cat123(T)")['T']
     t23  = janus.query_once("credits_at_sb_cat23(T)")['T']
