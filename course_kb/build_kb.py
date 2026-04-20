@@ -7,36 +7,7 @@ import os
 from bs4 import BeautifulSoup 
 from .course_kb import *
 from .parse_course import course_div_cleanup, parse_course_div, parse_req_text
-
-## all the courses in CSE that can't be handled by the current parsing logic.
-## we add them manually as overrides.
-OVERRIDES = {
-  # CSE 364: Advanced Multimedia Techniques
-  # Prerequisites: CSE/ISE 334
-  # 3 credits
-  "CSE 364": Course(
-    id="CSE 364", title="Advanced Multimedia Techniques",
-    desc="SKIPPED",
-    prereq=Or([Taken("CSE 334"), Taken("ISE 334")]),
-    coreq=None, anti_req=None, pre_or_coreq=None, advisory_prereq=None, advisory_coreq=None, advisory_pre_or_coreq=None,
-    credits="3",
-    category=None, ### ignore for now
-    grading=None
-  ),
-  # CSE 488: Internship in Computer Science
-  # Prerequisites: CSE major, U3 or U4 standing; permission of department
-  # SBC:     EXP+
-  # 3 credits, S/U grading
-  "CSE 488": Course(
-    id="CSE 488", title="Internship in Computer Science",
-    desc="SKIPPED",
-    prereq=And([Major("CSE"), Or([Standing("U3"), Standing("U4")]), Permission("permission of department")]),
-    coreq=None, anti_req=None, pre_or_coreq=None, advisory_prereq=None, advisory_coreq=None, advisory_pre_or_coreq=None,
-    credits="3",
-    category=None, ### ignore for now
-    grading="S/U"
-  ),
-}
+from .courses import COURSES_CSE_DEGREE, COURSES_OVERRIDES
 
 REQ_TYPES = {'prereq', 'coreq', 'pre_or_coreq', 'anti_req', 'advisory_prereq', 'advisory_coreq', 'advisory_pre_or_coreq'}
 REQ_TYPES_IGNORE = {'advisory_prereq', 'advisory_coreq', 'advisory_pre_or_coreq'}
@@ -83,9 +54,9 @@ def build_course_kb_from_html(html_input: str) -> list[Course]:
     clean_div = course_div_cleanup(div)                 ## div clean up
     raw_dict = parse_course_div(clean_div)              ## parse the cleaned div into a dictionary of course fields
     course = create_course_namedtuple(raw_dict)     ## convert dict to namedtuple
-    if course.id in OVERRIDES:                      ## apply overrides if exists
+    if course.id in COURSES_OVERRIDES:                      ## apply overrides if exists
       print(f"Applying override for course {course.id}")
-      course = OVERRIDES[course.id]
+      course = course._replace(**COURSES_OVERRIDES[course.id])
     kb.append(course)
 
   return kb
@@ -486,54 +457,6 @@ class ClingoGenerator(PrologGenerator):
       )
       return self.generate_and(negated_and, req_type)
     return f'not {self.generate_expr(negated_expr, req_type)}'
-
-COURSES_CSE_DEGREE = {    ## courses listed in the degree requirements.
-  'CSE 114', 'CSE 214', 'CSE 216',  ## prog
-  'CSE 160', 'CSE 161', 'CSE 260', 'CSE 261',  ## prog2
-  'CSE 215',  ## dmath
-  'CSE 150',  ## dmath2
-  'CSE 220',  ## sys
-  'CSE 303',  ## theory
-  'CSE 350',  ## theory2
-  'CSE 373',  ## algo
-  'CSE 385',  ## algo2
-  'CSE 310', 'CSE 316', 'CSE 320', 'CSE 416',  ## common
-  'AMS 151', 'AMS 161',  ## calc
-  'MAT 125', 'MAT 126', 'MAT 127',  ## calc2
-  'MAT 131', 'MAT 132',  ## calc3
-  'MAT 211',  ## alg
-  'AMS 210',  ## alg2
-  'AMS 301',  ## fmath
-  'AMS 310',  ## sta
-  'AMS 311',  ## sta2
-  'BIO 201', 'BIO 204',  ## bio
-  'BIO 202', 'BIO 204',  ## bio2
-  'BIO 203', 'BIO 204',  ## bio3
-  'CHE 131', 'CHE 133',  ## che
-  'CHE 152', 'CHE 154',  ## che2
-  'PHY 126', 'PHY 133',  ## phy
-  'PHY 131', 'PHY 133',  ## phy2
-  'PHY 141', 'PHY 133',  ## phy3
-  'CSE 312',  ## ethics
-  'CSE 300',  ## writing
-  'WRT 101', 'WRT 102', ## needed for writing
-  'CSE 475', 'CSE 495', 'CSE 300', 'CSE 301', 'CSE 312',  ## elect_exclude
-  'AST 203', 'AST 205', 'CHE 132', 'CHE 321', 'CHE 322', 'CHE 331', 'CHE 332', 'GEO 102', 'GEO 103', 'GEO 112', 'GEO 123', 'GEO 122', 'PHY 125', 'PHY 127', 'PHY 132', 'PHY 134', 'PHY 142', 'PHY 251', 'PHY 252'  ## sci_more
-}
-
-COURSES_CSE_DEGREE |= { ## missing prereq courses from the above courses
-  'AMS 110', 'AMS 261', 'AMS 361', 'AMS 412',  ## ams
-  'BME 120',  ## bme
-  'CHE 129', 'CHE 130', 'CHE 383',  ## che
-  'ESE 124', 'ESE 280',  ## ese
-  'ESG 111',  ## esg
-  'ISE 108', 'ISE 208', 'ISE 218', 'ISE 334',  ## ise
-  'MAT 130', 'MAT 141', 'MAT 142', 'MAT 171',  ## mat calc & prep
-  'MAT 200', 'MAT 203', 'MAT 205', 'MAT 250',  ## mat intermediate
-  'MAT 303', 'MAT 307',  ## mat advanced
-  'MEC 102', 'MEC 262',  ## mec
-  'PHY 122', 'PHY 124'   ## phy
-}
 
 def main():
   parser = argparse.ArgumentParser(
