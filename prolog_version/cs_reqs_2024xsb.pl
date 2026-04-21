@@ -70,6 +70,8 @@ disallowed_elective('CSE475').
 disallowed_elective('CSE495').
 disallowed_elective('CSE496').
 disallowed_elective('CSE301').
+disallowed_elective('CSE 300').
+disallowed_elective('CSE 312').
 
 elective_req :- findall(Id, (passed(Id), elective(Id)), Electives),
   length(Electives, Count),
