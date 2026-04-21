@@ -182,6 +182,20 @@ def run_swi(taken, with_witness=True, return_timing=False):
     cpu_time = end_time - start_time
     print(f"Prolog CPU time: {cpu_time:.6f} seconds")
 
+    # data = janus.query('course_in_cat123(Q)')
+    # for d in data:
+    #     print(f"{d['Q']}: {[t.credits for t in taken if t.id == d['Q']]}")
+
+    # print("23")
+    # data = janus.query('course_in_cat23(Q)')
+    # for d in data:
+    #     print(f"{d['Q']}: {[t.credits for t in taken if t.id == d['Q']]}")
+
+    print("temp")
+    data1 = janus.query_once('tempNone(Q)')
+    print(data1)
+    # for d in data1:
+    #     print(f"{d['Q']}, {d['truth']}, {d}")
 
 
     if return_timing:
@@ -217,15 +231,27 @@ if __name__ == '__main__':
     #     Taken('CSE 215', 3, 'A', (2024,2), 'SBU'),
     #     Taken('CSE 220', 3, 'A', (2024,2), 'SBU'),
     #     Taken('CSE 303', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('PHY 131', 3, 'A', (2024,2), 'SBU'),
+    #     # Taken('PHY 131', 3, 'A', (2024,2), 'SBU'),
     #     Taken('PHY 132', 3, 'A', (2024,2), 'SBU'),
     #     Taken('PHY 133', 3, 'A', (2024,2), 'SBU'),
     # ]
 
-    taken = [Taken(cid, 3, 'A', (2024,2), 'SB') for cid in FULL]
+    some = {'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220', 
+               'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',
+               'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',
+               # electives
+               'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353',
+               # science
+               'PHY 131', 'PHY 133', 'AST 203',
+               'CSE 300', 'CSE 312'}
+
+    taken = [Taken(cid, 4, 'A', (2024,2), 'SB') for cid in some]
     # engine = sys.argv[1] if len(sys.argv) > 1 else 'xsb'
+
+    taken = {Taken(id='CHE 133', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 360', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 216', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CSE 215', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 316', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 310', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 361', credits=3, grade='A', when=(2025, 2), where='SB'), Taken(id='CSE 416', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='AMS 161', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='PHY 131', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 373', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='AMS 301', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CHE 132', credits=4, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 114', credits=3, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 214', credits=4, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 220', credits=4, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 303', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 300', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='AMS 310', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CHE 131', credits=4, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 312', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CSE 320', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CHE 132', credits=4, grade='D', when=(2025, 2), where='SB'), Taken(id='AMS 210', credits=3, grade='A', when=(2022, 4), where='SB')}
+
     try:
-        pprint(run_prolog(taken, 'swi', swi_with_witness=True, return_timing=True))
+        pprint(run_prolog(taken, 'xsb', swi_with_witness=True, return_timing=True))
     except Exception as e:
         print(repr(e))
     # pprint(run_prolog(taken, 'xsb', return_timing=True))
