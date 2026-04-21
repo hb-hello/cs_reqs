@@ -181,8 +181,8 @@ temp23(CredsList) :-
         CredsList).
 
 tempNone(TList) :- 
-    findall(Id,
-        taken(Id, _, 'None', _, _),
+    findall([Id, Grade],
+        taken(Id, Grade, _, _, _),
         TList).
 
 course_in_cat23(Id) :- advanced_courses(Id) ; elective(Id).
