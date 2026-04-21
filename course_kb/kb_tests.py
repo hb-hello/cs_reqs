@@ -15,7 +15,7 @@ class TestCSE(unittest.TestCase):
 
   def test_cse214(self):      ## simple
     course = self.get_course('CSE 214')
-    self.assertEqual(course.credits, '4')   ## credits
+    self.assertEqual(course.credits, 4)   ## credits
     self.assertEqual(course.prereq, Passed("CSE 114", "C"))
   
   def test_cse230(self):      ## or of courses

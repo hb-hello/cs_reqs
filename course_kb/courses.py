@@ -59,6 +59,9 @@ COURSES_OVERRIDES = {
         "coreq": Taken("CSE 161"),
         "advisory_prereq": Passed("CSE 101", "D")
     },
+    "CSE 220": {
+      "prereq": And([Or([C_or_higher("CSE 214"), Coregister("CSE 260")]), Major("CSE")])
+    },
    "CSE 320": {
         "prereq": And([C_or_higher("CSE 220"), Major("CSE")])
     },
