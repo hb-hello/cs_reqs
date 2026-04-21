@@ -85,7 +85,7 @@ upperdivCS(Id) :- concat_atom(['CSE', CourseNumstr], Id),
     atom_number(CourseNumstr, CourseNumInt),
   CourseNumInt >= 300.
 
-wit(elect, Id) :- elective_req, passed(Id), elective(Id).
+wit(elect, Id) :- passed(Id), elective(Id).
 
 % Req 4. Calculus
 c(calc, 'AMS 151'). c(calc, 'AMS 161').
@@ -159,7 +159,7 @@ subseq([H|T], [H|Sub]) :- subseq(T, Sub).
 subseq([_|T], Sub) :- subseq(T, Sub).
 
 
-wit(sci, Id) :- sci_subseq_req, sci_courses(Id), taken(Id, _, _, _, _).
+wit(sci, Id) :- sci_courses(Id), taken(Id, _, _, _, _).
 
 course_in_cat123(Id) :- intro_courses(Id) ; advanced_courses(Id) ; upperdivCS(Id).
 
@@ -176,7 +176,7 @@ credits_at_sb_cat123(Total) :-
     sum_list(CredsList, Total).
 
 satisfied_residency_123 :- credits_at_sb_cat123(Total), Total >= 24.
-wit(res123, Id) :- satisfied_residency_123, taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
+wit(res123, Id) :- taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
 course_in_cat23(Id) :- advanced_courses(Id) ; upperdivCS(Id).
 
@@ -189,7 +189,7 @@ credits_at_sb_cat23(Total) :-
     sum_list(CredsList, Total).
 
 satisfied_residency_23 :- credits_at_sb_cat23(Total), Total >= 18.
-wit(res23, Id) :- satisfied_residency_23, taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
+wit(res23, Id) :- taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
 % ethics and communication courses
 c(ethics_comm, 'CSE 312'). c(ethics_comm, 'CSE 300').
