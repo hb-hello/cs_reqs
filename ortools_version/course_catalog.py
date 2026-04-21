@@ -47,7 +47,9 @@ def semester_range(start, end_or_count=MAX_SEMS_ALLOWED):
 
 # ── Load CSE courses from KB ───────────────────────────────────
 
-def _parse_credits(s): return int(s.split('-')[-1])
+# credits is either a single int or a (min_credits, max_credits) list,
+# in the latter case we take the max_credits
+def _parse_credits(credits): return credits[-1] if isinstance(credits, list) else credits
 
 def _load_kb(path):
     # strip // comments (kb_cse_degree.json has comment lines)

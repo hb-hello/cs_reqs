@@ -49,7 +49,8 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         match = re.search(r"time_marker\((\d+)\)", output)
         return int(match.group(1)) if match else 0
 
-    run_cmd(f"['{_PL_FILE_XSB}'].")
+    xsb_load_path = os.path.splitext(_PL_FILE_XSB)[0].replace('\\', '/')
+    run_cmd(f"['{xsb_load_path}'].")
     run_cmd("retractall(taken(_,_,_,_,_)).")
 
     t0 = get_xsb_runtime()

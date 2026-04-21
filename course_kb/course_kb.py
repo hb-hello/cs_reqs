@@ -19,7 +19,7 @@ Course = namedtuple('Course',
                     'advisory_pre_or_coreq',
                     'category',             ## optional: set of tuples where the first element is the category name e.g. SBC,
                                             ##   second element is a list of category values, e.g. ('TECH', ...)
-                    'credits',              ## string: (e.g. '3', '4', '0-3')
+                    'credits',              ## int, if only one credit value; [min_credits, max_credits] if there are multiple credit options (e.g. 0-3 credits)
                     'grading',              ## optional, string: special grading, such as S/U
                     ])
 
@@ -87,6 +87,11 @@ class Coregister(Requirement):
     ## a course needs to be taken together with another course.
     ### 'hack' to represent prereq OR coreq logic such as: "prereq: C1 or coreq C2"
     ###    which is represented as prereq: Or([Taken("C1"), Coregister("C2")])
+    pass
+
+class MathPlacement(Requirement):
+    ## NOT BEING USED
+    ## https://www.stonybrook.edu/sb/bulletin/current-fall24/policiesandregulations/admissions/placementtests.php
     pass
 
 class UnsupportedRequirement(Requirement):    ## to wrap all unsupported formats

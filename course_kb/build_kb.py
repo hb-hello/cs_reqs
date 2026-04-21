@@ -12,20 +12,20 @@ from .courses import COURSES_CSE_DEGREE, COURSES_OVERRIDES
 REQ_TYPES = {'prereq', 'coreq', 'pre_or_coreq', 'anti_req', 'advisory_prereq', 'advisory_coreq', 'advisory_pre_or_coreq'}
 REQ_TYPES_IGNORE = {'advisory_prereq', 'advisory_coreq', 'advisory_pre_or_coreq'}
 
-def create_course_namedtuple(raw_course_dict : dict) -> Course:
+def create_course_namedtuple(course_dict : dict) -> Course:
   ## from course dictionary (returned by parse_course_div) to course namedtuple
   ## input: dictionary with normalized field keys like 'id', 'desc', 'prereq', ...
-  print("parsing course:", raw_course_dict.get('id'))
+  print("parsing course:", course_dict.get('id'))
 
   def get_parsed_req(req: str):
-    req_text = raw_course_dict.get(req)
+    req_text = course_dict.get(req)
     is_coreq = req in ['coreq', 'advisory_coreq']
     return parse_req_text(req_text, is_coreq) if req_text else None
 
   return Course(
-    id=raw_course_dict.get('id'),
-    title=raw_course_dict.get('title'),
-    desc=raw_course_dict.get('desc'),
+    id=course_dict.get('id'),
+    title=course_dict.get('title'),
+    desc=course_dict.get('desc'),
     prereq=get_parsed_req('prereq'),
     coreq=get_parsed_req('coreq'),
     pre_or_coreq=get_parsed_req('pre_or_coreq'),
@@ -33,9 +33,9 @@ def create_course_namedtuple(raw_course_dict : dict) -> Course:
     advisory_prereq=get_parsed_req('advisory_prereq'),
     advisory_coreq=get_parsed_req('advisory_coreq'),
     advisory_pre_or_coreq=get_parsed_req('advisory_pre_or_coreq'),
-    category=raw_course_dict.get('category'),
-    credits=raw_course_dict.get('credits'),
-    grading=raw_course_dict.get('grading')
+    category=course_dict.get('category'),
+    credits=course_dict.get('credits'),
+    grading=course_dict.get('grading')
   )
 
 def build_course_kb_from_html(html_input: str) -> list[Course]:
@@ -50,6 +50,9 @@ def build_course_kb_from_html(html_input: str) -> list[Course]:
     clean_div = course_div_cleanup(div)                 ## div clean up
     raw_dict = parse_course_div(clean_div)              ## parse the cleaned div into a dictionary of course fields
     course = create_course_namedtuple(raw_dict)     ## convert dict to namedtuple
+    if (course.id).startswith('CSE') or course.id in COURSES_CSE_DEGREE:
+      with open('courses_cse_degree.html', 'a') as f:
+        f.write(str(clean_div))
     if course.id in COURSES_OVERRIDES:                      ## apply overrides if exists
       print(f"Applying override for course {course.id}")
       course = course._replace(**COURSES_OVERRIDES[course.id])
@@ -318,14 +321,13 @@ class PrologGenerator:
   def generate_course(self, course) -> list[str]:
     kb_rules = []    ## l is a list of strings representing the kb
 
-    ## generate course facts (course/2)
-    pat_credits = r'^(?P<min_credit>\d+)(?:-(?P<max_credit>\d+))?$'
-    m = re.match(pat_credits, course.credits)
-    if m:
-      min_credit = int(m.group('min_credit'))
-      max_credit = int(m.group('max_credit')) if m.group('max_credit') else min_credit
-    
-    for credit in range(min_credit, max_credit + 1):
+    if isinstance(course.credits, list):
+      min_credits = course.credits[0]
+      max_credits = course.credits[1]
+    else:
+      min_credits = max_credits = course.credits
+
+    for credit in range(min_credits, max_credits + 1):
       kb_rules.append(f'credits("{course.id}", {credit}).')
 
     for req_type in sorted(list(REQ_TYPES - REQ_TYPES_IGNORE)):
@@ -409,9 +411,28 @@ class ClingoGenerator(PrologGenerator):
       parts.append(s)
     return ','.join(parts)
 
-  def format_pooled_sem_requirement(self, name: str, pooled: str, req_type: str) -> str:
+  def format_pooled_requirement(self, nodes,  ## types should all be the same. for Passed, grade should all be the same as well
+                                req_type: str) -> str:
     suffix = self.semester_suffix(req_type)
-    return f'{name}_{suffix}(({pooled}), Sem)' if pooled.count(";") >= 1 else f'{name}_{suffix}({pooled}, Sem)'
+    node_type = type(nodes[0])
+    node_name = nodes[0].name
+    if node_type is Passed:
+      all_same_grades = len(set(passed.min_grade for passed in nodes)) == 1
+      if not all_same_grades:
+        ## mixed or non-default grade disjunctions should not be pooled
+        ## because explicit-grade requirements use a different predicate.
+        raise ValueError(f'clingo: mixed or non-default grade disjunction, cannot pool: {nodes}')
+      grade = nodes[0].min_grade
+      pooled_ids = "; ".join(f'"{node.course_id}"' for node in nodes)
+      if grade == "C":
+        return f'{node_name}_{suffix}(({pooled_ids}), Sem)' if pooled_ids.count(";") >= 1 else f'{node_name}_{suffix}({pooled_ids}, Sem)'
+      return f'{node_name}_{suffix}_grade(({pooled_ids}), "{grade}", Sem)' if pooled_ids.count(";") >= 1 else f'{node_name}_{suffix}_grade({pooled_ids}, "{grade}", Sem)'
+    if node_type is Taken:
+      pooled_ids = "; ".join(f'"{node.arguments[0]}"' for node in nodes)
+      return f'{node_name}_{suffix}(({pooled_ids}), Sem)' if pooled_ids.count(";") >= 1 else f'{node_name}_{suffix}({pooled_ids}, Sem)'
+    if node_type is Coregister:
+      pooled_ids = "; ".join(f'"{node.arguments[0]}"' for node in nodes)
+      return f'taken_together(({pooled_ids}), Sem)' if pooled_ids.count(";") >= 1 else f'taken_together({pooled_ids}, Sem)'
 
   def generate_or(self, expr: Or, req_type) -> str:
     ## filter out unsupported requirements in Or
@@ -425,23 +446,10 @@ class ClingoGenerator(PrologGenerator):
     if all(isinstance(op, Requirement) for op in subexprs) and len(set(type(op) for op in subexprs)) == 1:
       node_type, node_name = type(subexprs[0]), subexprs[0].name
 
-      if node_type is Passed:
-        all_default_c = all(len(op.arguments) == 1 or op.arguments[1] == "C" for op in subexprs)
-        if all_default_c:
-          pooled_ids = "; ".join(f'"{op.arguments[0]}"' for op in subexprs)
-          return self.format_pooled_sem_requirement(node_name, pooled_ids, req_type)
-        ## mixed or non-default grade disjunctions should not be pooled
-        ## because explicit-grade requirements use a different predicate.
-        return ';'.join(self.generate_requirement(op, req_type) for op in subexprs)
+      if node_type in [Passed, Taken, Coregister]:
+        return self.format_pooled_requirement(subexprs, req_type)
 
       pooled = "; ".join(self.join_args(op.arguments) for op in subexprs if op)
-
-      if node_type is Taken:   ## taken takes semester argument
-        return self.format_pooled_sem_requirement(node_name, pooled, req_type)
-
-      if node_type is Coregister:  ## coregister is treated as taken_same
-        return self.format_pooled_sem_requirement('taken', pooled, 'coreq')
-
       return f'{node_name}({pooled})'
     
     # raise ValueError(f'clingo: mixed disjunction, cannot pool: {expr}')

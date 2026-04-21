@@ -125,15 +125,19 @@ def parse_req(child: Tag):
     return True, {field: m.group("value")}
   return False, None
 
-def parse_credits(child: Tag):
+def parse_credits_and_grading(child: Tag):
   ## parse the credits and grading information from <p> tag.
   ## input: a tag object in beautifulsoup
   ## output: boolean indicating whether parsing is successful, and
   ##         a dictionary with keys 'credits' and 'grading' if parsing is successful (otherwise None).
   if child.name != "p": return False, None  ## only process <p> tags for credits.
-  pat_credits = r'^(?P<credits>[0-9]+(?:-[0-9]+)?) credits?,?\s*(?P<grading>.+)?$'
+  pat_credits = r'^(?P<min_credits>\d+)(?:-(?P<max_credits>\d+))? credits?,?\s*(?P<grading>.+)?$'
   m = re.fullmatch(pat_credits, child.get_text(" ", strip=True))
-  if m: return True, m.groupdict()
+  if m:
+    min_credits = int(m.group('min_credits'))
+    max_credits = int(m.group('max_credits')) if m.group('max_credits') else None
+    credits = min_credits if max_credits is None else (min_credits, max_credits)
+    return True, {'credits': credits, 'grading': m.group('grading')}
   return False, None
 
 ## def parse_category(child):  ### TODO
@@ -197,6 +201,12 @@ re_course_list_parsers = {
 }
 temp = '|'.join(r.pattern for r in re_course_list_parsers)
 re_any_course_list = re.compile(rf'{temp}', re.IGNORECASE | re.VERBOSE)
+
+def parse_math_placement(text: str) -> MathPlacement | None:  ### todo: add to parsing if needed
+  ## level\s+(\d+)\s*(or higher|\+)?(?:\s+or higher)?\s+on\s+(?:the\s+)?(?:math(?:ematics)?\s+)?placement(?:\s+exam(?:ination)?)?
+  m = re.fullmatch(r'level\s+(\d+\+?)\s*(or higher)?.*?placement(?:\s+exam\w*)?', text.strip(), re.IGNORECASE)
+  if m:    return MathPlacement(m.group(1))
+  return None
 
 def build_node(node: And | Or, items: list[And|Or|Requirement]) -> And | Or | Requirement:
   if len(items) == 1: return items[0]
@@ -511,7 +521,7 @@ def parse_course_div(course_div: BeautifulSoup) -> dict:
     if child.name == 'span' or child.name == 'a':
       continue ### TODO: pan and a are for sbc and partially fulfills, which we currently don't parse.
     parsers = [parse_req,         ## we try to match it with different parsers, returning the first one that works.
-               parse_credits]
+               parse_credits_and_grading]
     
     parsed = False
     for parser in parsers:
