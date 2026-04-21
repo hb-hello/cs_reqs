@@ -166,6 +166,20 @@ credits_at_sb_cat123(Total) :-
 satisfied_residency_123() :- credits_at_sb_cat123(Total), Total >= 24.
 wit(res123, Id) :- taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
+temp123(CredsList) :- 
+    findall(Creds,
+        (taken(Id, Creds, _, _, 'SBU'),
+         passed(Id),
+         course_in_cat123(Id)),
+        CredsList).
+
+temp23(CredsList) :- 
+    findall(Creds,
+        (taken(Id, Creds, _, _, 'SBU'),
+         passed(Id),
+         course_in_cat23(Id)),
+        CredsList).
+
 course_in_cat23(Id) :- advanced_courses(Id) ; elective(Id).
 credits_at_sb_cat23(Total) :-
     aggregate_all(sum(Creds),
