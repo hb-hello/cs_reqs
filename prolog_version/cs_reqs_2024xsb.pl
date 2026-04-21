@@ -164,7 +164,7 @@ subseq([_|T], Sub) :- subseq(T, Sub).
 
 wit(sci, Id) :- sci_courses(Id), taken(Id, _, _, _, _).
 
-course_in_cat123(Id) :- intro_courses(Id) ; advanced_courses(Id) ; upperdivCS(Id).
+course_in_cat123(Id) :- intro_courses(Id) ; advanced_courses(Id) ; elective(Id).
 
 % XSB replacement for SWI's aggregate_all(sum(...), Goal, Total)
 sum_list([], 0).
@@ -181,7 +181,7 @@ credits_at_sb_cat123(Total) :-
 satisfied_residency_123 :- credits_at_sb_cat123(Total), Total >= 24.
 wit(res123, Id) :- taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
-course_in_cat23(Id) :- advanced_courses(Id) ; upperdivCS(Id).
+course_in_cat23(Id) :- advanced_courses(Id) ; elective(Id).
 
 credits_at_sb_cat23(Total) :-
     findall(Creds,
