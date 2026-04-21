@@ -69,6 +69,7 @@ elective(Id) :- \+ advanced_courses(Id),
     taken(Id, Creds, _, _, _), 
     Creds >= 3, 
     \+ disallowed_elective(Id), 
+    \+ advanced_courses(Id),
     upperdivCS(Id).
 
 upperdivCS(Id) :-
