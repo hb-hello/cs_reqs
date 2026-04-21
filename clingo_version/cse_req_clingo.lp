@@ -8,7 +8,7 @@
 
 is_or_higher(Grade, Grade2) :- 
   grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
-c_or_higher(Grade) :- is_or_higher(Grade, "C").
+is_c_or_higher(Grade) :- is_or_higher(Grade, "C").
 
 %% mapping letter grade to points for GPA calculation
 %% scaled by 100 to make each integer
@@ -35,7 +35,7 @@ gpa(Tag, 0) :-
 
 % taken(Id, Credits, Grade, When, Where): taken course Id with Credits, etc.
 
-passed(Id) :- taken(Id, Credits_, Grade, When_, Where_), c_or_higher(Grade).
+passed(Id) :- taken(Id, Credits_, Grade, When_, Where_), is_c_or_higher(Grade).
 
 % c(Subject, Id): course Id in Subject
 
@@ -78,7 +78,7 @@ req(adv) :-
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
 subset_taken(Id, elect_passed) :-
-  taken(Id, Crs, G, _, _), c_or_higher(G),
+  taken(Id, Crs, G, _, _), is_c_or_higher(G),
   @course_prog(Id) = "CSE",
   @upper_division(Id) = 1,    %% is upper division
   Crs >= 3, not courses(Id, adv), not c(elect_exclude, Id).
@@ -237,22 +237,24 @@ degree :- req(Item) : item(Item).
 %%   this is efficient.
 before(Sem1, Sem2) :- Sem1 = 1..finish_sem, Sem2 = 1..finish_sem, Sem1 < Sem2.
 
-%% course is taken before semester Sem.                           %% for prereq and antireq
-taken_before(Id, Sem) :- taken(Id, _, _, Sem1, _), before(Sem1, Sem).
+% %% course is taken before semester Sem.                           %% for prereq and antireq
+% taken_before(Id, Sem) :- taken(Id, _, _, Sem1, _), before(Sem1, Sem).
 
 %% course taken before semester with at least grade.
 passed_before_grade(Id, Grade, Sem) :- 
   taken(Id, _, G, Sem1, _), before(Sem1, Sem), is_or_higher(G, Grade).
 
 %% "C or higher" in prereq
-passed_before(Id, Sem):- taken(Id, _, _, Sem1, _), before(Sem1, Sem), passed(Id). 
+passed_before(Id, Sem):- taken(Id, _, G, Sem1, _), before(Sem1, Sem), is_c_or_higher(G). 
 
 %% course Id is taken at semester Sem.                            %% coreq
 taken_together(Id, Sem) :- taken(Id, _, _, Sem, _).
 
 %% could be taken before or at the same semester.                 %% pre_or_coreq
-taken_before_or_together(Id, Sem) :- taken_before(Id, Sem).
-taken_before_or_together(Id, Sem) :- taken_together(Id, Sem).
+passed_before_or_together_grade(Id, Grade, Sem) :- 
+  grade_points(Grade, _), passed_before_grade(Id, Grade, Sem).
+passed_before_or_together_grade(Id, Grade, Sem) :- 
+  grade_points(Grade, _), taken_together(Id, Sem).
 
 %%%% generate 
 
