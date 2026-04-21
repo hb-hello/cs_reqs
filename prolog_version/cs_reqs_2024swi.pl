@@ -181,7 +181,7 @@ temp23(CredsList) :-
         CredsList).
 
 tempNone(TList) :- 
-    findall([Id, Grade],
+    findall(f(Id, Grade),
         taken(Id, Grade, _, _, _),
         TList).
 
