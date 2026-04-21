@@ -175,10 +175,15 @@ temp123(CredsList) :-
 
 temp23(CredsList) :- 
     findall(Creds,
-        (taken(Id, Creds, _, _, 'SBU'),
+        (taken(Id, _, _, _, 'SBU'),
          passed(Id),
          course_in_cat23(Id)),
         CredsList).
+
+tempNone(TList) :- 
+    findall(Id,
+        taken(Id, _, 'None', _, _),
+        TList).
 
 course_in_cat23(Id) :- advanced_courses(Id) ; elective(Id).
 credits_at_sb_cat23(Total) :-
