@@ -23,7 +23,11 @@ def check_ortools(taken):
     checked, _, _ = plan_courses(history, Major("CSE"), Standing("U4"), check=True)
     return checked
 
-def check_prolog(taken):
+def check_prolog_xsb(taken):
+    from prolog_version.run_prolog import run_prolog
+    return run_prolog(taken, engine='xsb')
+
+def check_prolog_swi(taken):
     from prolog_version.run_prolog import run_swi
     return run_swi(taken)
 
@@ -63,7 +67,8 @@ APPROACHES = [
     ('python_version',  check_python),
     # ('ortools_version', check_ortools),
     # ('clingo_version',  check_clingo),
-    ('prolog_version',  check_prolog),
+    ('prolog_xsb',  check_prolog_xsb),
+    ('prolog_swi',  check_prolog_swi),
 ]
 
 def run_one(label, check_fn):

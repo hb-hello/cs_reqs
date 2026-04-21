@@ -36,18 +36,24 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         return run_swi(taken, with_witness=swi_with_witness, return_timing=return_timing)
 
     child = pexpect.spawn('xsb', encoding='utf-8', timeout=20)
-    child.expect(r'\| \?-')
+    prompt_re = r'\|\s*\?-\s*'
+    child.expect(prompt_re)
 
     def run_cmd(command):
         child.sendline(command)
-        child.expect(r'\| \?-')
+        child.expect(prompt_re)
         return child.before.strip()
+
+    def query_truth(goal):
+        output = run_cmd(f"({goal} -> write(yes) ; write(no)).")
+        return 'yes' in output
     
     def get_xsb_runtime():
         # XSB returns [TimeSinceStart, TimeSinceLastStatCall]
-        output = run_cmd("statistics(runtime, [T|_]), writeln(time_marker(T)).")
-        match = re.search(r"time_marker\((\d+)\)", output)
-        return int(match.group(1)) if match else 0
+        # Use a failing probe query so XSB does not pause for top-level bindings.
+        output = run_cmd("statistics(runtime, [T|_]), writeln(time_marker(T)), fail.")
+        match = re.search(r"time_marker\(([-+0-9.eE]+)\)", output)
+        return float(match.group(1)) if match else 0.0
 
     xsb_load_path = os.path.splitext(_PL_FILE_XSB)[0].replace('\\', '/')
     run_cmd(f"['{xsb_load_path}'].")
@@ -59,9 +65,8 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         fact = f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{where}')"
         run_cmd(f"assertz({fact}).")
 
-    query_output = run_cmd("measure_wall(all_requirements).")
+    ok = query_truth('all_requirements')
     t1 = get_xsb_runtime()
-    ok = 'result(yes)' in query_output.lower()
     # time_match = re.search(r"wall\s*time:\s*([-+0-9.eE]+)\s*(ms|s)", query_output.lower())
     # if time_match:
     #     raw = float(time_match.group(1))
@@ -69,7 +74,8 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
     #     prolog_eval_s = raw / 1000.0 if unit == 'ms' else raw
     # else:
     #     prolog_eval_s = None
-    prolog_eval_s = (t1 - t0) / 1000.0
+    # XSB runtime statistics are CPU time in this environment.
+    prolog_eval_s = t1 - t0
 
     # collect per-requirement witnesses
     req_predicates = {
@@ -85,14 +91,13 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
     }
     checked = {}
     for key, pred in req_predicates.items():
-        sat_out = run_cmd(f"({pred} -> write(yes) ; write(no)).")
-        sat = 'yes' in sat_out
-        wit_out = run_cmd(f"findall(Id, wit({key}, Id), Ids), write(Ids).")
+        sat = query_truth(pred)
+        wit_out = run_cmd(f"findall(Id, wit({key}, Id), Ids), writeq(Ids), fail.")
         courses = _parse_prolog_list(wit_out)
         checked[key] = (sat, courses)
 
-    t123_out = run_cmd("credits_at_sb_cat123(T), write(T).")
-    t23_out  = run_cmd("credits_at_sb_cat23(T), write(T).")
+    t123_out = run_cmd("credits_at_sb_cat123(T), write(T), fail.")
+    t23_out  = run_cmd("credits_at_sb_cat23(T), write(T), fail.")
     t123_m = re.search(r'[\d.]+', t123_out)
     t23_m  = re.search(r'[\d.]+', t23_out)
     t123 = float(t123_m.group()) if t123_m else 0.0
@@ -192,9 +197,9 @@ def run_swi(taken, with_witness=True, return_timing=False):
     # for d in data:
     #     print(f"{d['Q']}: {[t.credits for t in taken if t.id == d['Q']]}")
 
-    print("temp")
-    data1 = janus.query_once('tempNone(Q)')
-    print(data1)
+    # print("temp")
+    # data1 = janus.query_once('tempNone(Q)')
+    # print(data1)
     # for d in data1:
     #     print(f"{d['Q']}, {d['truth']}, {d}")
 
@@ -246,13 +251,14 @@ if __name__ == '__main__':
                'PHY 131', 'PHY 133', 'AST 203',
                'CSE 300', 'CSE 312'}
 
-    taken = [Taken(cid, 4, 'A', (2024,2), 'SB') for cid in some]
+    taken = [Taken(cid, 3, 'A', (2024,2), 'SB') for cid in FULL]
     # engine = sys.argv[1] if len(sys.argv) > 1 else 'xsb'
 
-    taken = {Taken(id='CHE 133', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 360', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 216', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CSE 215', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 316', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 310', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 361', credits=3, grade='A', when=(2025, 2), where='SB'), Taken(id='CSE 416', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='AMS 161', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='PHY 131', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 373', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='AMS 301', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CHE 132', credits=4, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 114', credits=3, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 214', credits=4, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 220', credits=4, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 303', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 300', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='AMS 310', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CHE 131', credits=4, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 312', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CSE 320', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CHE 132', credits=4, grade='D', when=(2025, 2), where='SB'), Taken(id='AMS 210', credits=3, grade='A', when=(2022, 4), where='SB')}
+    # taken = {Taken(id='CHE 133', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 360', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 216', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CSE 215', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 316', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 310', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 361', credits=3, grade='A', when=(2025, 2), where='SB'), Taken(id='CSE 416', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='AMS 161', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='PHY 131', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 373', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='AMS 301', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CHE 132', credits=4, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 114', credits=3, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 214', credits=4, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 220', credits=4, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 303', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 300', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='AMS 310', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CHE 131', credits=4, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 312', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CSE 320', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CHE 132', credits=4, grade='D', when=(2025, 2), where='SB'), Taken(id='AMS 210', credits=3, grade='A', when=(2022, 4), where='SB')}
 
     try:
         pprint(run_prolog(taken, 'xsb', swi_with_witness=True, return_timing=True))
+        pprint(run_prolog(taken, 'swi', swi_with_witness=True, return_timing=True))
     except Exception as e:
         print(repr(e))
     # pprint(run_prolog(taken, 'xsb', return_timing=True))
