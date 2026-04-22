@@ -188,6 +188,7 @@ class ORModel:
         return v
     
     def require(self, expr, name=None):
+        name = name or id(expr)
         v, leaves = self._reify(expr, name=name)
         if v is None: return None
         if name is None:
@@ -214,7 +215,7 @@ class ORModel:
             return expr, leaves
 
         # Cache key + var creation
-        node_key = Condition(f"{wit_expr(expr)} for {name or "unnamed"}")
+        node_key = Condition(f"{wit_expr(expr)} for {name or id(expr)}")
         if node_key not in self._vars:
             self._vars[node_key] = self.model.new_bool_var(repr(node_key))
         v = self._vars[node_key]

@@ -6,7 +6,7 @@ from .course_catalog import (
     PassedId, TakenId, Taken, Major, Standing, UnsupportedRequirement, Permission,
     And, Or, get_reqs, Requirement, grade_points, semester_range,
     MAX_SEMS_ALLOWED, CREDIT_LIMIT, transform_leaves, course_of,
-    get_sem_distance, sem_to_int, int_to_sem, rel_sem_to_term
+    get_sem_distance, sem_to_int, int_to_sem, rel_sem_to_term, Coregister
 )
 
 def C_or_higher(grade): return grade in {'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'}
@@ -284,19 +284,22 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         for cid in to_plan_from:
             if catalog[cid].prereq:
                 prereq, p_wit = or_model._reify(catalog[cid].prereq)
+                print(cid)
+                print(catalog[cid].prereq)
                 or_model.implies(TakenId(cid), prereq)
                 for leaf, chosen in p_wit.items():
-                    if leaf in available: or_model.implies(chosen, or_model[Semester(course_of(leaf))] < or_model[Semester(cid)])
+                    if isinstance(leaf, Coregister): or_model.implies(chosen, or_model[Semester(course_of(leaf))] == or_model[Semester(cid)])
+                    else: or_model.implies(chosen, or_model[Semester(course_of(leaf))] < or_model[Semester(cid)])
             if catalog[cid].coreq:
                 coreq, c_wit = or_model._reify(catalog[cid].coreq)
                 or_model.implies(TakenId(cid), coreq)
                 for leaf, chosen in c_wit.items():
-                    if leaf in available: or_model.implies(chosen, or_model[Semester(course_of(leaf))] == or_model[Semester(cid)])
+                    or_model.implies(chosen, or_model[Semester(course_of(leaf))] == or_model[Semester(cid)])
             if catalog[cid].pre_or_coreq:
                 pre_or_coreq, pc_wit = or_model._reify(catalog[cid].pre_or_coreq)
                 or_model.implies(TakenId(cid), pre_or_coreq)
                 for leaf, chosen in pc_wit.items():
-                    if leaf in available: or_model.implies(chosen, or_model[Semester(course_of(leaf))] <= or_model[Semester(cid)])
+                    or_model.implies(chosen, or_model[Semester(course_of(leaf))] <= or_model[Semester(cid)])
             if catalog[cid].anti_req: or_model.forbids(TakenId(cid), not(catalog[cid].anti_req)) # do before
 
         # enforce credit limit per semester using the same encoded semester domain
