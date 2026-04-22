@@ -5,7 +5,8 @@ from pathlib import Path
 from course_kb.course_kb import (
     Taken as TakenReq, Passed as PassedReq, Major, Standing, Permission, UnsupportedRequirement,
     And, Or, get_courses, get_reqs, Requirement, course_of, transform_leaves, Coregister,
-    MAX_SEMS_ALLOWED, SEM_NAMES, CREDIT_LIMIT, grade_points, COURSE_OFFERED_TERMS
+    MAX_SEMS_ALLOWED, SEM_NAMES, CREDIT_LIMIT, grade_points, COURSE_OFFERED_TERMS, 
+    get_sem_distance, sem_to_int, int_to_sem, rel_sem_to_term
 )
 from course_kb.build_kb import ASTDecoder
 

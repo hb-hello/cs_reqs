@@ -84,7 +84,7 @@ elective(Id) :- \+ advanced_courses(Id),
     \+ advanced_courses(Id),
     upperdivCS(Id).
 
-upperdivCS(Id) :- concat_atom(['CSE', CourseNumstr], Id),
+upperdivCS(Id) :- concat_atom(['CSE ', CourseNumstr], Id),
     atom_number(CourseNumstr, CourseNumInt),
   CourseNumInt >= 300.
 
