@@ -119,6 +119,15 @@ COURSES_OVERRIDES = {
     "PHY 133": {
         "pre_or_coreq": Or([And([Passed("PHY 125", "D"), Passed("PHY 126", "D")]), Passed("PHY 131", "D"), Passed("PHY 141", "D")])
     },
+    "PHY 141": {
+      # Level 6 on Math Placement, or B or higher in MAT 131 or 141 or AMS 151, or B+ or higher in MAT 125, or instructor permission (priority given to students in Honors or WISE programs)
+        "prereq": Or([UnsupportedRequirement("Level 6 on Math Placement"),
+                  Or([B_or_higher("MAT 131"),
+                      B_or_higher("MAT 141"),
+                      B_or_higher("AMS 151"),]),
+                  Passed("MAT 125", "B+"),
+                  Permission("instructor permission (priority given to students in Honors or WISE programs)"),]),
+    },
     "PHY 142": {
         "prereq": Or([C_or_higher("PHY 141"), Permission("permission of department")]),
     },
