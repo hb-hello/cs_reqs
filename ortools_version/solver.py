@@ -166,21 +166,21 @@ class ORModel:
         self.model.add(iv > 0).only_enforce_if(bv)
         self.model.add(iv == 0).only_enforce_if(bv.negated())
 
-    def exactly(self, expr, n):
+    def eq(self, expr, n):
         expr = self[expr] if isinstance(expr, Requirement) else expr
         v = self.model.new_bool_var(f"eq_{n}_{id(expr)}")
         self.model.add(expr == n).only_enforce_if(v)
         self.model.add(expr != n).only_enforce_if(v.negated())
         return v
 
-    def at_least(self, expr, n):
+    def ge(self, expr, n):
         expr = self[expr] if isinstance(expr, Requirement) else expr
         v = self.model.new_bool_var(f"geq_{n}_{id(expr)}")
         self.model.add(expr >= n).only_enforce_if(v)
         self.model.add(expr <  n).only_enforce_if(v.negated())
         return v
 
-    def at_most(self, expr, n):
+    def le(self, expr, n):
         expr = self[expr] if isinstance(expr, Requirement) else expr
         v = self.model.new_bool_var(f"leq_{n}_{id(expr)}")
         self.model.add(expr <= n).only_enforce_if(v)
@@ -258,6 +258,9 @@ class ORModel:
                     ops.append(child_v)
 
             if not ops:               return 1, leaves       # all ignored → trivially true
+            if isinstance(expr, Not):
+                self._vars[node_key] = ops[0].negated()
+                return self._vars[node_key], leaves
             if len(ops) == 1:         return ops[0], leaves  # single child → collapse
 
             if isinstance(expr, Or):  self.model.add_max_equality(v, ops)
@@ -396,7 +399,7 @@ class ORModel:
         mapped_values = [func(v) if v in declared_set else 0 for v in domain_values]
         mapped = self.model.new_int_var(min(mapped_values), max(mapped_values), f"apply_{pred}_mapped")
         for v, out in zip(domain_values, mapped_values):
-            self.model.add(mapped == out).only_enforce_if(self.exactly(pred, v))
+            self.model.add(mapped == out).only_enforce_if(self.eq(pred, v))
         if iff is not None:
             bv = self._var(iff)
             result = self.model.new_int_var(

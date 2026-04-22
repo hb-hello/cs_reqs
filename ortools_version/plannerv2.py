@@ -1,6 +1,6 @@
 from .solver import ORModel
 from .course_catalog import (
-    catalog, upper_division, COURSE_OFFERED_TERMS,
+    CATALOG, upper_division, COURSE_OFFERED_TERMS,
     Passed, Taken, Major, Standing, UnsupportedRequirement, Permission,
     CourseReq, And, Or, get_courses, get_reqs, Requirement, Taken
 )
@@ -69,9 +69,9 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     # fetch credits earned for each course
     hist_credits = {h.id: h.credits for h in history}
     # use actual credits earned from history if available, else for future courses get credits from the catalog
-    credits = lambda c: hist_credits.get(c, catalog[c].credits)
+    credits = lambda c: hist_credits.get(c, CATALOG[c].credits)
 
-    for c in catalog:
+    for c in CATALOG:
         offered_terms = course_offered_terms.get(c)
         for g in GRADES:
             for s in all_sems:
@@ -130,14 +130,14 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
 
     ## list of eligible electives
     electives = {
-        c for c in catalog
+        c for c in CATALOG
         if c[:3] == 'CSE'
         and upper_division(c)
         and credits(c) >= 3
         and c not in adv_courses | elect_exclude
     }
 
-    reqs["elect"] = solver.at_least(sum(solver.resolve(Passed(c)) for c in electives), 4)
+    reqs["elect"] = solver.ge(sum(solver.resolve(Passed(c)) for c in electives), 4)
     witnesses["elect"] = {Passed(c) for c in electives}
 
     # 4. AMS 151, AMS 161 Applied Calculus I, II
@@ -205,8 +205,8 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     # at least 2.00.
     # GPA >= 2.0  i.e.,  weighted_sum >= 200 * total_credits  (scaled by 100)
     reqs["sci"] = And(reqs["sci_combo"],
-                      solver.at_least(unique_credit_total, 9),
-                      solver.at_least(sci_weighted, 200 * sci_credit_total))
+                      solver.ge(unique_credit_total, 9),
+                      solver.ge(sci_weighted, 200 * sci_credit_total))
     witnesses["sci"] = {UsedInSci(cid) for cid in sci_ids}
 
     # 9. Professional Ethics
@@ -223,13 +223,13 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     transfer_ids = {h.id for h in history if h.where != 'SB'}
     items123_courses = (intro_courses | adv_courses | electives) - transfer_ids
     items23_courses  = (adv_courses | electives) - transfer_ids
-    reqs['credits_at_SB'] = And(solver.at_least(sum(solver[Passed(c)] * credits(c) for c in items123_courses), 24),
-        solver.at_least(sum(solver[Passed(c)] * credits(c) for c in items23_courses), 18))
+    reqs['credits_at_SB'] = And(solver.ge(sum(solver[Passed(c)] * credits(c) for c in items123_courses), 24),
+        solver.ge(sum(solver[Passed(c)] * credits(c) for c in items23_courses), 18))
 
     grades = {h.id: h.grade for h in history}
     req_vars = {name: solver.resolve(expr) for name, expr in reqs.items()}
 
-    to_plan_from = catalog.keys() - (history_ids.keys() | must_exclude)
+    to_plan_from = CATALOG.keys() - (history_ids.keys() | must_exclude)
 
     if check:
         # no future BoolVars were created; just maximize satisfied requirements
@@ -259,7 +259,7 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
 
         new_courses = sum(solver[Taken(cid)] for cid in to_plan_from)
 
-        prereqs = {cid: c.prereq for cid, c in catalog.items() if c.prereq}
+        prereqs = {cid: c.prereq for cid, c in CATALOG.items() if c.prereq}
 
         for cid, expr in prereqs.items():
             # we're not checking pre-reqs in history
@@ -280,7 +280,7 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
                             solver.ensure(Taken(cid, g, s), 0)
 
         # coreq: must be taken same semester or before (≤ rather than < for prereqs)
-        for cid, c in catalog.items():
+        for cid, c in CATALOG.items():
             if not c.coreq or cid in history_ids.keys() | must_exclude: continue
             solver.implies(Taken(cid), c.coreq)
             for p in get_courses(c.coreq):
@@ -291,14 +291,14 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
                         solver.implies(Taken(cid, s), Or(*same_or_prior))
 
         # anti_req: cannot take this course if these courses are taken (before or with)
-        for cid, c in catalog.items():
+        for cid, c in CATALOG.items():
             if not c.anti_req or cid in history_ids.keys() | must_exclude: continue
             solver.forbids(Taken(cid), c.anti_req)
 
         # credit limit per semester to spread courses out (only for new semesters)
         future_sems = list(semester_range(starting_semester, MAX_SEM))
         for s in future_sems:
-            solver.require(solver.at_most(sum(solver[Taken(c, s)] * credits(c) for c in to_plan_from), CREDIT_LIMIT))
+            solver.require(solver.le(sum(solver[Taken(c, s)] * credits(c) for c in to_plan_from), CREDIT_LIMIT))
 
         sem_idx = lambda s: s[0] * 4 + s[1]
         # for each course: linear expr = semester index when taken, 0 if not taken
@@ -353,7 +353,7 @@ def plan_courses(history, *student_reqs, must_exclude=set(), must_include=set(),
     checked['degree'] = (all(v for v, _ in checked.values()), [])
 
     if not check:
-        witnessed = {c for (_, wit) in checked.values() for c in wit if c in catalog}
+        witnessed = {c for (_, wit) in checked.values() for c in wit if c in CATALOG}
         additional = sorted(c for c in planned if c not in witnessed)
         checked['additional'] = (True, additional)
         print(f"additional : {', '.join(fmt(c, grades) for c in additional)}")
@@ -377,5 +377,5 @@ def fmt(cid, grades):
 if __name__ == '__main__':
     # Test: student has taken intro programming + CSE 220
     taken_ids = {'CSE 114', 'CSE 214', 'CSE 216', 'CSE 220'}
-    history   = [Taken(cid, catalog[cid].credits, "A", (1, 1), "SB") for cid in taken_ids]
+    history   = [Taken(cid, CATALOG[cid].credits, "A", (1, 1), "SB") for cid in taken_ids]
     plan_courses([], Major("CSE"), Standing("U4"), check=False)
