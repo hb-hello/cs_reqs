@@ -119,12 +119,16 @@ class ORModel:
         if isinstance(pred, type) and callable(expr):
             self._vars[pred] = expr
         elif isinstance(expr, Expr):
+            print("using resolve inside setitem")
             self._vars[pred] = self.resolve(expr)
         elif isinstance(expr, cp_model.IntVar):
             self._vars[pred] = expr
         else:
             iv = self[pred] if isinstance(pred, Requirement) else pred
             self.model.add(iv == expr)
+            if pred in self._selectors:
+                for sel in self._selectors[pred]:
+                    self.model.add(self[sel] == expr)
             if isinstance(pred, Requirement) and expr in (0, 1):
                 self._pinned[pred] = expr
 
@@ -138,10 +142,12 @@ class ORModel:
             if c == 0: self.model.add(self._var(a) == 0)
             return
         bv = self._var(a)
-        if hasattr(c, 'negated'):   # BoolVar: use native implication
+        if self._is_bool_var(c):                    # BoolVar: use native implication
             self.model.add_implication(bv, c)
-        else:                        # BoundedLinearExpression (e.g. a > b)
+        elif isinstance(c, cp_model.BoundedLinearExpression):  # e.g. grade >= C
             self.model.add(c).only_enforce_if(bv)
+        else:                                        # multi-valued IntVar (e.g. Grade): implied ↔ non-zero
+            self.model.add(c > 0).only_enforce_if(bv)
 
     def negated(self, expr):
         if isinstance(expr, cp_model.IntVar) and list(expr.proto.domain) == [0, 1]:
@@ -149,7 +155,7 @@ class ORModel:
         if isinstance(expr, Requirement):
             v = self[expr]
             if list(v.proto.domain) == [0, 1]: return v.negated()
-        return self._reify(expr)[0].negated()
+        return self.reify(expr)[0].negated()
 
     # a → NOT b
     def forbids(self, a, b):
@@ -189,7 +195,7 @@ class ORModel:
     
     def require(self, expr, name=None):
         name = name or id(expr)
-        v, leaves = self._reify(expr, name=name)
+        v, leaves = self.reify(expr, name=name)
         if v is None: return None
         if name is None:
             name = v.name
@@ -202,7 +208,7 @@ class ORModel:
         return v, leaves
     
     # Recursively reify any expression into a single BoolVar while tracking each intermediate node as var
-    def _reify(self, expr, leaves=None, name=None):
+    def reify(self, expr, leaves=None, name=None):
         if leaves is None:
             leaves = {}
 
@@ -236,7 +242,7 @@ class ORModel:
             for var in expr.vars:
                 req = self._vars.inverse.get(var)   # reverse bidict lookup
                 if req is not None and isinstance(req, Requirement):
-                    sel, leaves   = self._reify(req, leaves, name)
+                    sel, leaves   = self.reify(req, leaves, name)
                     contrib        = self._make_contribution(req, sel)
                 else:
                     contrib = var  # raw IntVar/BoolVar — use directly
@@ -253,7 +259,7 @@ class ORModel:
             for op in expr.operands:
                 if isinstance(op, self.ignore):
                     continue
-                child_v, leaves = self._reify(op, leaves, name)
+                child_v, leaves = self.reify(op, leaves, name)
                 if child_v is not None:
                     ops.append(child_v)
 
@@ -300,6 +306,10 @@ class ORModel:
     def resolve(self, expr):
         if isinstance(expr, self.ignore):
             return None
+        if isinstance(expr, cp_model.BoundedLinearExpression):
+            v = self.model.new_bool_var(wit_expr(expr))
+            self.model.add(expr).only_enforce_if(v)
+            return v
         if not isinstance(expr, Expr):
             return expr  # raw BoolVar or linear expression
         if isinstance(expr, Requirement):
@@ -323,35 +333,6 @@ class ORModel:
         if isinstance(expr, self.ignore): return set()
         if isinstance(expr, Requirement):   return {expr}
         else: return set().union(*(self.leaves(op) for op in expr.operands))
-
-    def resolve_with_wit(self, expr, chosen=None):
-        chosen = chosen if chosen is not None else {}
-
-        if isinstance(expr, self.ignore):
-            return None, chosen
-        if not isinstance(expr, Expr):
-            return expr, chosen  # raw BoolVar or linear expression
-        if isinstance(expr, Requirement):
-            if expr not in chosen:           # dedup: same req in multiple branches → one selector
-                chosen[expr] = self.model.new_bool_var(f"chosen_{id(expr)}")
-                self.implies(chosen[expr], self[expr])
-                if expr in self._pinned:     # mirror pin: history (1) or excluded (0)
-                    self.model.add(chosen[expr] == self._pinned[expr])
-            return chosen[expr], chosen
-
-        # recursively add constraints for operands
-        ops = [self.resolve_with_wit(op, chosen) for op in expr.operands]
-
-        # check if operands are to be ignored
-        ops = [o for o, _ in ops if o is not None]
-        if not ops: return 1, chosen        # all operands ignored makes it true
-        if len(ops) == 1: return ops[0], chosen
-
-        # create model variable to store the Or/And relation if there are multiple operands
-        v = self.model.new_bool_var(f"{'or' if isinstance(expr, Or) else 'and'}_{id(expr)}")
-        if isinstance(expr, Or): self.model.add_max_equality(v, ops)
-        else:                    self.model.add_min_equality(v, ops)
-        return v, chosen
 
     # returns an IntVar equal to the max of the given vars
     # hi: explicit upper bound — required when vars are linear expressions

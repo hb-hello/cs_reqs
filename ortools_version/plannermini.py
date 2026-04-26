@@ -1,6 +1,6 @@
 from pprint import pprint
 from .solver import ORModel
-from .course_catalog import CATALOG, upper_division, COURSE_OFFERED_TERMS, PassedId, TakenId, Taken, Major, Standing, UnsupportedRequirement, Permission, And, Or, get_reqs, Requirement, grade_points, MAX_SEMS_ALLOWED, CREDIT_LIMIT, transform_leaves, course_of, semester_range
+from .course_catalog import CATALOG, upper_division, COURSE_OFFERED_TERMS, Passed, TakenId, Taken, Major, Standing, UnsupportedRequirement, Permission, And, Or, get_reqs, Requirement, grade_points, MAX_SEMS_ALLOWED, CREDIT_LIMIT, transform_leaves, course_of, semester_range
 def C_or_higher(grade): return grade in {'A','A-','B+','B','B-','C+','C'}
 def upper_division(course): return int(course[4:])>=300
 class Semester(Requirement): pass
@@ -52,7 +52,7 @@ def plan_courses(taken,*student_reqs,must_exclude=set(),must_include=set(),check
             else: or_model.implies(TakenId(cid),or_model.ge(Semester(cid),starting_semester))
         for cid in must_exclude-history_ids.keys(): or_model[TakenId(cid)]=0
         for cid in must_include: or_model[TakenId(cid)]=1
-    or_model[PassedId]=lambda c,g: or_model.ge(Grade(c),g)
+    or_model[Passed]=lambda c,g: or_model.ge(Grade(c),g)
     credits=lambda c: history_ids[c].credits if c in history_ids else CATALOG[c].credits
     reqs={}
     prog={'CSE 114','CSE 214','CSE 216'}
@@ -61,28 +61,28 @@ def plan_courses(taken,*student_reqs,must_exclude=set(),must_include=set(),check
     dmath2={'CSE 150'}
     sys={'CSE 220'}
     intro_courses=prog|prog2|dmath|dmath2|sys
-    reqs["intro"]=And(Or(And(*map(PassedId,prog)),And(*map(PassedId,prog2))),Or(And(*map(PassedId,dmath)),And(*map(PassedId,dmath2))),And(*map(PassedId,sys)))
+    reqs["intro"]=And(Or(And(*map(Passed,prog)),And(*map(Passed,prog2))),Or(And(*map(Passed,dmath)),And(*map(Passed,dmath2))),And(*map(Passed,sys)))
     theory={'CSE 303'}
     theory2={'CSE 350'}
     algo={'CSE 373'}
     algo2={'CSE 385'}
     other={'CSE 310','CSE 316','CSE 320','CSE 416'}
     adv_courses=theory|theory2|algo|algo2|other
-    reqs["adv"]=And(Or(And(*map(PassedId,theory)),And(*map(PassedId,theory2))),Or(And(*map(PassedId,algo)),And(*map(PassedId,algo2))),And(*map(PassedId,other)))
+    reqs["adv"]=And(Or(And(*map(Passed,theory)),And(*map(Passed,theory2))),Or(And(*map(Passed,algo)),And(*map(Passed,algo2))),And(*map(Passed,other)))
     elect_exclude={'CSE 475','CSE 495','CSE 300','CSE 301','CSE 312'}
     electives={c for c in CATALOG if c[:3]=='CSE' and upper_division(c) and credits(c)>=3 and c not in adv_courses|elect_exclude}
-    reqs["elect"]=or_model.ge(sum(or_model.resolve(PassedId(c)) for c in electives),4)
+    reqs["elect"]=or_model.ge(sum(or_model.resolve(Passed(c)) for c in electives),4)
     calc={'AMS 151','AMS 161'}
     calc2={'MAT 125','MAT 126','MAT 127'}
     calc3={'MAT 131','MAT 132'}
-    reqs["calc"]=Or(And(*map(PassedId,calc)),And(*map(PassedId,calc2)),And(*map(PassedId,calc3)))
+    reqs["calc"]=Or(And(*map(Passed,calc)),And(*map(Passed,calc2)),And(*map(Passed,calc3)))
     alg={'MAT 211'}
     alg2={'AMS 210'}
-    reqs["alg"]=Or(And(*map(PassedId,alg)),And(*map(PassedId,alg2)))
+    reqs["alg"]=Or(And(*map(Passed,alg)),And(*map(Passed,alg2)))
     fmath={'AMS 301'}
     sta={'AMS 310'}
     sta2={'AMS 311'}
-    reqs["sta"]=And(And(*map(PassedId,fmath)),Or(And(*map(PassedId,sta)),And(*map(PassedId,sta2))))
+    reqs["sta"]=And(And(*map(Passed,fmath)),Or(And(*map(Passed,sta)),And(*map(Passed,sta2))))
     bio={'BIO 201','BIO 204'}; bio2={'BIO 202','BIO 204'}; bio3={'BIO 203','BIO 204'}
     che={'CHE 131','CHE 133'}; che2={'CHE 152','CHE 154'}
     phy={'PHY 126','PHY 133'}; phy2={'PHY 131','PHY 133'}; phy3={'PHY 141','PHY 133'}
@@ -95,16 +95,16 @@ def plan_courses(taken,*student_reqs,must_exclude=set(),must_include=set(),check
     sci_subset_credits=sum(or_model[SciSubset(cid)]*credits(cid) for cid in sci_ids)
     reqs["sci"]=And(reqs["sci_combo"],or_model.ge(sci_subset_credits,9),or_model.ge(sci_subset_grade_points,200*sci_subset_credits))
     ethics_courses={'CSE 312'}
-    reqs["ethics"]=And(*map(PassedId,ethics_courses))
+    reqs["ethics"]=And(*map(Passed,ethics_courses))
     writing_courses={'CSE 300'}
-    reqs["writing"]=And(*map(PassedId,writing_courses))
+    reqs["writing"]=And(*map(Passed,writing_courses))
     witnesses={req:get_reqs(expr) for req,expr in reqs.items()}
-    witnesses["elect"]={PassedId(c) for c in electives}
+    witnesses["elect"]={Passed(c) for c in electives}
     witnesses["sci"]={SciSubset(c) for c in sci_ids}
     transfer_ids={h.id for h in taken if h.where!='SB'}
     items123_courses=(intro_courses|adv_courses|electives)-transfer_ids
     items23_courses=(adv_courses|electives)-transfer_ids
-    reqs['credits_at_SB']=And(or_model.ge(sum(or_model[PassedId(c)]*credits(c) for c in items123_courses),24),or_model.ge(sum(or_model[PassedId(c)]*credits(c) for c in items23_courses),18))
+    reqs['credits_at_SB']=And(or_model.ge(sum(or_model[Passed(c)]*credits(c) for c in items123_courses),24),or_model.ge(sum(or_model[Passed(c)]*credits(c) for c in items23_courses),18))
     grades={h.id:h.grade for h in taken}
     req_vars={name:or_model.resolve(expr) for name,expr in reqs.items()}
     if check:
@@ -138,8 +138,8 @@ def plan_courses(taken,*student_reqs,must_exclude=set(),must_include=set(),check
         if debug_print: print(f"Status: {solution.status} — {len(set(planned.values()))} more semester(s)\n")
         for cid in planned:
             if cid not in grades: grades[cid]=solution.value(Grade(cid))
-    items123_cr=sum(credits(c) for c in items123_courses if solution.value(PassedId(c)))
-    items23_cr=sum(credits(c) for c in items23_courses if solution.value(PassedId(c)))
+    items123_cr=sum(credits(c) for c in items123_courses if solution.value(Passed(c)))
+    items23_cr=sum(credits(c) for c in items23_courses if solution.value(Passed(c)))
     witnesses['credits_at_SB']={f"items123 = {items123_cr}",f"items23 = {items23_cr}"}
     checked={}
     for name in sorted(witnesses):

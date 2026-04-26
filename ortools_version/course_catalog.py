@@ -13,7 +13,7 @@ from course_kb.build_kb import ASTDecoder
 # ── Course record & catalog ────────────────────────────────────
 
 class TakenId(Requirement): pass
-class PassedId(Requirement):
+class Passed(Requirement):
     ## by default, we assume passing means C or higher because that's the only case in cse courses.
     ## other programs may have 'passed with B or higher'.
     def __init__(self, *arguments):
@@ -73,7 +73,7 @@ def _rewrite_req_ids(expr):
         if len(operands) == 1: return operands[0]
         return type(expr)(*operands)
     if isinstance(expr, TakenReq):  return TakenId(*expr.arguments)
-    if isinstance(expr, PassedReq): return PassedId(*expr.arguments)
+    if isinstance(expr, PassedReq): return Passed(*expr.arguments)
     if isinstance(expr, (UnsupportedRequirement, Permission, Major, Standing)): return None
     return expr
 
