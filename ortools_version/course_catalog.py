@@ -3,7 +3,7 @@ from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 from course_kb.course_kb import (
-    Taken as TakenReq, Passed as PassedReq, Major, Standing, Permission, UnsupportedRequirement,
+    Taken as TakenReq, Passed, C_or_higher, B_or_higher, B_plus_or_higher, D_or_higher, Major, Standing, Permission, UnsupportedRequirement,
     And, Or, Not, get_courses, get_reqs, Requirement, course_of, transform_leaves, Coregister,
     MAX_SEMS_ALLOWED, SEM_NAMES, CREDIT_LIMIT, grade_points, COURSE_OFFERED_TERMS, 
     get_sem_distance, sem_to_int, int_to_sem, rel_sem_to_term
@@ -13,14 +13,6 @@ from course_kb.build_kb import ASTDecoder
 # ── Course record & catalog ────────────────────────────────────
 
 class TakenId(Requirement): pass
-class Passed(Requirement):
-    ## by default, we assume passing means C or higher because that's the only case in cse courses.
-    ## other programs may have 'passed with B or higher'.
-    def __init__(self, *arguments):
-        if len(arguments) == 1:
-            arguments = (arguments[0], 'C')
-        super().__init__(*arguments)
-
 ## record of a course taken by the student
 Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
 ## record of relevant course information
@@ -58,7 +50,8 @@ def _load_kb(path):
         text = re.sub(r'^\s*//.*$', '', f.read(), flags=re.MULTILINE)
     return json.loads(text, cls=ASTDecoder)
 
-# convert Taken/Passed to TakenId/PassedId; prune UnsupportedRequirement and Permission leaves.
+# convert TakenReq to TakenId; prune UnsupportedRequirement and Permission leaves.
+# Passed leaves are kept as-is (course_kb.Passed); planner.py handles grade constraints.
 # transform_leaves skips those types, so we do a direct recursive walk instead.
 def _rewrite_req_ids(expr):
     if expr is None:
@@ -73,7 +66,9 @@ def _rewrite_req_ids(expr):
         if len(operands) == 1: return operands[0]
         return type(expr)(*operands)
     if isinstance(expr, TakenReq):  return TakenId(*expr.arguments)
-    if isinstance(expr, PassedReq): return Passed(*expr.arguments)
+    if type(expr) is Passed:        # normalize base Passed to a typed subclass
+        cls = {'C': C_or_higher, 'B+': B_plus_or_higher, 'B': B_or_higher, 'D': D_or_higher}.get(expr.min_grade)
+        return cls(expr.course_id) if cls else expr
     if isinstance(expr, (UnsupportedRequirement, Permission, Major, Standing)): return None
     return expr
 

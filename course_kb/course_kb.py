@@ -66,13 +66,27 @@ class Passed(Requirement):
             and self.min_grade == other.min_grade
         )
 
+    def __hash__(self): return hash((type(self), self.course_id, self.min_grade))
+
 class C_or_higher(Passed):
     def __init__(self, course_id):
         super().__init__(course_id, 'C')
+        self.arguments = (course_id,)
 
 class B_or_higher(Passed):
     def __init__(self, course_id):
         super().__init__(course_id, 'B')
+        self.arguments = (course_id,)
+
+class B_plus_or_higher(Passed):
+    def __init__(self, course_id):
+        super().__init__(course_id, 'B+')
+        self.arguments = (course_id,)
+
+class D_or_higher(Passed):
+    def __init__(self, course_id):
+        super().__init__(course_id, 'D')
+        self.arguments = (course_id,)
 
 class Major(Requirement):     ## e.g. cse_major
     pass

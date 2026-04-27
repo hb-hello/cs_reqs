@@ -3,13 +3,12 @@ from pprint import pprint
 from .solver import ORModel
 from .course_catalog import (
     CATALOG, upper_division, COURSE_OFFERED_TERMS,
-    TakenId, Taken, Major, Standing, UnsupportedRequirement, Permission,
+    TakenId, Taken, C_or_higher, B_or_higher, B_plus_or_higher, D_or_higher, Major, Standing, UnsupportedRequirement, Permission,
     And, Or, get_reqs, Requirement, grade_points, semester_range,
     MAX_SEMS_ALLOWED, CREDIT_LIMIT, transform_leaves, course_of,
     get_sem_distance, sem_to_int, int_to_sem, rel_sem_to_term, Coregister
 )
 
-def C_or_higher(grade): return grade in {'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'}
 GRADES = sorted(grade_points.keys(), key=grade_points.get)
 int_grade = {grade: i for i, grade in enumerate(GRADES, start=1)}
 grade_of_int = {i: grade for grade, i in int_grade.items()}
@@ -131,8 +130,15 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     # PassedId(c, g) is true if the course was taken with grade >= g
     # this will be called when we process a PassedId(c, g) value
 
-    def passed(course, with_grade_at_least='C'): return m.resolve(m[Grade(course)] >= int_grade[with_grade_at_least])
-    # m[Passed] = passed
+    # def passed(course, with_grade_at_least='C'): return m.resolve(m[Grade(course)] >= int_grade[with_grade_at_least])
+    def c_or_higher(course): return m.resolve(m[Grade(course)] >= int_grade['C'])
+    def b_or_higher(course): return m.resolve(m[Grade(course)] >= int_grade['B'])
+    def b_plus_or_higher(course): return m.resolve(m[Grade(course)] >= int_grade['B+'])
+    def d_or_higher(course): return m.resolve(m[Grade(course)] >= int_grade['D'])
+    m[C_or_higher] = c_or_higher
+    m[B_or_higher] = b_or_higher
+    m[B_plus_or_higher] = b_plus_or_higher
+    m[D_or_higher] = d_or_higher
 
     # use actual credits earned from history if available, else for future courses get credits from the catalog
     credits = lambda c: history[c].credits if c in history else catalog[c].credits
@@ -147,7 +153,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     sys = {'CSE 220'}
     intro_courses = prog | prog2 | dmath | dmath2 | sys
 
-    reqs["intro"] = m.require(And(Or(And(*map(passed, prog)), And(*map(passed, prog2))), Or(And(*map(passed, dmath)), And(*map(passed, dmath2))), And(*map(passed, sys))), "intro")
+    reqs["intro"] = m.require(And(Or(And(*map(C_or_higher, prog)), And(*map(C_or_higher, prog2))), Or(And(*map(C_or_higher, dmath)), And(*map(C_or_higher, dmath2))), And(*map(C_or_higher, sys))), "intro")
 
     # 2. Required Advanced Courses
     theory = {'CSE 303'}
@@ -156,7 +162,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     algo2 = {'CSE 385'}  # Honors
     other = {'CSE 310', 'CSE 316', 'CSE 320', 'CSE 416'}
     adv_courses = theory | theory2 | algo | algo2 | other
-    reqs["adv"] = m.require(And(Or(And(*map(passed, theory)), And(*map(passed, theory2))), Or(And(*map(passed, algo)), And(*map(passed, algo2))), And(*map(passed, other))))
+    reqs["adv"] = m.require(And(Or(And(*map(C_or_higher, theory)), And(*map(C_or_higher, theory2))), Or(And(*map(C_or_higher, algo)), And(*map(C_or_higher, algo2))), And(*map(C_or_higher, other))))
 
 
     # 3. Computer Science Electives  ## simpler than 2025
@@ -178,25 +184,25 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
 
     # reqs["elect"] = or_model.at_least(sum(or_model.resolve(PassedId(c)) for c in electives), 4)
     # elect_wit = or_model.require_with_wit(Or(*map(PassedId, electives)))
-    reqs["elect"] = m.require(sum(passed(c) for c in electives) >= 4, "elect")
+    reqs["elect"] = m.require(sum(m[C_or_higher(c)] for c in electives) >= 4, "elect")
     # reqs["elect"] = elect_req
 
     # 4. AMS 151, AMS 161 Applied Calculus I, II
     calc = {'AMS 151', 'AMS 161'}
     calc2 = {'MAT 125', 'MAT 126', 'MAT 127'}
     calc3 = {'MAT 131', 'MAT 132'}
-    reqs["calc"] = m.require(Or(And(*map(passed, calc)), And(*map(passed, calc2)), And(*map(passed, calc3))))
+    reqs["calc"] = m.require(Or(And(*map(C_or_higher, calc)), And(*map(C_or_higher, calc2)), And(*map(C_or_higher, calc3))))
 
     # 5. One of the following linear algebra courses
     alg = {'MAT 211'}
     alg2 = {'AMS 210'}
-    reqs["alg"] = m.require(Or(And(*map(passed, alg)), And(*map(passed, alg2)))) # wrap in And just in case courses are added to the sets
+    reqs["alg"] = m.require(Or(And(*map(C_or_higher, alg)), And(*map(C_or_higher, alg2)))) # wrap in And just in case courses are added to the sets
 
     # 6. Both of the following:
     fmath = {'AMS 301'}
     sta =   {'AMS 310'}
     sta2 =  {'AMS 311'}
-    reqs["sta"] = m.require(And(And(*map(passed, fmath)), Or(And(*map(passed, sta)), And(*map(passed, sta2)))))
+    reqs["sta"] = m.require(And(And(*map(C_or_higher, fmath)), Or(And(*map(C_or_higher, sta)), And(*map(C_or_higher, sta2)))))
 
     # 7. At least one natural science lecture/laboratory combination
     # each comb is a pair that must both be taken — Or across all valid pairs
@@ -248,11 +254,11 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
 
     # 9. Professional Ethics
     ethics_courses = {'CSE 312'}
-    reqs["ethics"] = m.require(And(*map(passed, ethics_courses)))
+    reqs["ethics"] = m.require(And(*map(C_or_higher, ethics_courses)))
 
     # 10. Upper-Division Writing Requirement
     writing_courses = {'CSE 300'}
-    reqs["writing"] = m.require(And(*map(passed, writing_courses)))
+    reqs["writing"] = m.require(And(*map(C_or_higher, writing_courses)))
 
     # collect all reqs into witnesses
     witnesses = {req: get_reqs(expr) for req, expr in reqs.items()}
@@ -264,8 +270,8 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     transfer_ids = {h.id for h in taken if h.where != 'SB'}
     items123_courses = (intro_courses | adv_courses | electives) - transfer_ids
     items23_courses  = (adv_courses | electives) - transfer_ids    
-    reqs['credits_at_SB'] = m.require(And(sum(passed(c) * credits(c) for c in items123_courses) >= 24,
-                                             sum(passed(c) * credits(c) for c in items23_courses) >= 18))
+    reqs['credits_at_SB'] = m.require(And(sum(m[C_or_higher(c)] * credits(c) for c in items123_courses) >= 24,
+                                             sum(m[C_or_higher(c)] * credits(c) for c in items23_courses) >= 18))
 
     grades = {h.id: h.grade for h in taken}
 
@@ -276,23 +282,23 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         # prereqs / coreqs / antireqs
         for cid in to_plan_from:
             if catalog[cid].prereq:
-                prereq, p_wit = m.reify(catalog[cid].prereq)
+                prereq, p_wit = m.reify(catalog[cid].prereq, with_leaves=True)
                 m.implies(TakenId(cid), prereq)
                 for leaf, chosen in p_wit.items():
                     if isinstance(leaf, Coregister): m.implies(chosen, m[Semester(course_of(leaf))] == m[Semester(cid)])
                     else: m.implies(chosen, m[Semester(course_of(leaf))] < m[Semester(cid)])
             if catalog[cid].coreq:
-                coreq, c_wit = m.reify(catalog[cid].coreq)
+                coreq, c_wit = m.reify(catalog[cid].coreq, with_leaves=True)
                 m.implies(TakenId(cid), coreq)
                 for leaf, chosen in c_wit.items():
                     m.implies(chosen, m[Semester(course_of(leaf))] == m[Semester(cid)])
             if catalog[cid].pre_or_coreq:
-                pre_or_coreq, pc_wit = m.reify(catalog[cid].pre_or_coreq)
+                pre_or_coreq, pc_wit = m.reify(catalog[cid].pre_or_coreq, with_leaves=True)
                 m.implies(TakenId(cid), pre_or_coreq)
                 for leaf, chosen in pc_wit.items():
                     m.implies(chosen, m[Semester(course_of(leaf))] <= m[Semester(cid)])
             if catalog[cid].anti_req: 
-                anti_req, a_wit = m.reify(catalog[cid].anti_req)
+                anti_req, a_wit = m.reify(catalog[cid].anti_req, with_leaves=True)
                 m.implies(TakenId(cid), anti_req)
                 for leaf, chosen in a_wit.items():
                     m.implies(chosen, m[Semester(course_of(leaf))] < m[Semester(cid)])
@@ -345,8 +351,8 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
 
     checked = {}
     checked = {name: (bool(solution.value(sat)), sorted({course_of(cond) for cond, chosen in leaves.items() if solution.value(chosen)})) for name, (sat, leaves) in reqs.items()}
-    items123_cr = sum(credits(c) for c in items123_courses if solution.value(passed(c)))
-    items23_cr  = sum(credits(c) for c in items23_courses  if solution.value(passed(c)))
+    items123_cr = sum(credits(c) for c in items123_courses if solution.value(c_or_higher(c)))
+    items23_cr  = sum(credits(c) for c in items23_courses  if solution.value(c_or_higher(c)))
     checked['credits_at_SB'] = {f"items123 = {items123_cr}", f"items23 = {items23_cr}"}
 
     checked['degree'] = (all(v for v, _ in checked.values()), [])

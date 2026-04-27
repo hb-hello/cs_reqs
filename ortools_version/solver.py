@@ -119,7 +119,6 @@ class ORModel:
         if isinstance(pred, type) and callable(expr):
             self._vars[pred] = expr
         elif isinstance(expr, Expr):
-            print("using resolve inside setitem")
             self._vars[pred] = self.resolve(expr)
         elif isinstance(expr, cp_model.IntVar):
             self._vars[pred] = expr
@@ -195,7 +194,7 @@ class ORModel:
     
     def require(self, expr, name=None):
         name = name or id(expr)
-        v, leaves = self.reify(expr, name=name)
+        v, leaves = self.reify(expr, name=name, with_leaves=True)
         if v is None: return None
         if name is None:
             name = v.name
@@ -208,95 +207,86 @@ class ORModel:
         return v, leaves
     
     # Recursively reify any expression into a single BoolVar while tracking each intermediate node as var
-    def reify(self, expr, leaves=None, name=None):
-        if leaves is None:
-            leaves = {}
+    # with_leaves=True:  create/index Condition variables; populate the leaves dict
+    # with_leaves=False: directly build constraints and return a fresh BoolVar; no Condition caching
+    def reify(self, expr, leaves=None, name=None, with_leaves=False):
+        if leaves is None: leaves = {}
 
-        # Ignored → skip
-        if isinstance(expr, self.ignore):
-            return None, leaves
+        if isinstance(expr, self.ignore): return None, leaves
+        if isinstance(expr, cp_model.IntVar) and not isinstance(expr, Requirement): return expr, leaves
+        if isinstance(expr, Requirement) and not with_leaves: return self[expr], leaves
 
-        # Raw IntVar/BoolVar (not a Requirement) 
-        if isinstance(expr, cp_model.IntVar) and not isinstance(expr, Requirement):
-            return expr, leaves
+        # All remaining paths need a BoolVar — cached under a Condition key (with_leaves) or fresh
+        if with_leaves:
+            node_key = Condition(f"{wit_expr(expr)} for {name or id(expr)}")
+            if node_key not in self._vars:
+                self._vars[node_key] = self.model.new_bool_var(repr(node_key))
+            v = self._vars[node_key]
+        else:
+            v = self.model.new_bool_var(f"{wit_expr(expr)}")
 
-        # Cache key + var creation
-        node_key = Condition(f"{wit_expr(expr)} for {name or id(expr)}")
-        if node_key not in self._vars:
-            self._vars[node_key] = self.model.new_bool_var(repr(node_key))
-        v = self._vars[node_key]
-
-        # LEAF: Requirement
         if isinstance(expr, Requirement):
             if expr not in leaves:
                 leaves[expr] = v
-                self.implies(v, self[expr])
+                # self.implies(v, self[expr])
+                self.model.add(self[expr] > 0).only_enforce_if(v)
                 if expr in self._pinned:
                     self.model.add(v == self._pinned[expr])
                 self._selectors.setdefault(expr, []).append(node_key)
             return v, leaves
 
-        # INTERMEDIATE: BoundedLinearExpression
         if isinstance(expr, cp_model.BoundedLinearExpression):
-            contrib_vars = []
-            for var in expr.vars:
-                req = self._vars.inverse.get(var)   # reverse bidict lookup
-                if req is not None and isinstance(req, Requirement):
-                    sel, leaves   = self.reify(req, leaves, name)
-                    contrib        = self._make_contribution(req, sel)
-                else:
-                    contrib = var  # raw IntVar/BoolVar — use directly
-                contrib_vars.append(contrib)
-
-            new_lexpr = cp_model.LinearExpr.weighted_sum(contrib_vars, list(expr.coeffs))
-            if expr.offset: new_lexpr = new_lexpr + expr.offset
-            self.model.add_linear_expression_in_domain(new_lexpr, expr.bounds).only_enforce_if(v)
+            if not with_leaves:
+                self.model.add(expr).only_enforce_if(v)
+            else:
+                contrib_vars = []
+                for var in expr.vars:
+                    req = self._vars.inverse.get(var)   # reverse bidict lookup
+                    if req is not None and isinstance(req, Requirement):
+                        sel, leaves = self.reify(req, leaves, name, with_leaves)
+                        contrib     = self._make_contribution(req, sel)
+                    else:
+                        contrib = var  # raw IntVar/BoolVar — use directly
+                    contrib_vars.append(contrib)
+                new_lexpr = cp_model.LinearExpr.weighted_sum(contrib_vars, list(expr.coeffs))
+                if expr.offset: new_lexpr = new_lexpr + expr.offset
+                self.model.add_linear_expression_in_domain(new_lexpr, expr.bounds).only_enforce_if(v)
             return v, leaves
 
-        # INTERMEDIATE: LogicalExpr (And / Or)
         if isinstance(expr, LogicalExpr):
             ops = []
             for op in expr.operands:
-                if isinstance(op, self.ignore):
-                    continue
-                child_v, leaves = self.reify(op, leaves, name)
-                if child_v is not None:
-                    ops.append(child_v)
+                if isinstance(op, self.ignore): continue
+                child_v, leaves = self.reify(op, leaves, name, with_leaves)
+                if child_v is not None: ops.append(child_v)
 
-            if not ops:               return 1, leaves       # all ignored → trivially true
+            if not ops: return 1, leaves       # all ignored → trivially true
             if isinstance(expr, Not):
-                self._vars[node_key] = ops[0].negated()
-                return self._vars[node_key], leaves
-            if len(ops) == 1:         return ops[0], leaves  # single child → collapse
+                negated = ops[0].negated()
+                if with_leaves: self._vars[node_key] = negated
+                return negated, leaves
+            if len(ops) == 1: return ops[0], leaves  # single child → collapse
 
-            if isinstance(expr, Or):  self.model.add_max_equality(v, ops)
-            else:                     self.model.add_min_equality(v, ops)
+            if isinstance(expr, Or): self.model.add_max_equality(v, ops)
+            else:                    self.model.add_min_equality(v, ops)
             return v, leaves
 
         return expr, leaves
 
 
     def _make_contribution(self, req, sel):
-        """
-        For a Requirement inside a BLE:
-        - BoolVar domain → selector IS the contribution
-        - IntVar domain  → create a gated contrib var that equals self[req]
-                        when sel=1, else 0
-        """
-        if not hasattr(req, 'domain') or req.domain is None:
-            return sel  # BoolVar — selector is the contribution directly
         fact_var = self[req]
         if self._is_bool_var(fact_var):
             return sel
         domain_values = self._effective_values(req)
-        lo, hi = min(domain_values), max(domain_values)
-        contrib_lo = min(0, lo)
-        contrib_hi = max(0, hi)
+        contrib_values = sorted(set([0] + domain_values))
 
         # IntVar — gate through selector, cache to avoid duplicates
         contrib_key = Condition(f"contrib_{wit_expr(req)}")
         if contrib_key not in self._vars:
-            contrib = self.model.new_int_var(contrib_lo, contrib_hi, repr(contrib_key))
+            contrib = self.model.new_int_var_from_domain(
+                cp_model.Domain.FromValues(contrib_values), repr(contrib_key)
+            )
             self._vars[contrib_key] = contrib
             self.model.add(contrib == fact_var).only_enforce_if(sel)
             self.model.add(contrib == 0).only_enforce_if(sel.Not())
@@ -304,30 +294,31 @@ class ORModel:
 
     # recursively walk an And-Or expression and set up boolvars in the model
     def resolve(self, expr):
-        if isinstance(expr, self.ignore):
-            return None
-        if isinstance(expr, cp_model.BoundedLinearExpression):
-            v = self.model.new_bool_var(wit_expr(expr))
-            self.model.add(expr).only_enforce_if(v)
-            return v
-        if not isinstance(expr, Expr):
-            return expr  # raw BoolVar or linear expression
-        if isinstance(expr, Requirement):
-            return self[expr]
+        # if isinstance(expr, self.ignore):
+        #     return None
+        # if isinstance(expr, cp_model.BoundedLinearExpression):
+        #     v = self.model.new_bool_var(wit_expr(expr))
+        #     self.model.add(expr).only_enforce_if(v)
+        #     return v
+        # if not isinstance(expr, Expr):
+        #     return expr  # raw BoolVar or linear expression
+        # if isinstance(expr, Requirement):
+        #     return self[expr]
 
-        # recursively add constraints for operands
-        ops = [self.resolve(op) for op in expr.operands]
+        # # recursively add constraints for operands
+        # ops = [self.resolve(op) for op in expr.operands]
 
-        # check if operands are to be ignored
-        ops = [o for o in ops if o is not None]
-        if not ops: return 1        # all operands ignored makes it true
-        if len(ops) == 1: return ops[0]
+        # # check if operands are to be ignored
+        # ops = [o for o in ops if o is not None]
+        # if not ops: return 1        # all operands ignored makes it true
+        # if len(ops) == 1: return ops[0]
 
-        # create model variable to store the Or/And relation if there are multiple operands
-        v = self.model.new_bool_var(f"{'or' if isinstance(expr, Or) else 'and'}_{id(expr)}")
-        if isinstance(expr, Or): self.model.add_max_equality(v, ops)
-        else:                    self.model.add_min_equality(v, ops)
-        return v
+        # # create model variable to store the Or/And relation if there are multiple operands
+        # v = self.model.new_bool_var(f"{'or' if isinstance(expr, Or) else 'and'}_{id(expr)}")
+        # if isinstance(expr, Or): self.model.add_max_equality(v, ops)
+        # else:                    self.model.add_min_equality(v, ops)
+        # return v
+        return self.reify(expr)[0]
 
     def leaves(self, expr):
         if isinstance(expr, self.ignore): return set()
