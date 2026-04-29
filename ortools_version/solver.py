@@ -47,7 +47,9 @@ class ORModel:
         self._vars   = bidict({})           # Requirements/classes converted to BoolVars or lambdas
         self._domain_overrides = {} # pred -> sorted values registered via with_domain
         self._pinned = {}           # pred -> pinned bool value (0 or 1), for selector mirroring
-        self._selectors = {}
+        self._pred_to_selectors = {}
+        self._selectors_to_pred = {}   # Condition → Requirement
+        self._condition_roots   = {}   # root BoolVar → set[Condition] (leaves)
         self.ignore  = tuple(ignore)
         self.requirements = {}
         self.plan = plan # when false, consume require calls and store them to maximize later, ignore optimization objectives
@@ -125,8 +127,8 @@ class ORModel:
         else:
             iv = self[pred] if isinstance(pred, Requirement) else pred
             self.model.add(iv == expr)
-            if pred in self._selectors:
-                for sel in self._selectors[pred]:
+            if pred in self._pred_to_selectors:
+                for sel in self._pred_to_selectors[pred]:
                     self.model.add(self[sel] == expr)
             if isinstance(pred, Requirement) and expr in (0, 1):
                 self._pinned[pred] = expr
@@ -194,22 +196,23 @@ class ORModel:
     
     def require(self, expr, name=None):
         name = name or id(expr)
-        v, leaves = self.reify(expr, name=name, with_leaves=True)
+        conditions = set()
+        v, _ = self.reify(expr, name=name, with_leaves=True, conditions=conditions)
         if v is None: return None
-        if name is None:
-            name = v.name
-        self.requirements[name] = (v, leaves)
+        self.requirements[name] = v
+        if isinstance(v, cp_model.IntVar):
+            self._condition_roots[v] = conditions
         if self.plan:
             if isinstance(v, cp_model.IntVar):  # covers BoolVar (bool is a domain-restricted IntVar)
                 self.model.add(v > 0)
             else:                               # BoundedLinearExpression (e.g. sum >= 4)
                 self.model.add(v)
-        return v, leaves
+        return v
     
     # Recursively reify any expression into a single BoolVar while tracking each intermediate node as var
     # with_leaves=True:  create/index Condition variables; populate the leaves dict
     # with_leaves=False: directly build constraints and return a fresh BoolVar; no Condition caching
-    def reify(self, expr, leaves=None, name=None, with_leaves=False):
+    def reify(self, expr, leaves=None, name=None, with_leaves=False, conditions=None):
         if leaves is None: leaves = {}
 
         if isinstance(expr, self.ignore): return None, leaves
@@ -232,7 +235,9 @@ class ORModel:
                 self.model.add(self[expr] > 0).only_enforce_if(v)
                 if expr in self._pinned:
                     self.model.add(v == self._pinned[expr])
-                self._selectors.setdefault(expr, []).append(node_key)
+                self._pred_to_selectors.setdefault(expr, []).append(node_key)
+                self._selectors_to_pred[node_key] = expr
+                if conditions is not None: conditions.add(node_key)
             return v, leaves
 
         if isinstance(expr, cp_model.BoundedLinearExpression):
@@ -243,7 +248,7 @@ class ORModel:
                 for var in expr.vars:
                     req = self._vars.inverse.get(var)   # reverse bidict lookup
                     if req is not None and isinstance(req, Requirement):
-                        sel, leaves = self.reify(req, leaves, name, with_leaves)
+                        sel, leaves = self.reify(req, leaves, name, with_leaves, conditions)
                         contrib     = self._make_contribution(req, sel)
                     else:
                         contrib = var  # raw IntVar/BoolVar — use directly
@@ -257,7 +262,7 @@ class ORModel:
             ops = []
             for op in expr.operands:
                 if isinstance(op, self.ignore): continue
-                child_v, leaves = self.reify(op, leaves, name, with_leaves)
+                child_v, leaves = self.reify(op, leaves, name, with_leaves, conditions)
                 if child_v is not None: ops.append(child_v)
 
             if not ops: return 1, leaves       # all ignored → trivially true
@@ -320,11 +325,6 @@ class ORModel:
         # return v
         return self.reify(expr)[0]
 
-    def leaves(self, expr):
-        if isinstance(expr, self.ignore): return set()
-        if isinstance(expr, Requirement):   return {expr}
-        else: return set().union(*(self.leaves(op) for op in expr.operands))
-
     # returns an IntVar equal to the max of the given vars
     # hi: explicit upper bound — required when vars are linear expressions
     def max_of(self, vars, hi=None):
@@ -385,7 +385,7 @@ class ORModel:
         return mapped
 
     def solve(self):
-        if not self.plan: self.model.maximize(sum(v for (v, _) in self.requirements.values()))
+        if not self.plan: self.model.maximize(sum(self.requirements.values()))
         return ORSolver(self)
 
 
@@ -419,6 +419,12 @@ class ORSolver:
         m = self.metrics()
         parts = [f"{k}={v}" for k, v in m.items()]
         print('Solver metrics: ' + (', '.join(parts) if parts else 'n/a'))
+
+    def chosen(self, boolvar):
+        conditions = self._model._condition_roots.get(boolvar, set())
+        return {self._model._selectors_to_pred[c] for c in conditions
+                if self._cp.value(self._model._vars[c])}
+
 
 class ReqWithDomain(Requirement):
     default_domain = None

@@ -161,7 +161,7 @@ def transform_leaves(expr, fn):
         return expr
     return fn(expr)
 
-def course_of(req):
+def cid_from(req):
     """Extract the course ID from a leaf requirement (e.g. Passed, Taken)."""
     return req.arguments[0]
 

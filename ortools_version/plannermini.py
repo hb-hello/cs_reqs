@@ -1,6 +1,6 @@
 from pprint import pprint
 from .solver import ORModel
-from .course_catalog import CATALOG, upper_division, COURSE_OFFERED_TERMS, Passed, TakenId, Taken, Major, Standing, UnsupportedRequirement, Permission, And, Or, get_reqs, Requirement, grade_points, MAX_SEMS_ALLOWED, CREDIT_LIMIT, transform_leaves, course_of, semester_range
+from .course_catalog import CATALOG, upper_division, COURSE_OFFERED_TERMS, Passed, TakenId, Taken, Major, Standing, UnsupportedRequirement, Permission, And, Or, get_reqs, Requirement, grade_points, MAX_SEMS_ALLOWED, CREDIT_LIMIT, transform_leaves, cid_from, semester_range
 def C_or_higher(grade): return grade in {'A','A-','B+','B','B-','C+','C'}
 def upper_division(course): return int(course[4:])>=300
 class Semester(Requirement): pass
@@ -113,8 +113,8 @@ def plan_courses(taken,*student_reqs,must_exclude=set(),must_include=set(),check
     else:
         for v in req_vars.values(): or_model.require(v)
         new_courses=sum(or_model[TakenId(cid)] for cid in to_plan_from)
-        or_model[Prereq]=lambda cid,req: or_model.resolve(And(req,or_model.ge(or_model[Semester(cid)]-or_model[Semester(course_of(req))],1)))
-        or_model[Coreq]=lambda cid,req: or_model.resolve(And(req,or_model.eq(or_model[Semester(cid)]-or_model[Semester(course_of(req))],0)))
+        or_model[Prereq]=lambda cid,req: or_model.resolve(And(req,or_model.ge(or_model[Semester(cid)]-or_model[Semester(cid(req))],1)))
+        or_model[Coreq]=lambda cid,req: or_model.resolve(And(req,or_model.eq(or_model[Semester(cid)]-or_model[Semester(cid(req))],0)))
         or_model[Antireq]=lambda cid,req: or_model.resolve(req).negated()
         for cid in to_plan_from:
             for expr,pred in ((CATALOG[cid].prereq,Prereq),(CATALOG[cid].coreq,Coreq)):

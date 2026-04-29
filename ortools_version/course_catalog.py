@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from course_kb.course_kb import (
     Taken as TakenReq, Passed, C_or_higher, B_or_higher, B_plus_or_higher, D_or_higher, Major, Standing, Permission, UnsupportedRequirement,
-    And, Or, Not, get_courses, get_reqs, Requirement, course_of, transform_leaves, Coregister,
+    And, Or, Not, get_courses, get_reqs, Requirement, cid_from, transform_leaves, Coregister,
     MAX_SEMS_ALLOWED, SEM_NAMES, CREDIT_LIMIT, grade_points, COURSE_OFFERED_TERMS, 
     get_sem_distance, sem_to_int, int_to_sem, rel_sem_to_term
 )
@@ -174,7 +174,7 @@ def _filter_unknown_ids(expr, valid_ids):
         if len(ops) == 1: return ops[0]
         return type(expr)(*ops)
     if isinstance(expr, Requirement):
-        return expr if course_of(expr) in valid_ids else None
+        return expr if cid_from(expr) in valid_ids else None
     return expr
 
 _valid_ids = set(CATALOG.keys())
@@ -191,7 +191,7 @@ for _cid in list(CATALOG):
 def _req_course_ids(expr):
     if expr is None:
         return set()
-    return {course_of(req) for req in get_reqs(expr)}
+    return {cid_from(req) for req in get_reqs(expr)}
 
 
 def _course_req_expr(cid):
@@ -216,7 +216,7 @@ def _dep_tree_from_expr(expr, seen):
             return ''
         return parts[0] if len(parts) == 1 else '(' + ' OR '.join(parts) + ')'
     if isinstance(expr, Requirement):
-        dep = course_of(expr)
+        dep = cid_from(expr)
         if not COURSE_ID_RE.match(dep):
             return ''
         dep_expr = _course_req_expr(dep)
@@ -247,7 +247,7 @@ def _option_count_from_expr(expr, prereq_counts, seen, ignore_course=None):
             total += _option_count_from_expr(op, prereq_counts, seen, ignore_course)
         return total
     if isinstance(expr, Requirement):
-        dep = course_of(expr)
+        dep = cid_from(expr)
         if ignore_course and dep == ignore_course:
             return 1
         dep_expr = _course_req_expr(dep)
