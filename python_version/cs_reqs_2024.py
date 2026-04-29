@@ -180,13 +180,11 @@ def sta_req(passed_ids):
 
 # 7. At least one of the following natural science lecture/laboratory
 # combinations:
-bio = {'BIO 201', 'BIO 204'};
-bio2 = {'BIO 202', 'BIO 204'}
+bio = {'BIO 201', 'BIO 204'}; bio2 = {'BIO 202', 'BIO 204'}
 bio3 = {'BIO 203', 'BIO 204'}
 che = {'CHE 131', 'CHE 133'}; che2 ={'CHE 152', 'CHE 154'}
 phy = {'PHY 126', 'PHY 133'}
-phy2 = {'PHY 131', 'PHY 133'};
-phy3 = {'PHY 141', 'PHY 133'}
+phy2 = {'PHY 131', 'PHY 133'}; phy3 = {'PHY 141', 'PHY 133'}
 sci_combs = [bio, bio2, bio3, che, che2, phy, phy2, phy3]  ## list/tuple/...
 
 ## subsumed by sci_req(taken) below

@@ -96,12 +96,12 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         courses = _parse_prolog_list(wit_out)
         checked[key] = (sat, courses)
 
-    t123_out = run_cmd("credits_at_sb_cat123(T), write(T), fail.")
-    t23_out  = run_cmd("credits_at_sb_cat23(T), write(T), fail.")
-    t123_m = re.search(r'[\d.]+', t123_out)
-    t23_m  = re.search(r'[\d.]+', t23_out)
-    t123 = float(t123_m.group()) if t123_m else 0.0
-    t23  = float(t23_m.group())  if t23_m  else 0.0
+    t123_out = run_cmd("credits_at_sb_cat123(T), write(credit_total(T)), fail.")
+    t23_out  = run_cmd("credits_at_sb_cat23(T), write(credit_total(T)), fail.")
+    t123_m = re.search(r'credit_total\(([\d.]+)\)', t123_out)
+    t23_m  = re.search(r'credit_total\(([\d.]+)\)', t23_out)
+    t123 = float(t123_m.group(1)) if t123_m else 0.0
+    t23  = float(t23_m.group(1))  if t23_m  else 0.0
     checked['credits_at_SB'] = (t123 >= 24 and t23 >= 18,
                                  [f'items123 = {int(t123)}', f'items23 = {int(t23)}'])
     checked['degree'] = (ok, [])
