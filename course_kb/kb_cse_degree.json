@@ -1982,7 +1982,16 @@
         {"C_or_higher": "PHY 141"}
       ]
     },
-    "pre_or_coreq": {"UnsupportedRequirement": "MAT 126, 132, 142, 171 or AMS 161 or level 7 or higher on math placement exam"},
+    "pre_or_coreq": {
+      "Or": [
+        {"Passed": ["MAT 126", "D"]},
+        {"Passed": ["MAT 132", "D"]},
+        {"Passed": ["MAT 142", "D"]},
+        {"Passed": ["MAT 171", "D"]},
+        {"Passed": ["AMS 161", "D"]},
+        {"UnsupportedRequirement": "level 7 or higher on mathematics placement examination"}
+      ]
+    },
     "credits": 3,
     "__type__": "Course"
   },
@@ -1997,7 +2006,16 @@
         {"C_or_higher": "PHY 141"}
       ]
     },
-    "pre_or_coreq": {"UnsupportedRequirement": "MAT 126, 132, 142, 171 or AMS 161 or level 7 or higher on math placement exam"},
+    "pre_or_coreq": {
+      "Or": [
+        {"Passed": ["MAT 126", "D"]},
+        {"Passed": ["MAT 132", "D"]},
+        {"Passed": ["MAT 142", "D"]},
+        {"Passed": ["MAT 171", "D"]},
+        {"Passed": ["AMS 161", "D"]},
+        {"UnsupportedRequirement": "level 7 or higher on mathematics placement examination"}
+      ]
+    },
     "credits": 3,
     "__type__": "Course"
   },
@@ -2005,7 +2023,12 @@
     "id": "PHY 131",
     "title": "Classical Physics I",
     "desc": "First part of a two-semester physics sequence for physical-sciences or engineering majors who have a strong mathematics background and are ready for a fast learning pace. It covers mechanics, wave motion, kinetic theory, and thermodynamics. Calculus is used concurrently with its development in MAT 131. Three lecture hours and one recitation hour per week. The Laboratory component, PHY 133 (Lab 1), could be taken concurrently. Not for credit in addition to PHY 121, PHY 125, or PHY 141. Advanced Placement Physics or a very strong course in high school Physics is recommended. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
-    "prereq": {"UnsupportedRequirement": "MAT 123 or level 5 on the mathematics placement examination"},
+    "prereq": {
+      "Or": [
+        {"Passed": ["MAT 123", "D"]},
+        {"UnsupportedRequirement": "level 5 on the mathematics placement examination"}
+      ]
+    },
     "pre_or_coreq": {
       "Or": [
         {"Passed": ["MAT 125", "D"]},
@@ -2064,15 +2087,15 @@
     "desc": "Two and one half hours of laboratory per week that corresponds to the content of PHY 132 or PHY 126+127. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so. This course has an associated fee. Please see www.stonybrook.edu/coursefees for more information.",
     "prereq": {"C_or_higher": "PHY 133"},
     "pre_or_coreq": {
-      "And": [
+      "Or": [
         {
           "And": [
             {"Passed": ["PHY 126", "D"]},
             {"Passed": ["PHY 127", "D"]}
           ]
         },
-        {"UnsupportedRequirement": "or PHY 132"},
-        {"UnsupportedRequirement": "or corequisite PHY 142"}
+        {"Passed": ["PHY 132", "D"]},
+        {"Coregister": "PHY 142"}
       ]
     },
     "credits": 1,
@@ -2082,7 +2105,20 @@
     "id": "PHY 141",
     "title": "Classical Physics I: Honors",
     "desc": "First part of a demanding two-semester sequence for students with the strongest background, interests, and abilities in science and mathematics. The topics covered in PHY 141 are similar to those in PHY 131 but are treated in more depth in a small-class setting. Students may transfer to PHY 131 at any time during the first half of each semester without penalty. Three lecture hours and  one recitation hour per week. PHY 141 may not be taken for credit in addition to PHY 121, PHY 125, or PHY 131. Advanced Placement Physics or a very strong course in high school Physics is recommended. This course has an associated fee.  Please see www.stonybrook.edu/coursefees for more information.",
-    "prereq": {"UnsupportedRequirement": "Level 6 on Math Placement, or B or higher in MAT 131 or 141 or AMS 151, or B+ or higher in MAT 125, or instructor permission (priority given to students in Honors or WISE programs)"},
+    "prereq": {
+      "Or": [
+        {"UnsupportedRequirement": "Level 6 on Math Placement"},
+        {
+          "Or": [
+            {"B_or_higher": "MAT 131"},
+            {"B_or_higher": "MAT 141"},
+            {"B_or_higher": "AMS 151"}
+          ]
+        },
+        {"Passed": ["MAT 125", "B+"]},
+        {"Permission": "instructor permission (priority given to students in Honors or WISE programs)"}
+      ]
+    },
     "pre_or_coreq": {
       "And": [
         {

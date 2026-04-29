@@ -1,42 +1,17 @@
 from ortools.sat.python import cp_model
-from course_kb.course_kb import Expr, Requirement, LogicalExpr, Or
+from course_kb.course_kb import Expr, Requirement, LogicalExpr, Or, Not
 from collections.abc import Iterable
+from bidict import bidict
 
 class Condition(Expr):
     def __init__(self, *arguments): self.arguments = arguments
+    def __repr__(self): return ", ".join(self.arguments)
 
-def wit_expr(expr:cp_model.BoundedLinearExpression):
-    if isinstance(expr, cp_model.BoundedLinearExpression):
-        terms = [f"{c}*{v.name}" for c, v in zip(expr.coeffs, expr.vars)]
-        return f"{' + '.join(terms)} + {expr.offset} in {expr.bounds}"
-    if isinstance(expr, LogicalExpr):
-        # Inorder traversal: recursively format each child, then join with operator
-        parts = []
-        for child in expr.subexprs:
-            child_str = wit_expr(child, parent=expr)
-            if (isinstance(child, LogicalExpr) and
-                    not isinstance(child, Not) and
-                    type(child) != type(expr)):
-                child_str = f"({child_str})"
-            parts.append(child_str)
-        return f" {expr.op} ".join(parts)
-    else: return repr(expr)
-
-class Var(Requirement): # the "variable-representing" class represents a decision that the solver can take.
+class Var(Expr): # the "variable-representing" class represents a decision that the solver can take.
     default_domain = None
-    # default_encoded = None
     def __init__(self, *args, domain:Iterable=None):
         self._domain = domain
-        # self._encoded = self._encode(domain) if isinstance(domain, Iterable) else {}
         super().__init__(*args)
-    # @property
-    # def encoded(self):
-    #     if self._encoded is None:
-    #         if self.domain is None: 
-    #             if self.default_encoded is None: self.default_encoded = self._encode(self.default_domain)
-    #             return self.default_encoded
-    #         self._encoded = self._encode(self.domain)
-    #     return self._encoded
 
     @property
     def domain(self):
@@ -45,27 +20,69 @@ class Var(Requirement): # the "variable-representing" class represents a decisio
     def __setattr__(self, name, value):
         if name == "domain" and isinstance(value, Iterable): 
             self._domain = value
-    #         self._encoded = self._encode(value)
-    # def _encode(domain:Iterable=None):
-    #     return {val: i + 1 for i, val in enumerate(domain)} if domain else {}
     
+def wit_expr(expr) -> str:
+    if isinstance(expr, cp_model.BoundedLinearExpression):
+        terms = [f"{c}*{v.name}" for c, v in zip(expr.coeffs, expr.vars)]
+        return f"{' + '.join(terms)} + {expr.offset} in {expr.bounds}"
+    if isinstance(expr, LogicalExpr):
+        parts = []
+        for child in expr.subexprs:
+            child_str = wit_expr(child)          # ← no parent arg
+            if (isinstance(child, LogicalExpr) and not isinstance(child, Not) and type(child) != type(expr)):  # ← expr is already the parent
+                child_str = f"({child_str})"
+            parts.append(child_str)
+        return f" {type(expr).__name__} ".join(parts)
+    return repr(expr)
 
 # stores, indexes and adds variables to the CP-SAT model
+# get rid of the translation layer? Add a separate set_domain method as we can only do it once anyway
+# figure out a representation of each variable to be queried from named requirements later
+# logging/ enumerate solutions?
+
 class ORModel:
-    def __init__(self, ignore=()):
+    def __init__(self, ignore=(), plan=False):
         self.model   = cp_model.CpModel()
         self._solver = None         # created on solve()
-        self._vars   = {}           # Requirements/classes converted to BoolVars or lambdas
-        self._domains = {}          # var id -> domain size (upper bound; avoids Proto() calls)
-        self._encoders = {}         # pred_class -> encode_dict (cached from class domain)
+        self._vars   = bidict({})           # Requirements/classes converted to BoolVars or lambdas
+        self._domain_overrides = {} # pred -> sorted values registered via with_domain
         self._pinned = {}           # pred -> pinned bool value (0 or 1), for selector mirroring
+        self._pred_to_selectors = {}
+        self._selectors_to_pred = {}   # Condition → Requirement
+        self._condition_roots   = {}   # root BoolVar → set[Condition] (leaves)
         self.ignore  = tuple(ignore)
+        self.requirements = {}
+        self.plan = plan # when false, consume require calls and store them to maximize later, ignore optimization objectives
+        # when true, set a == 1 constraint on require calls and activate optimization objectives
 
-    # lazily build and cache the encode dict from a Requirement class's domain
-    def _encoder(self, cls):
-        if hasattr(cls, "domain") and cls not in self._encoders and isinstance(cls.domain, list):
-            self._encoders[cls] = {v: i + 1 for i, v in enumerate(cls.domain)} | {None: 0}
-        return self._encoders.get(cls)
+    def set_domain(self, pred, domain):
+        values = sorted(set(domain))
+        if not values:
+            raise ValueError(f"with_domain({pred}): domain must be non-empty")
+        if pred in self._vars:
+            raise ValueError(f"with_domain({pred}): variable already created; call with_domain before first use")
+        if pred in self._domain_overrides:
+            raise ValueError(f"with_domain({pred}): called more than once")
+        self._domain_overrides[pred] = values
+        return pred
+
+    def _declared_values(self, pred):
+        if pred in self._domain_overrides:
+            return self._domain_overrides[pred]
+        domain = getattr(pred, 'domain', None)
+        if not isinstance(domain, Iterable) or isinstance(domain, (str, bytes)):
+            return None
+        return sorted(set(domain))
+
+    def _effective_values(self, pred):
+        values = self._declared_values(pred)
+        if values is None:
+            return None
+        # For positive integer categorical vars, reserve 0 as the internal
+        # "not assigned" sentinel used by iff(Taken, var).
+        if values and all(isinstance(v, int) for v in values) and min(values) >= 1:
+            return [0] + values
+        return values
 
     # allows Python's default indexing -> solver[key]
     # automatically identifies the type of model variable needed from the domain
@@ -75,22 +92,20 @@ class ORModel:
             if cls in self._vars and callable(self._vars[cls]):
                 self._vars[pred] = self._vars[cls](*pred.arguments)
             else:
-                domain = getattr(pred, 'domain', None)
-                if isinstance(domain, list):
-                    n = len(domain) - 1   # max index
-                    # if domain has 1 or 2 values we default to boolvar
-                    if n <= 1:
+                values = self._effective_values(pred)
+                if values is not None:
+                    if values == [0, 1]:
                         self._vars[pred] = self.model.new_bool_var(str(pred))
-                        if n == 0: self.model.add(self._vars[pred] == 0)
-                        self._domains[id(self._vars[pred])] = 1
+                    elif len(values) == 1:
+                        self._vars[pred] = self.model.new_constant(values[0])
                     else:
-                        # if domain has more than 2 values we create an int var
-                        self._vars[pred] = self.model.new_int_var(0, len(domain), str(pred))
-                        self._domains[id(self._vars[pred])] = len(domain)
-                elif domain is None:
+                        self._vars[pred] = self.model.new_int_var_from_domain(
+                            cp_model.Domain.FromValues(values),
+                            str(pred),
+                        )
+                elif getattr(pred, 'domain', None) is None:
                     # if domain is None, we default to boolvar
                     self._vars[pred] = self.model.new_bool_var(str(pred))
-                    self._domains[id(self._vars[pred])] = 1
                 else: return
         return self._vars[pred]
 
@@ -110,10 +125,13 @@ class ORModel:
         elif isinstance(expr, cp_model.IntVar):
             self._vars[pred] = expr
         else:
-            iv, n = self._encode(pred, expr)  # scalar → pin
-            self.model.add(iv == n)
-            if isinstance(pred, Requirement) and n in (0, 1):
-                self._pinned[pred] = n
+            iv = self[pred] if isinstance(pred, Requirement) else pred
+            self.model.add(iv == expr)
+            if pred in self._pred_to_selectors:
+                for sel in self._pred_to_selectors[pred]:
+                    self.model.add(self[sel] == expr)
+            if isinstance(pred, Requirement) and expr in (0, 1):
+                self._pinned[pred] = expr
 
     def _var(self, expr):
         return self[expr] if isinstance(expr, Requirement) else expr
@@ -125,10 +143,20 @@ class ORModel:
             if c == 0: self.model.add(self._var(a) == 0)
             return
         bv = self._var(a)
-        if hasattr(c, 'negated'):   # BoolVar: use native implication
+        if self._is_bool_var(c):                    # BoolVar: use native implication
             self.model.add_implication(bv, c)
-        else:                        # BoundedLinearExpression (e.g. a > b)
+        elif isinstance(c, cp_model.BoundedLinearExpression):  # e.g. grade >= C
             self.model.add(c).only_enforce_if(bv)
+        else:                                        # multi-valued IntVar (e.g. Grade): implied ↔ non-zero
+            self.model.add(c > 0).only_enforce_if(bv)
+
+    def negated(self, expr):
+        if isinstance(expr, cp_model.IntVar) and list(expr.proto.domain) == [0, 1]:
+            return expr.negated()
+        if isinstance(expr, Requirement):
+            v = self[expr]
+            if list(v.proto.domain) == [0, 1]: return v.negated()
+        return self.reify(expr)[0].negated()
 
     # a → NOT b
     def forbids(self, a, b):
@@ -145,144 +173,157 @@ class ORModel:
         self.model.add(iv > 0).only_enforce_if(bv)
         self.model.add(iv == 0).only_enforce_if(bv.negated())
 
-    # auto-resolves Requirements and encodes domain values for n
-    def _encode(self, expr, n):
-        if isinstance(expr, Requirement):
-            cls = type(expr)
-            enc = self._encoder(cls)
-            if enc and n in enc: n = enc[n]
-            return self[expr], n
-        return expr, n  # already a model variable or linear expression
-
-    def exactly(self, expr, n):
-        expr, n = self._encode(expr, n)
+    def eq(self, expr, n):
+        expr = self[expr] if isinstance(expr, Requirement) else expr
         v = self.model.new_bool_var(f"eq_{n}_{id(expr)}")
         self.model.add(expr == n).only_enforce_if(v)
         self.model.add(expr != n).only_enforce_if(v.negated())
         return v
 
-    def at_least(self, expr, n):
-        expr, n = self._encode(expr, n)
+    def ge(self, expr, n):
+        expr = self[expr] if isinstance(expr, Requirement) else expr
         v = self.model.new_bool_var(f"geq_{n}_{id(expr)}")
         self.model.add(expr >= n).only_enforce_if(v)
         self.model.add(expr <  n).only_enforce_if(v.negated())
         return v
 
-    def at_most(self, expr, n):
-        expr, n = self._encode(expr, n)
+    def le(self, expr, n):
+        expr = self[expr] if isinstance(expr, Requirement) else expr
         v = self.model.new_bool_var(f"leq_{n}_{id(expr)}")
         self.model.add(expr <= n).only_enforce_if(v)
         self.model.add(expr >  n).only_enforce_if(v.negated())
         return v
+    
+    def require(self, expr, name=None):
+        name = name or id(expr)
+        conditions = set()
+        v, _ = self.reify(expr, name=name, with_leaves=True, conditions=conditions)
+        if v is None: return None
+        self.requirements[name] = v
+        if isinstance(v, cp_model.IntVar):
+            self._condition_roots[v] = conditions
+        if self.plan:
+            if isinstance(v, cp_model.IntVar):  # covers BoolVar (bool is a domain-restricted IntVar)
+                self.model.add(v > 0)
+            else:                               # BoundedLinearExpression (e.g. sum >= 4)
+                self.model.add(v)
+        return v
+    
+    # Recursively reify any expression into a single BoolVar while tracking each intermediate node as var
+    # with_leaves=True:  create/index Condition variables; populate the leaves dict
+    # with_leaves=False: directly build constraints and return a fresh BoolVar; no Condition caching
+    def reify(self, expr, leaves=None, name=None, with_leaves=False, conditions=None):
+        if leaves is None: leaves = {}
 
-    # make a constraint unconditionally mandatory
-    def require(self, expr):
-        c = self.resolve(expr)
-        if c is None or isinstance(c, int): return
-        if isinstance(c, cp_model.IntVar):  # covers BoolVar (bool is a domain-restricted IntVar)
-            self.model.add(c > 0)
-        else:                               # BoundedLinearExpression (e.g. sum >= 4)
-            self.model.add(c)
-    
-    def require_with_wit(self, expr):
-        v, leaves = self._reify(expr)
-        if v is None or isinstance(v, int): return
-        if isinstance(v, cp_model.IntVar):  # covers BoolVar (bool is a domain-restricted IntVar)
-            self.model.add(v > 0)
-        else:                               # BoundedLinearExpression (e.g. sum >= 4)
-            self.model.add(v)
-        return leaves
-    
-    def _reify(self, expr, leaves=None, name=None):
-        leaves = leaves if leaves is not None else {}   # to keep track of "leaf variables" as and when encountered
-        # if isinstance(expr, self.ignore):
-        #     return None
-        cond = Condition(f"{wit_expr(expr)} for {name if name else "unnamed"}")
-        if cond not in self._vars:
-            self._vars[cond] = self.model.new_bool_var(f"{type(cond)}_{id(cond)}")
-        
-        v = self._vars[cond]
+        if isinstance(expr, self.ignore): return None, leaves
+        if isinstance(expr, cp_model.IntVar) and not isinstance(expr, Requirement): return expr, leaves
+        if isinstance(expr, Requirement) and not with_leaves: return self[expr], leaves
+
+        # All remaining paths need a BoolVar — cached under a Condition key (with_leaves) or fresh
+        if with_leaves:
+            node_key = Condition(f"{wit_expr(expr)} for {name or id(expr)}")
+            if node_key not in self._vars:
+                self._vars[node_key] = self.model.new_bool_var(repr(node_key))
+            v = self._vars[node_key]
+        else:
+            v = self.model.new_bool_var(f"{wit_expr(expr)}")
 
         if isinstance(expr, Requirement):
-            if expr not in leaves:           # dedup: same req in multiple branches → one selector
-                leaves[expr] = cond
-                self.implies(v, self[expr])
-                if expr in self._pinned:     # mirror pin: history (1) or excluded (0)
-                    self.model.add(v == self._pinned[expr])        
+            if expr not in leaves:
+                leaves[expr] = v
+                # self.implies(v, self[expr])
+                self.model.add(self[expr] > 0).only_enforce_if(v)
+                if expr in self._pinned:
+                    self.model.add(v == self._pinned[expr])
+                self._pred_to_selectors.setdefault(expr, []).append(node_key)
+                self._selectors_to_pred[node_key] = expr
+                if conditions is not None: conditions.add(node_key)
+            return v, leaves
 
-        elif isinstance(expr, cp_model.BoundedLinearExpression):
-            # retreive all vars from BLE
-            # reify them and construct a new LE in domain on the selector/chosen vars
-            # maintain a var to req lookup and retreive the req from that (to make key of leaves) maybe a bidict for this?
-            self.model.add(expr).only_enforce_if(v)
-            for var in expr.vars:
-                _, leaves = self._reify(var, leaves, name)
-        
-        elif isinstance(expr, LogicalExpr):
-            ops = [self._reify(op, leaves, name)[0] for op in expr.operands if not isinstance(op, self.ignore)] # recurse
-            if not ops: return 1 # all operands ignored makes it true
-            if len(ops) == 1: return ops[0]
+        if isinstance(expr, cp_model.BoundedLinearExpression):
+            if not with_leaves:
+                self.model.add(expr).only_enforce_if(v)
+            else:
+                contrib_vars = []
+                for var in expr.vars:
+                    req = self._vars.inverse.get(var)   # reverse bidict lookup
+                    if req is not None and isinstance(req, Requirement):
+                        sel, leaves = self.reify(req, leaves, name, with_leaves, conditions)
+                        contrib     = self._make_contribution(req, sel)
+                    else:
+                        contrib = var  # raw IntVar/BoolVar — use directly
+                    contrib_vars.append(contrib)
+                new_lexpr = cp_model.LinearExpr.weighted_sum(contrib_vars, list(expr.coeffs))
+                if expr.offset: new_lexpr = new_lexpr + expr.offset
+                self.model.add_linear_expression_in_domain(new_lexpr, expr.bounds).only_enforce_if(v)
+            return v, leaves
+
+        if isinstance(expr, LogicalExpr):
+            ops = []
+            for op in expr.operands:
+                if isinstance(op, self.ignore): continue
+                child_v, leaves = self.reify(op, leaves, name, with_leaves, conditions)
+                if child_v is not None: ops.append(child_v)
+
+            if not ops: return 1, leaves       # all ignored → trivially true
+            if isinstance(expr, Not):
+                negated = ops[0].negated()
+                if with_leaves: self._vars[node_key] = negated
+                return negated, leaves
+            if len(ops) == 1: return ops[0], leaves  # single child → collapse
+
             if isinstance(expr, Or): self.model.add_max_equality(v, ops)
-            else: self.model.add_min_equality(v, ops)
+            else:                    self.model.add_min_equality(v, ops)
+            return v, leaves
 
-        return v, leaves
+        return expr, leaves
+
+
+    def _make_contribution(self, req, sel):
+        fact_var = self[req]
+        if self._is_bool_var(fact_var):
+            return sel
+        domain_values = self._effective_values(req)
+        contrib_values = sorted(set([0] + domain_values))
+
+        # IntVar — gate through selector, cache to avoid duplicates
+        contrib_key = Condition(f"contrib_{wit_expr(req)}")
+        if contrib_key not in self._vars:
+            contrib = self.model.new_int_var_from_domain(
+                cp_model.Domain.FromValues(contrib_values), repr(contrib_key)
+            )
+            self._vars[contrib_key] = contrib
+            self.model.add(contrib == fact_var).only_enforce_if(sel)
+            self.model.add(contrib == 0).only_enforce_if(sel.Not())
+        return self._vars[contrib_key]
 
     # recursively walk an And-Or expression and set up boolvars in the model
     def resolve(self, expr):
-        if isinstance(expr, self.ignore):
-            return None
-        if not isinstance(expr, Expr):
-            return expr  # raw BoolVar or linear expression
-        if isinstance(expr, Requirement):
-            return self[expr]
+        # if isinstance(expr, self.ignore):
+        #     return None
+        # if isinstance(expr, cp_model.BoundedLinearExpression):
+        #     v = self.model.new_bool_var(wit_expr(expr))
+        #     self.model.add(expr).only_enforce_if(v)
+        #     return v
+        # if not isinstance(expr, Expr):
+        #     return expr  # raw BoolVar or linear expression
+        # if isinstance(expr, Requirement):
+        #     return self[expr]
 
-        # recursively add constraints for operands
-        ops = [self.resolve(op) for op in expr.operands]
+        # # recursively add constraints for operands
+        # ops = [self.resolve(op) for op in expr.operands]
 
-        # check if operands are to be ignored
-        ops = [o for o in ops if o is not None]
-        if not ops: return 1        # all operands ignored makes it true
-        if len(ops) == 1: return ops[0]
+        # # check if operands are to be ignored
+        # ops = [o for o in ops if o is not None]
+        # if not ops: return 1        # all operands ignored makes it true
+        # if len(ops) == 1: return ops[0]
 
-        # create model variable to store the Or/And relation if there are multiple operands
-        v = self.model.new_bool_var(f"{'or' if isinstance(expr, Or) else 'and'}_{id(expr)}")
-        if isinstance(expr, Or): self.model.add_max_equality(v, ops)
-        else:                    self.model.add_min_equality(v, ops)
-        return v
-
-    def leaves(self, expr):
-        if isinstance(expr, self.ignore): return set()
-        if isinstance(expr, Requirement):   return {expr}
-        else: return set().union(*(self.leaves(op) for op in expr.operands))
-
-    def resolve_with_wit(self, expr, chosen=None):
-        chosen = chosen if chosen is not None else {}
-
-        if isinstance(expr, self.ignore):
-            return None, chosen
-        if not isinstance(expr, Expr):
-            return expr, chosen  # raw BoolVar or linear expression
-        if isinstance(expr, Requirement):
-            if expr not in chosen:           # dedup: same req in multiple branches → one selector
-                chosen[expr] = self.model.new_bool_var(f"chosen_{id(expr)}")
-                self.implies(chosen[expr], self[expr])
-                if expr in self._pinned:     # mirror pin: history (1) or excluded (0)
-                    self.model.add(chosen[expr] == self._pinned[expr])
-            return chosen[expr], chosen
-
-        # recursively add constraints for operands
-        ops = [self.resolve_with_wit(op, chosen) for op in expr.operands]
-
-        # check if operands are to be ignored
-        ops = [o for o, _ in ops if o is not None]
-        if not ops: return 1, chosen        # all operands ignored makes it true
-        if len(ops) == 1: return ops[0], chosen
-
-        # create model variable to store the Or/And relation if there are multiple operands
-        v = self.model.new_bool_var(f"{'or' if isinstance(expr, Or) else 'and'}_{id(expr)}")
-        if isinstance(expr, Or): self.model.add_max_equality(v, ops)
-        else:                    self.model.add_min_equality(v, ops)
-        return v, chosen
+        # # create model variable to store the Or/And relation if there are multiple operands
+        # v = self.model.new_bool_var(f"{'or' if isinstance(expr, Or) else 'and'}_{id(expr)}")
+        # if isinstance(expr, Or): self.model.add_max_equality(v, ops)
+        # else:                    self.model.add_min_equality(v, ops)
+        # return v
+        return self.reify(expr)[0]
 
     # returns an IntVar equal to the max of the given vars
     # hi: explicit upper bound — required when vars are linear expressions
@@ -290,34 +331,61 @@ class ORModel:
         vars = list(vars)
         if not vars: return 0
         if hi is None:
-            hi = max(self._domains.get(id(v), 1) for v in vars)
+            hi = max(self._upper_bound(v) for v in vars)
         result = self.model.new_int_var(0, hi, "max")
         self.model.add_max_equality(result, vars)
         return result
 
+    def _upper_bound(self, var):
+        if not isinstance(var, cp_model.IntVar):
+            return 1
+        domain = list(var.proto.domain)
+        if not domain:
+            return 1
+        return max(domain[1::2])
+
+    def _is_bool_var(self, var):
+        return isinstance(var, cp_model.IntVar) and list(var.proto.domain) == [0, 1]
     # minimize objectives in priority order — each level must dominate the sum of all lower levels
     def minimize(self, objectives):
+        if not self.plan: return
         scale, expr = 1, 0
         for obj in reversed(objectives):
             expr += obj * scale
             scale *= 100_000
         self.model.minimize(expr)
 
-    def maximize(self, expr):
+    def maximize(self, objectives):
+        if not self.plan: return
+        scale, expr = 1, 0
+        for obj in reversed(objectives):
+            expr += obj * scale
+            scale *= 100_000
         self.model.maximize(expr)
 
     # map a domain predicate through func via element lookup; iff= holds only when bv is true
     def apply(self, pred, func, iff=None):
-        values = [0] + [func(v) for v in type(pred).domain]
-        result = self.model.new_int_var(0, max(values), f"apply_{pred}")
-        ct = self.model.add_element(self[pred], values, result)
+        declared_values = self._declared_values(pred)
+        domain_values = self._effective_values(pred)
+        declared_set = set(declared_values)
+        mapped_values = [func(v) if v in declared_set else 0 for v in domain_values]
+        mapped = self.model.new_int_var(min(mapped_values), max(mapped_values), f"apply_{pred}_mapped")
+        for v, out in zip(domain_values, mapped_values):
+            self.model.add(mapped == out).only_enforce_if(self.eq(pred, v))
         if iff is not None:
             bv = self._var(iff)
-            ct.only_enforce_if(bv)
+            result = self.model.new_int_var(
+                min(0, min(mapped_values)),
+                max(0, max(mapped_values)),
+                f"apply_{pred}",
+            )
+            self.model.add(result == mapped).only_enforce_if(bv)
             self.model.add(result == 0).only_enforce_if(bv.negated())
-        return result
+            return result
+        return mapped
 
     def solve(self):
+        if not self.plan: self.model.maximize(sum(self.requirements.values()))
         return ORSolver(self)
 
 
@@ -333,11 +401,7 @@ class ORSolver:
     # helper to read solution variable values; auto-decodes categorical domains
     def value(self, v):
         var = self._model[v] if isinstance(v, Requirement) else v
-        raw = self._cp.value(var)
-        domain = getattr(v, 'domain', None)
-        if isinstance(domain, list):
-            return None if raw == 0 else domain[raw - 1]
-        return raw
+        return self._cp.value(var)
 
     def metrics(self):
         s = self._cp
@@ -355,6 +419,12 @@ class ORSolver:
         m = self.metrics()
         parts = [f"{k}={v}" for k, v in m.items()]
         print('Solver metrics: ' + (', '.join(parts) if parts else 'n/a'))
+
+    def chosen(self, boolvar):
+        conditions = self._model._condition_roots.get(boolvar, set())
+        return {self._model._selectors_to_pred[c] for c in conditions
+                if self._cp.value(self._model._vars[c])}
+
 
 class ReqWithDomain(Requirement):
     default_domain = None

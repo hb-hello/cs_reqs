@@ -113,16 +113,40 @@ COURSES_OVERRIDES = {
     "PHY 125": {
         "prereq": Or([Passed("MAT 125", "D"), UnsupportedRequirement("level 4 on the mathematics placement examination")]),
     },
+    "PHY 126": {
+        ## Pre- or Corequisite: MAT 126, 132, 142, 171 or AMS 161 or level 7 or higher on math placement exam
+        "pre_or_coreq": Or([Passed("MAT 126", "D"), Passed("MAT 132", "D"), Passed("MAT 142", "D"), Passed("MAT 171", "D"), Passed("AMS 161", "D"), UnsupportedRequirement("level 7 or higher on mathematics placement examination")])
+    },
+    "PHY 127": {
+        ## Pre- or Corequisite: MAT 126, 132, 142, 171 or AMS 161 or level 7 or higher on math placement exam
+        "pre_or_coreq": Or([Passed("MAT 126", "D"), Passed("MAT 132", "D"), Passed("MAT 142", "D"), Passed("MAT 171", "D"), Passed("AMS 161", "D"), UnsupportedRequirement("level 7 or higher on mathematics placement examination")])
+    },
     "PHY 131": {
-        "prereq": UnsupportedRequirement("MAT 123 or level 5 on the mathematics placement examination"),
+        ## Prerequisite: MAT 123 or level 5 on the mathematics placement examination
+        "prereq": Or([Passed("MAT 123", "D"), UnsupportedRequirement("level 5 on the mathematics placement examination")])
     },
     "PHY 133": {
+        ## Pre- or corequisite: PHY 125 and PHY 126; or PHY 131 or PHY 141
         "pre_or_coreq": Or([And([Passed("PHY 125", "D"), Passed("PHY 126", "D")]), Passed("PHY 131", "D"), Passed("PHY 141", "D")])
+    },
+    "PHY 134": {
+        ## Pre- or Corequisite: PHY 126 and PHY 127; or PHY 132; or corequisite PHY 142
+        "pre_or_coreq": Or([And([Passed("PHY 126", "D"), Passed("PHY 127", "D")]), Passed("PHY 132", "D"), Coregister("PHY 142")])
+    },
+    "PHY 141": {
+        ## Level 6 on Math Placement, or B or higher in MAT 131 or 141 or AMS 151, or B+ or higher in MAT 125, or instructor permission (priority given to students in Honors or WISE programs)
+        "prereq": Or([UnsupportedRequirement("Level 6 on Math Placement"),
+                  Or([B_or_higher("MAT 131"),
+                      B_or_higher("MAT 141"),
+                      B_or_higher("AMS 151"),]),
+                  Passed("MAT 125", "B+"),
+                  Permission("instructor permission (priority given to students in Honors or WISE programs)"),]),
     },
     "PHY 142": {
         "prereq": Or([C_or_higher("PHY 141"), Permission("permission of department")]),
     },
     "PHY 251": {
+        ## Prerequisite: PHY 122/124, or PHY 126 and 127, or PHY 132 or PHY 142; and PHY 134; C or higher in MAT 126 or 132 or 142 or 171 or AMS 161
         "prereq": And([Or([And([Passed("PHY 122", "D"), Passed("PHY 124", "D")]), And([Passed("PHY 126", "D"), Passed("PHY 127", "D")]), Passed("PHY 132", "D"), Passed("PHY 142", "D")]), Passed("PHY 134", "D"), Or([C_or_higher("MAT 126"), C_or_higher("MAT 132"), C_or_higher("MAT 142"), C_or_higher("MAT 171"), C_or_higher("AMS 161")])])
     },
     "WRT 102": {

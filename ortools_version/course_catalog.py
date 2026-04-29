@@ -3,29 +3,22 @@ from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 from course_kb.course_kb import (
-    Taken as TakenReq, Passed as PassedReq, Major, Standing, Permission, UnsupportedRequirement,
-    And, Or, get_courses, get_reqs, Requirement, course_of, transform_leaves, Coregister,
-    MAX_SEMS_ALLOWED, SEM_NAMES, CREDIT_LIMIT, grade_points, COURSE_OFFERED_TERMS
+    Taken as TakenReq, Passed, C_or_higher, B_or_higher, B_plus_or_higher, D_or_higher, Major, Standing, Permission, UnsupportedRequirement,
+    And, Or, Not, get_courses, get_reqs, Requirement, cid_from, transform_leaves, Coregister,
+    MAX_SEMS_ALLOWED, SEM_NAMES, CREDIT_LIMIT, grade_points, COURSE_OFFERED_TERMS, 
+    get_sem_distance, sem_to_int, int_to_sem, rel_sem_to_term
 )
 from course_kb.build_kb import ASTDecoder
 
 # ── Course record & catalog ────────────────────────────────────
 
 class TakenId(Requirement): pass
-class PassedId(Requirement):
-    ## by default, we assume passing means C or higher because that's the only case in cse courses.
-    ## other programs may have 'passed with B or higher'.
-    def __init__(self, *arguments):
-        if len(arguments) == 1:
-            arguments = (arguments[0], 'C')
-        super().__init__(*arguments)
-
 ## record of a course taken by the student
 Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
 ## record of relevant course information
 Course = namedtuple('Course', ['id', 'credits', 'prereq', 'coreq', 'anti_req', 'pre_or_coreq'], defaults=[None, None, None, None])
 
-catalog = {}
+CATALOG = {}
 COURSE_ID_RE = re.compile(r'^[A-Z]{3} \d{3}$')
 
 def upper_division(cid): return int(cid[4:]) >= 300
@@ -57,11 +50,15 @@ def _load_kb(path):
         text = re.sub(r'^\s*//.*$', '', f.read(), flags=re.MULTILINE)
     return json.loads(text, cls=ASTDecoder)
 
-# convert Taken/Passed to TakenId/PassedId; prune UnsupportedRequirement and Permission leaves.
+# convert TakenReq to TakenId; prune UnsupportedRequirement and Permission leaves.
+# Passed leaves are kept as-is (course_kb.Passed); planner.py handles grade constraints.
 # transform_leaves skips those types, so we do a direct recursive walk instead.
 def _rewrite_req_ids(expr):
     if expr is None:
         return None
+    if isinstance(expr, Not):
+        child = _rewrite_req_ids(expr.operands[0])
+        return None if child is None else Not(child)
     if isinstance(expr, (And, Or)):
         operands = [_rewrite_req_ids(op) for op in expr.operands]
         operands = [op for op in operands if op is not None]
@@ -69,14 +66,16 @@ def _rewrite_req_ids(expr):
         if len(operands) == 1: return operands[0]
         return type(expr)(*operands)
     if isinstance(expr, TakenReq):  return TakenId(*expr.arguments)
-    if isinstance(expr, PassedReq): return PassedId(*expr.arguments)
-    if isinstance(expr, (UnsupportedRequirement, Permission, Major, Standing, Coregister)): return None
+    if type(expr) is Passed:        # normalize base Passed to a typed subclass
+        cls = {'C': C_or_higher, 'B+': B_plus_or_higher, 'B': B_or_higher, 'D': D_or_higher}.get(expr.min_grade)
+        return cls(expr.course_id) if cls else expr
+    if isinstance(expr, (UnsupportedRequirement, Permission, Major, Standing)): return None
     return expr
 
 import os
 _kb_path = os.path.join(os.path.dirname(__file__), '..', 'course_kb', 'kb_cse_degree.json')
 for kc in _load_kb(_kb_path):
-    catalog[kc.id] = Course(
+    CATALOG[kc.id] = Course(
         kc.id,
         _parse_credits(kc.credits),
         _rewrite_req_ids(kc.prereq),
@@ -88,8 +87,8 @@ for kc in _load_kb(_kb_path):
 # ── Non-CSE courses used in degree requirements ────────────────
 
 def _stub(id, credits):
-    if id not in catalog:
-        catalog[id] = Course(id, credits)
+    if id not in CATALOG:
+        CATALOG[id] = Course(id, credits)
 
 _stub('AMS 151', 3)
 _stub('AMS 161', 3)
@@ -165,6 +164,9 @@ _stub('MAT 250', 3)
 
 def _filter_unknown_ids(expr, valid_ids):
     if expr is None: return None
+    if isinstance(expr, Not):
+        child = _filter_unknown_ids(expr.operands[0], valid_ids)
+        return None if child is None else Not(child)
     if isinstance(expr, (And, Or)):
         ops = [_filter_unknown_ids(op, valid_ids) for op in expr.operands]
         ops = [op for op in ops if op is not None]
@@ -172,13 +174,13 @@ def _filter_unknown_ids(expr, valid_ids):
         if len(ops) == 1: return ops[0]
         return type(expr)(*ops)
     if isinstance(expr, Requirement):
-        return expr if course_of(expr) in valid_ids else None
+        return expr if cid_from(expr) in valid_ids else None
     return expr
 
-_valid_ids = set(catalog.keys())
-for _cid in list(catalog):
-    _c = catalog[_cid]
-    catalog[_cid] = Course(_c.id, _c.credits,
+_valid_ids = set(CATALOG.keys())
+for _cid in list(CATALOG):
+    _c = CATALOG[_cid]
+    CATALOG[_cid] = Course(_c.id, _c.credits,
         _filter_unknown_ids(_c.prereq,        _valid_ids),
         _filter_unknown_ids(_c.coreq,         _valid_ids),
         _filter_unknown_ids(_c.anti_req,      _valid_ids),
@@ -189,11 +191,11 @@ for _cid in list(catalog):
 def _req_course_ids(expr):
     if expr is None:
         return set()
-    return {course_of(req) for req in get_reqs(expr)}
+    return {cid_from(req) for req in get_reqs(expr)}
 
 
 def _course_req_expr(cid):
-    course = catalog.get(cid)
+    course = CATALOG.get(cid)
     if not course:
         return None
     exprs = [e for e in (course.prereq, course.coreq) if e is not None]
@@ -214,7 +216,7 @@ def _dep_tree_from_expr(expr, seen):
             return ''
         return parts[0] if len(parts) == 1 else '(' + ' OR '.join(parts) + ')'
     if isinstance(expr, Requirement):
-        dep = course_of(expr)
+        dep = cid_from(expr)
         if not COURSE_ID_RE.match(dep):
             return ''
         dep_expr = _course_req_expr(dep)
@@ -245,7 +247,7 @@ def _option_count_from_expr(expr, prereq_counts, seen, ignore_course=None):
             total += _option_count_from_expr(op, prereq_counts, seen, ignore_course)
         return total
     if isinstance(expr, Requirement):
-        dep = course_of(expr)
+        dep = cid_from(expr)
         if ignore_course and dep == ignore_course:
             return 1
         dep_expr = _course_req_expr(dep)
@@ -278,8 +280,8 @@ def requisite_counts_by_course(kb_path=None):
 
 
 def prerequisite_dependents():
-    dependents = {cid: [] for cid in catalog}
-    for dep_cid, course in catalog.items():
+    dependents = {cid: [] for cid in CATALOG}
+    for dep_cid, course in CATALOG.items():
         req_ids = set()
         if course.prereq is not None:
             req_ids |= _req_course_ids(course.prereq)
@@ -360,5 +362,5 @@ def main():
 
 if __name__ == '__main__':
     # main()
-    print(catalog['AMS 151'])
-    print(catalog['MAT 123'])
+    print(CATALOG['AMS 151'])
+    print(CATALOG['MAT 123'])

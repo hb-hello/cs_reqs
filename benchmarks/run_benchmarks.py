@@ -24,7 +24,7 @@ PLANNING_CASE_SIZES = (13, 17, 21, 24)
 from clingo_version.configs import KB_LP, MAIN_LP
 import python_version.cs_reqs_2024 as py_checker
 from clingo_version.run_clingo import run_clingo
-from ortools_version.course_catalog import Taken, Major, Standing, COURSE_OFFERED_TERMS, catalog, get_courses
+from ortools_version.course_catalog import Taken, Major, Standing, COURSE_OFFERED_TERMS, CATALOG, get_courses
 from ortools_version.planner import best_attempts, plan_courses
 from prolog_version.run_prolog import run_prolog
 from python_version.cs_reqs_2024 import Taken, degree_reqs
@@ -300,7 +300,7 @@ def python_check(taken):
 
 
 def to_history(ids):
-    return [Taken(cid, catalog[cid].credits, 'A', (2024, 2), 'SB') for cid in sorted(ids)]
+    return [Taken(cid, CATALOG[cid].credits, 'A', (2024, 2), 'SB') for cid in sorted(ids)]
 
 
 def to_taken(history):
@@ -404,7 +404,7 @@ def run_course_wise_prereqs_analysis():
         if cid == '':
             taken_ids = base_full - {'CSE 114'}
         else:
-            prereq_courses = set(get_courses(catalog[cid].prereq)) if catalog.get(cid) and catalog[cid].prereq else set()
+            prereq_courses = set(get_courses(CATALOG[cid].prereq)) if CATALOG.get(cid) and CATALOG[cid].prereq else set()
             taken_ids = base_full - (prereq_courses | {'CSE 114'})
         hist = to_history(taken_ids)
         taken = to_taken(hist)

@@ -6,7 +6,7 @@ import re
 import io
 from contextlib import redirect_stdout
 
-from ortools_version.course_catalog import catalog, Taken, Major, Standing
+from ortools_version.course_catalog import CATALOG, Taken, Major, Standing
 
 try:
     from ortools_version.planner import plan_courses as planner_plan
@@ -198,11 +198,11 @@ def plot_from_json(json_path, out_dir='benchmarks'):
 
 
 def make_history(taken_ids, when=(1, 1), grade='C', where='SB'):
-    return [Taken(cid, catalog[cid].credits, grade, when, where) for cid in sorted(taken_ids) if cid in catalog]
+    return [Taken(cid, CATALOG[cid].credits, grade, when, where) for cid in sorted(taken_ids) if cid in CATALOG]
 
 
 def choose_histories():
-    ids = list(catalog.keys())
+    ids = list(CATALOG.keys())
     small = ids[:8]
     medium = ids[:30]
     large = ids[:80] if len(ids) >= 80 else ids

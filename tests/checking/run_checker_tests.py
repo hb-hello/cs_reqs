@@ -65,21 +65,23 @@ ALL_TESTS = collect_tests()
 
 APPROACHES = [
     ('python_version',  check_python),
-    # ('ortools_version', check_ortools),
+    ('ortools_version', check_ortools),
     # ('clingo_version',  check_clingo),
-    ('prolog_xsb',  check_prolog_xsb),
-    ('prolog_swi',  check_prolog_swi),
+    # ('prolog_xsb',  check_prolog_xsb),
+    # ('prolog_swi',  check_prolog_swi),
 ]
 
 def run_one(label, check_fn):
     passed, failed = [], []
     errors = []
 
-    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+    with redirect_stderr(io.StringIO()):
         for name, test_fn in ALL_TESTS:
             try:
                 taken, expected = test_fn()
                 result = check_fn(taken)
+                print(name)
+                print(result)
             except Exception as e:
                 errors.append((name, e))
                 failed.append((name, {}))
@@ -90,7 +92,7 @@ def run_one(label, check_fn):
                 for req, (exp_bool, exp_wits) in expected.items()
                 if req not in result
                 or result[req][0] != exp_bool
-                or (exp_bool and exp_wits and not (set(result[req][1]) <= set(exp_wits)))
+                or (exp_bool and exp_wits and not (set(result[req][1]) == set(exp_wits)))
             }
             if diff:
                 failed.append((name, diff))

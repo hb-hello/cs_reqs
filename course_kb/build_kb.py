@@ -47,12 +47,13 @@ def build_course_kb_from_html(html_input: str) -> list[Course]:
   kb = []
   
   for div in course_divs:
+    raw_div = str(div)
     clean_div = course_div_cleanup(div)                 ## div clean up
     raw_dict = parse_course_div(clean_div)              ## parse the cleaned div into a dictionary of course fields
     course = create_course_namedtuple(raw_dict)     ## convert dict to namedtuple
     if (course.id).startswith('CSE') or course.id in COURSES_CSE_DEGREE:
       with open('courses_cse_degree.html', 'a') as f:
-        f.write(str(clean_div))
+        f.write(raw_div)
     if course.id in COURSES_OVERRIDES:                      ## apply overrides if exists
       print(f"Applying override for course {course.id}")
       course = course._replace(**COURSES_OVERRIDES[course.id])
@@ -352,7 +353,7 @@ class PrologGenerator:
     elif isinstance(req, Passed):
       return self.format_passed_requirement(req, req_type)
     elif isinstance(req, Coregister):
-      return f'taken_together("{req.arguments[0]}")'
+      return f'taken_together("{req.arguments[0]}", Sem)'
     elif isinstance(req, Permission):
       return f'permission'
     elif isinstance(req, UnsupportedRequirement):

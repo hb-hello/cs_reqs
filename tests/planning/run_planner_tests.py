@@ -41,7 +41,7 @@ def normalize_checked(checked):
     return out
 
 def to_checker_taken(history, planned_courses, planned_credits=None):
-    from ortools_version.planner import catalog
+    from ortools_version.planner import CATALOG
     from python_version.cs_reqs_2024 import Taken
 
     planned_credits = planned_credits or {}
@@ -50,7 +50,7 @@ def to_checker_taken(history, planned_courses, planned_credits=None):
     for h in history:
         taken.add(Taken(h.id, h.credits, h.grade, h.when, h.where))
     for cid, when in planned_courses.items():
-        credits = planned_credits.get(cid, catalog[cid].credits)
+        credits = planned_credits.get(cid, CATALOG[cid].credits)
         taken.add(Taken(cid, credits, 'C', when, 'SB'))
     return taken
 
@@ -93,8 +93,8 @@ def run_ortools(history, attrs=None):
         return {'degree': (False, [])}, set(), {}, {}, False, ['INFEASIBLE']
 
     # OR-Tools credits are the catalog credits for planned courses.
-    from ortools_version.planner import catalog
-    plan_credits = {cid: catalog[cid].credits for cid in schedule}
+    from ortools_version.planner import CATALOG
+    plan_credits = {cid: CATALOG[cid].credits for cid in schedule}
 
     checker_result, checker_ok = validate_with_checker(history, schedule, planned_credits=plan_credits)
     failed = [k for k, v in checker_result.items() if not v[0]]

@@ -1,6 +1,6 @@
 from collections import namedtuple
 from pprint import pprint
-from ortools_version.course_catalog import catalog
+from ortools_version.course_catalog import CATALOG
 
 # ── Full degree (all requirements satisfied) ─────────────────────────────────
 # PHY 132 added vs ref tests so science reaches 9 credits:
@@ -18,7 +18,7 @@ _FULL = {
 Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
 
 def _full_taken(grade='A', when=(2024, 2)):
-    return {Taken(cid, catalog[cid].credits, grade, when, 'SB') for cid in _FULL}
+    return {Taken(cid, CATALOG[cid].credits, grade, when, 'SB') for cid in _FULL}
 
 _ALL_PASS = {req: (True, []) for req in
              ['intro', 'adv', 'elect', 'calc', 'alg', 'sta', 'sci',
