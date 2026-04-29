@@ -141,6 +141,22 @@ def test_plan_anti_must_take_with_no_credit():
 
     return taken, validate, {'must_include': {'CSE 101'}, "approaches": {'clingo_version'}}
 
+## planner must allow repeat for this test case to pass
+## commented out for now since that's not currently supported
+# def test_plan_prereq_failed_retake_course():
+#     ## must take CSE 360 which requires passed CSE 220.
+#     ## we set the grade to F, the planner should plan a retake of CSE 220
+#     taken = history(FULL - {'CSE 360'})
+#     ## change grade of "CSE 220" to F.
+#     taken = [Taken(t.id, t.credits, 'F' if t.id == 'CSE 220' else t.grade, t.when, t.where) for t in taken]
+    
+#     def validate(checked, schedule_courses, schedule_by_course):
+#         assert 'CSE 220' in schedule_courses, 'CSE 220 should be planned for retake after failing it'
+#         assert schedule_by_course['CSE 360'] > schedule_by_course['CSE 220'], 'CSE 220 should be planned before CSE 360'
+#         assert checked['degree'][0], 'degree reqs should still be satisfied after retaking failed course'
+    
+#     return taken, validate, {'must_include': {'CSE 360'}}
+
 # def test_plan_empty():
 #     taken = set()
     

@@ -50,7 +50,7 @@ has_prereq("CSE 216").
 prereq("CSE 216", Sem) :- offered("CSE 216", Sem), passed_before("CSE 214", Sem),major("CSE").
 credits("CSE 220", 4).
 has_prereq("CSE 220").
-prereq("CSE 220", Sem) :- offered("CSE 220", Sem), passed_before("CSE 214", Sem).
+prereq("CSE 220", Sem) :- offered("CSE 220", Sem), aux_or_1(Sem),major("CSE").
 credits("CSE 230", 3).
 has_prereq("CSE 230").
 prereq("CSE 230", Sem) :- offered("CSE 230", Sem), passed_before_grade("CSE 130", "D", Sem).
@@ -95,7 +95,7 @@ has_prereq("CSE 310").
 prereq("CSE 310", Sem) :- offered("CSE 310", Sem), passed_before(("CSE 214"; "CSE 260"), Sem),passed_before(("CSE 220"; "ISE 218"), Sem),major("CSE"; "ISE").
 credits("CSE 311", 3).
 has_prereq("CSE 311").
-prereq("CSE 311", Sem) :- offered("CSE 311", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 230", "D", Sem);passed_before_grade("CSE 260", "D", Sem);passed_before_grade("ISE 208", "D", Sem),major("ISE"; "CSE").
+prereq("CSE 311", Sem) :- offered("CSE 311", Sem), passed_before_grade(("CSE 214"; "CSE 230"; "CSE 260"; "ISE 208"), "D", Sem),major("ISE"; "CSE").
 credits("CSE 312", 3).
 has_prereq("CSE 312").
 prereq("CSE 312", Sem) :- offered("CSE 312", Sem), major("CSE"; "ISE"; "DAS"),standing("U3"; "U4"),unsupported_prereq.
@@ -118,7 +118,7 @@ prereq("CSE 325", Sem) :- offered("CSE 325", Sem), passed_before_grade("CSE 101"
 prereq("CSE 325", Sem) :- offered("CSE 325", Sem), passed_before_grade("CSE 114", "D", Sem).
 credits("CSE 327", 3).
 has_prereq("CSE 327").
-prereq("CSE 327", Sem) :- offered("CSE 327", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 230", "D", Sem);passed_before_grade("CSE 260", "D", Sem),passed_before_grade("AMS 210", "D", Sem);passed_before_grade("MAT 211", "D", Sem),major("CSE"; "ISE"; "DAS").
+prereq("CSE 327", Sem) :- offered("CSE 327", Sem), passed_before_grade(("CSE 214"; "CSE 230"; "CSE 260"), "D", Sem),passed_before_grade(("AMS 210"; "MAT 211"), "D", Sem),major("CSE"; "ISE"; "DAS").
 credits("CSE 328", 3).
 has_prereq("CSE 328").
 prereq("CSE 328", Sem) :- offered("CSE 328", Sem), passed_before("CSE 220", Sem),major("CSE"; "DAS").
@@ -127,10 +127,10 @@ has_prereq("CSE 331").
 prereq("CSE 331", Sem) :- offered("CSE 331", Sem), passed_before_grade("CSE 220", "D", Sem),major("CSE").
 credits("CSE 332", 3).
 has_prereq("CSE 332").
-prereq("CSE 332", Sem) :- offered("CSE 332", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),passed_before_grade("MAT 211", "D", Sem);passed_before_grade("AMS 210", "D", Sem),passed_before_grade("AMS 110", "D", Sem);passed_before_grade("AMS 310", "D", Sem),major("CSE"; "ISE"; "DAS").
+prereq("CSE 332", Sem) :- offered("CSE 332", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),passed_before_grade(("MAT 211"; "AMS 210"), "D", Sem),passed_before_grade(("AMS 110"; "AMS 310"), "D", Sem),major("CSE"; "ISE"; "DAS").
 credits("CSE 333", 3).
 has_prereq("CSE 333").
-prereq("CSE 333", Sem) :- offered("CSE 333", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),major("CSE"; "ISE").
+prereq("CSE 333", Sem) :- offered("CSE 333", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),major("CSE"; "ISE").
 credits("CSE 334", 3).
 has_prereq("CSE 334").
 prereq("CSE 334", Sem) :- offered("CSE 334", Sem), standing("U2"; "U3"; "U4"),major("CSE"; "ISE").
@@ -139,26 +139,26 @@ has_prereq("CSE 336").
 prereq("CSE 336", Sem) :- offered("CSE 336", Sem), passed_before(("CSE 214"; "CSE 260"), Sem),major("CSE").
 credits("CSE 337", 3).
 has_prereq("CSE 337").
-prereq("CSE 337", Sem) :- offered("CSE 337", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),major("CSE"; "ISE"; "DAS"),standing("U3"; "U4").
+prereq("CSE 337", Sem) :- offered("CSE 337", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),major("CSE"; "ISE"; "DAS"),standing("U3"; "U4").
 credits("CSE 350", 4).
 has_prereq("CSE 350").
-prereq("CSE 350", Sem) :- offered("CSE 350", Sem), passed_before_grade("CSE 113", "D", Sem);passed_before_grade("CSE 150", "D", Sem);passed_before_grade("CSE 215", "D", Sem),passed_before_grade("AMS 210", "D", Sem);passed_before_grade("MAT 211", "D", Sem),unsupported_prereq.
+prereq("CSE 350", Sem) :- offered("CSE 350", Sem), passed_before_grade(("CSE 113"; "CSE 150"; "CSE 215"), "D", Sem),passed_before_grade(("AMS 210"; "MAT 211"), "D", Sem),unsupported_prereq.
 credits("CSE 351", 3).
 has_prereq("CSE 351").
-prereq("CSE 351", Sem) :- offered("CSE 351", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),passed_before_grade("AMS 310", "D", Sem),major("CSE"; "DAS").
+prereq("CSE 351", Sem) :- offered("CSE 351", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),passed_before_grade("AMS 310", "D", Sem),major("CSE"; "DAS").
 credits("CSE 352", 3).
 has_prereq("CSE 352").
-prereq("CSE 352", Sem) :- offered("CSE 352", Sem), passed_before_grade("CSE 316", "D", Sem);passed_before_grade("CSE 351", "D", Sem),major("CSE"; "DAS").
+prereq("CSE 352", Sem) :- offered("CSE 352", Sem), passed_before_grade(("CSE 316"; "CSE 351"), "D", Sem),major("CSE"; "DAS").
 credits("CSE 353", 3).
 has_pre_or_coreq("CSE 353").
 pre_or_coreq("CSE 353", Sem) :- offered("CSE 353", Sem), passed_before_or_together_grade("AMS 310", "D", Sem).
 pre_or_coreq("CSE 353", Sem) :- offered("CSE 353", Sem), passed_before_or_together_grade("AMS 311", "D", Sem).
 pre_or_coreq("CSE 353", Sem) :- offered("CSE 353", Sem), passed_before_or_together_grade("AMS 412", "D", Sem).
 has_prereq("CSE 353").
-prereq("CSE 353", Sem) :- offered("CSE 353", Sem), passed_before_grade("CSE 316", "D", Sem);passed_before_grade("CSE 351", "D", Sem),major("CSE"; "DAS").
+prereq("CSE 353", Sem) :- offered("CSE 353", Sem), passed_before_grade(("CSE 316"; "CSE 351"), "D", Sem),major("CSE"; "DAS").
 credits("CSE 354", 3).
 has_prereq("CSE 354").
-prereq("CSE 354", Sem) :- offered("CSE 354", Sem), passed_before_grade("CSE 316", "D", Sem);passed_before_grade("CSE 351", "D", Sem),major("CSE"; "DAS").
+prereq("CSE 354", Sem) :- offered("CSE 354", Sem), passed_before_grade(("CSE 316"; "CSE 351"), "D", Sem),major("CSE"; "DAS").
 credits("CSE 355", 3).
 has_prereq("CSE 355").
 prereq("CSE 355", Sem) :- offered("CSE 355", Sem), passed_before_grade("AMS 301", "D", Sem),unsupported_prereq.
@@ -186,7 +186,7 @@ prereq("CSE 364", Sem) :- offered("CSE 364", Sem), passed_before_grade("CSE 334"
 prereq("CSE 364", Sem) :- offered("CSE 364", Sem), passed_before_grade("ISE 334", "D", Sem).
 credits("CSE 366", 3).
 has_prereq("CSE 366").
-prereq("CSE 366", Sem) :- offered("CSE 366", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),passed_before_grade("MAT 211", "D", Sem);passed_before_grade("AMS 210", "D", Sem),major("CSE"; "ISE").
+prereq("CSE 366", Sem) :- offered("CSE 366", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),passed_before_grade(("MAT 211"; "AMS 210"), "D", Sem),major("CSE"; "ISE").
 credits("CSE 370", 3).
 has_prereq("CSE 370").
 prereq("CSE 370", Sem) :- offered("CSE 370", Sem), passed_before_grade("CSE 310", "D", Sem),major("CSE").
@@ -205,10 +205,10 @@ has_prereq("CSE 376").
 prereq("CSE 376", Sem) :- offered("CSE 376", Sem), passed_before("CSE 320", Sem),major("CSE").
 credits("CSE 377", 3).
 has_prereq("CSE 377").
-prereq("CSE 377", Sem) :- offered("CSE 377", Sem), passed_before_grade("AMS 161", "D", Sem);passed_before_grade("MAT 127", "D", Sem);passed_before_grade("MAT 132", "D", Sem),passed_before_grade("AMS 210", "D", Sem);passed_before_grade("MAT 211", "D", Sem).
+prereq("CSE 377", Sem) :- offered("CSE 377", Sem), passed_before_grade(("AMS 161"; "MAT 127"; "MAT 132"), "D", Sem),passed_before_grade(("AMS 210"; "MAT 211"), "D", Sem).
 credits("CSE 378", 3).
 has_prereq("CSE 378").
-prereq("CSE 378", Sem) :- offered("CSE 378", Sem), passed_before_grade("AMS 161", "D", Sem);passed_before_grade("MAT 127", "D", Sem);passed_before_grade("MAT 132", "D", Sem),passed_before_grade("AMS 210", "D", Sem);passed_before_grade("MAT 211", "D", Sem);passed_before_grade("MEC 262", "D", Sem).
+prereq("CSE 378", Sem) :- offered("CSE 378", Sem), passed_before_grade(("AMS 161"; "MAT 127"; "MAT 132"), "D", Sem),passed_before_grade(("AMS 210"; "MAT 211"; "MEC 262"), "D", Sem).
 credits("CSE 380", 3).
 has_prereq("CSE 380").
 prereq("CSE 380", Sem) :- offered("CSE 380", Sem), passed_before_grade("CSE 220", "D", Sem),major("CSE").
@@ -217,22 +217,22 @@ has_prereq("CSE 381").
 prereq("CSE 381", Sem) :- offered("CSE 381", Sem), passed_before_grade("CSE 220", "D", Sem),major("CSE").
 credits("CSE 385", 4).
 has_prereq("CSE 385").
-prereq("CSE 385", Sem) :- offered("CSE 385", Sem), passed_before_grade("CSE 113", "D", Sem);passed_before_grade("CSE 150", "D", Sem);passed_before_grade("CSE 215", "D", Sem);passed_before_grade("MAT 200", "D", Sem);passed_before_grade("MAT 250", "D", Sem),passed_before_grade("AMS 210", "D", Sem);passed_before_grade("MAT 211", "D", Sem),passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),unsupported_prereq.
+prereq("CSE 385", Sem) :- offered("CSE 385", Sem), passed_before_grade(("CSE 113"; "CSE 150"; "CSE 215"; "MAT 200"; "MAT 250"), "D", Sem),passed_before_grade(("AMS 210"; "MAT 211"), "D", Sem),passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),unsupported_prereq.
 credits("CSE 390", 3).
 has_prereq("CSE 390").
-prereq("CSE 390", Sem) :- offered("CSE 390", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),major("CSE"; "ISE").
+prereq("CSE 390", Sem) :- offered("CSE 390", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),major("CSE"; "ISE").
 credits("CSE 391", 3).
 has_prereq("CSE 391").
-prereq("CSE 391", Sem) :- offered("CSE 391", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),major("CSE"; "ISE").
+prereq("CSE 391", Sem) :- offered("CSE 391", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),major("CSE"; "ISE").
 credits("CSE 392", 3).
 has_prereq("CSE 392").
-prereq("CSE 392", Sem) :- offered("CSE 392", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),major("CSE"; "ISE").
+prereq("CSE 392", Sem) :- offered("CSE 392", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),major("CSE"; "ISE").
 credits("CSE 393", 3).
 has_prereq("CSE 393").
-prereq("CSE 393", Sem) :- offered("CSE 393", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),major("CSE"; "ISE").
+prereq("CSE 393", Sem) :- offered("CSE 393", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),major("CSE"; "ISE").
 credits("CSE 394", 3).
 has_prereq("CSE 394").
-prereq("CSE 394", Sem) :- offered("CSE 394", Sem), passed_before_grade("CSE 214", "D", Sem);passed_before_grade("CSE 260", "D", Sem),major("CSE"; "ISE").
+prereq("CSE 394", Sem) :- offered("CSE 394", Sem), passed_before_grade(("CSE 214"; "CSE 260"), "D", Sem),major("CSE"; "ISE").
 credits("CSE 416", 3).
 has_prereq("CSE 416").
 prereq("CSE 416", Sem) :- offered("CSE 416", Sem), passed_before("CSE 316", Sem),standing("U4"),major("CSE").
@@ -272,7 +272,7 @@ credits("AMS 210", 3).
 has_prereq("AMS 210").
 prereq("AMS 210", Sem) :- offered("AMS 210", Sem), passed_before_grade("AMS 151", "D", Sem).
 prereq("AMS 210", Sem) :- offered("AMS 210", Sem), passed_before_grade("MAT 131", "D", Sem).
-prereq("AMS 210", Sem) :- offered("AMS 210", Sem), taken_together("MAT 126").
+prereq("AMS 210", Sem) :- offered("AMS 210", Sem), taken_together("MAT 126", Sem).
 credits("AMS 261", 4).
 has_prereq("AMS 261").
 prereq("AMS 261", Sem) :- offered("AMS 261", Sem), passed_before_grade("AMS 161", "D", Sem).
@@ -304,13 +304,15 @@ prereq("AMS 361", Sem) :- offered("AMS 361", Sem), passed_before_grade("MAT 132"
 credits("AMS 412", 3).
 has_prereq("AMS 412").
 prereq("AMS 412", Sem) :- offered("AMS 412", Sem), passed_before_grade("AMS 311", "D", Sem).
+credits("MAP 101", 3).
+credits("MAP 103", 3).
 credits("MAT 123", 3).
 has_prereq("MAT 123").
 prereq("MAT 123", Sem) :- offered("MAT 123", Sem), passed_before("MAP 103", Sem).
 credits("MAT 125", 3).
 has_prereq("MAT 125").
 prereq("MAT 125", Sem) :- offered("MAT 125", Sem), passed_before("MAT 123", Sem).
-prereq("MAT 125", Sem) :- offered("MAT 125", Sem), taken_together("MAT 130").
+prereq("MAT 125", Sem) :- offered("MAT 125", Sem), taken_together("MAT 130", Sem).
 credits("MAT 126", 3).
 has_prereq("MAT 126").
 prereq("MAT 126", Sem) :- offered("MAT 126", Sem), passed_before("MAT 125", Sem).
@@ -348,7 +350,7 @@ has_prereq("MAT 211").
 prereq("MAT 211", Sem) :- offered("MAT 211", Sem), passed_before("AMS 151", Sem).
 prereq("MAT 211", Sem) :- offered("MAT 211", Sem), passed_before("MAT 131", Sem).
 prereq("MAT 211", Sem) :- offered("MAT 211", Sem), passed_before("MAT 141", Sem).
-prereq("MAT 211", Sem) :- offered("MAT 211", Sem), taken_together("MAT 126").
+prereq("MAT 211", Sem) :- offered("MAT 211", Sem), taken_together("MAT 126", Sem).
 credits("MAT 250", 4).
 has_prereq("MAT 250").
 prereq("MAT 250", Sem) :- offered("MAT 250", Sem), passed_before_grade("MAT 131", "D", Sem).
@@ -369,14 +371,14 @@ credits("BIO 202", 3).
 has_prereq("BIO 202").
 prereq("BIO 202", Sem) :- offered("BIO 202", Sem), passed_before("CHE 129", Sem).
 prereq("BIO 202", Sem) :- offered("BIO 202", Sem), passed_before("CHE 131", Sem).
-prereq("BIO 202", Sem) :- offered("BIO 202", Sem), taken_together("CHE 152").
+prereq("BIO 202", Sem) :- offered("BIO 202", Sem), taken_together("CHE 152", Sem).
 credits("BIO 203", 3).
 has_pre_or_coreq("BIO 203").
 pre_or_coreq("BIO 203", Sem) :- offered("BIO 203", Sem), unsupported_pre_or_coreq.
 has_prereq("BIO 203").
 prereq("BIO 203", Sem) :- offered("BIO 203", Sem), passed_before_grade("CHE 129", "D", Sem).
 prereq("BIO 203", Sem) :- offered("BIO 203", Sem), passed_before_grade("CHE 131", "D", Sem).
-prereq("BIO 203", Sem) :- offered("BIO 203", Sem), taken_together("CHE 152").
+prereq("BIO 203", Sem) :- offered("BIO 203", Sem), taken_together("CHE 152", Sem).
 credits("BIO 204", 2).
 has_pre_or_coreq("BIO 204").
 pre_or_coreq("BIO 204", Sem) :- offered("BIO 204", Sem), passed_before_or_together_grade("BIO 201", "D", Sem).
@@ -384,7 +386,7 @@ pre_or_coreq("BIO 204", Sem) :- offered("BIO 204", Sem), passed_before_or_togeth
 pre_or_coreq("BIO 204", Sem) :- offered("BIO 204", Sem), passed_before_or_together_grade("BIO 203", "D", Sem).
 has_prereq("BIO 204").
 prereq("BIO 204", Sem) :- offered("BIO 204", Sem), passed_before_grade("CHE 129", "D", Sem),passed_before_grade("CHE 131", "D", Sem).
-prereq("BIO 204", Sem) :- offered("BIO 204", Sem), taken_together("CHE 152").
+prereq("BIO 204", Sem) :- offered("BIO 204", Sem), taken_together("CHE 152", Sem).
 credits("CHE 129", 4).
 has_coreq("CHE 129").
 coreq("CHE 129", Sem) :- offered("CHE 129", Sem), taken_together("MAT 123", Sem),taken_together("CHE 130", Sem).
@@ -449,14 +451,22 @@ has_prereq("PHY 125").
 prereq("PHY 125", Sem) :- offered("PHY 125", Sem), passed_before_grade("MAT 125", "D", Sem).
 credits("PHY 126", 3).
 has_pre_or_coreq("PHY 126").
-pre_or_coreq("PHY 126", Sem) :- offered("PHY 126", Sem), unsupported_pre_or_coreq.
+pre_or_coreq("PHY 126", Sem) :- offered("PHY 126", Sem), passed_before_or_together_grade("MAT 126", "D", Sem).
+pre_or_coreq("PHY 126", Sem) :- offered("PHY 126", Sem), passed_before_or_together_grade("MAT 132", "D", Sem).
+pre_or_coreq("PHY 126", Sem) :- offered("PHY 126", Sem), passed_before_or_together_grade("MAT 142", "D", Sem).
+pre_or_coreq("PHY 126", Sem) :- offered("PHY 126", Sem), passed_before_or_together_grade("MAT 171", "D", Sem).
+pre_or_coreq("PHY 126", Sem) :- offered("PHY 126", Sem), passed_before_or_together_grade("AMS 161", "D", Sem).
 has_prereq("PHY 126").
 prereq("PHY 126", Sem) :- offered("PHY 126", Sem), passed_before("PHY 125", Sem).
 prereq("PHY 126", Sem) :- offered("PHY 126", Sem), passed_before("PHY 131", Sem).
 prereq("PHY 126", Sem) :- offered("PHY 126", Sem), passed_before("PHY 141", Sem).
 credits("PHY 127", 3).
 has_pre_or_coreq("PHY 127").
-pre_or_coreq("PHY 127", Sem) :- offered("PHY 127", Sem), unsupported_pre_or_coreq.
+pre_or_coreq("PHY 127", Sem) :- offered("PHY 127", Sem), passed_before_or_together_grade("MAT 126", "D", Sem).
+pre_or_coreq("PHY 127", Sem) :- offered("PHY 127", Sem), passed_before_or_together_grade("MAT 132", "D", Sem).
+pre_or_coreq("PHY 127", Sem) :- offered("PHY 127", Sem), passed_before_or_together_grade("MAT 142", "D", Sem).
+pre_or_coreq("PHY 127", Sem) :- offered("PHY 127", Sem), passed_before_or_together_grade("MAT 171", "D", Sem).
+pre_or_coreq("PHY 127", Sem) :- offered("PHY 127", Sem), passed_before_or_together_grade("AMS 161", "D", Sem).
 has_prereq("PHY 127").
 prereq("PHY 127", Sem) :- offered("PHY 127", Sem), passed_before("PHY 125", Sem).
 prereq("PHY 127", Sem) :- offered("PHY 127", Sem), passed_before("PHY 131", Sem).
@@ -468,7 +478,7 @@ pre_or_coreq("PHY 131", Sem) :- offered("PHY 131", Sem), passed_before_or_togeth
 pre_or_coreq("PHY 131", Sem) :- offered("PHY 131", Sem), passed_before_or_together_grade("MAT 141", "D", Sem).
 pre_or_coreq("PHY 131", Sem) :- offered("PHY 131", Sem), passed_before_or_together_grade("AMS 151", "D", Sem).
 has_prereq("PHY 131").
-prereq("PHY 131", Sem) :- offered("PHY 131", Sem), unsupported_prereq.
+prereq("PHY 131", Sem) :- offered("PHY 131", Sem), passed_before_grade("MAT 123", "D", Sem).
 credits("PHY 132", 3).
 has_pre_or_coreq("PHY 132").
 pre_or_coreq("PHY 132", Sem) :- offered("PHY 132", Sem), passed_before_or_together_grade("MAT 132", "D", Sem).
@@ -486,17 +496,21 @@ pre_or_coreq("PHY 133", Sem) :- offered("PHY 133", Sem), passed_before_or_togeth
 pre_or_coreq("PHY 133", Sem) :- offered("PHY 133", Sem), passed_before_or_together_grade("PHY 141", "D", Sem).
 credits("PHY 134", 1).
 has_pre_or_coreq("PHY 134").
-pre_or_coreq("PHY 134", Sem) :- offered("PHY 134", Sem), passed_before_or_together_grade("PHY 126", "D", Sem),passed_before_or_together_grade("PHY 127", "D", Sem),unsupported_pre_or_coreq,unsupported_pre_or_coreq.
+pre_or_coreq("PHY 134", Sem) :- offered("PHY 134", Sem), passed_before_or_together_grade("PHY 126", "D", Sem),passed_before_or_together_grade("PHY 127", "D", Sem).
+pre_or_coreq("PHY 134", Sem) :- offered("PHY 134", Sem), passed_before_or_together_grade("PHY 132", "D", Sem).
+pre_or_coreq("PHY 134", Sem) :- offered("PHY 134", Sem), taken_together("PHY 142", Sem).
 has_prereq("PHY 134").
 prereq("PHY 134", Sem) :- offered("PHY 134", Sem), passed_before("PHY 133", Sem).
 credits("PHY 141", 3).
 has_pre_or_coreq("PHY 141").
-pre_or_coreq("PHY 141", Sem) :- offered("PHY 141", Sem), passed_before_or_together_grade("MAT 131", "D", Sem);passed_before_or_together_grade("MAT 141", "D", Sem);passed_before_or_together_grade("MAT 126", "D", Sem);passed_before_or_together_grade("AMS 151", "D", Sem),passed_before_or_together_grade("PHY 133", "D", Sem).
+pre_or_coreq("PHY 141", Sem) :- offered("PHY 141", Sem), passed_before_or_together_grade(("MAT 131"; "MAT 141"; "MAT 126"; "AMS 151"), "D", Sem),passed_before_or_together_grade("PHY 133", "D", Sem).
 has_prereq("PHY 141").
-prereq("PHY 141", Sem) :- offered("PHY 141", Sem), unsupported_prereq.
+prereq("PHY 141", Sem) :- offered("PHY 141", Sem), passed_before_grade(("MAT 131"; "MAT 141"; "AMS 151"), "B", Sem).
+prereq("PHY 141", Sem) :- offered("PHY 141", Sem), passed_before_grade("MAT 125", "B+", Sem).
+prereq("PHY 141", Sem) :- offered("PHY 141", Sem), permission.
 credits("PHY 142", 3).
 has_pre_or_coreq("PHY 142").
-pre_or_coreq("PHY 142", Sem) :- offered("PHY 142", Sem), passed_before_or_together_grade("MAT 132", "D", Sem);passed_before_or_together_grade("MAT 142", "D", Sem);passed_before_or_together_grade("MAT 127", "D", Sem);passed_before_or_together_grade("MAT 171", "D", Sem);passed_before_or_together_grade("AMS 161", "D", Sem),passed_before_or_together_grade("PHY 134", "D", Sem).
+pre_or_coreq("PHY 142", Sem) :- offered("PHY 142", Sem), passed_before_or_together_grade(("MAT 132"; "MAT 142"; "MAT 127"; "MAT 171"; "AMS 161"), "D", Sem),passed_before_or_together_grade("PHY 134", "D", Sem).
 has_prereq("PHY 142").
 prereq("PHY 142", Sem) :- offered("PHY 142", Sem), passed_before("PHY 141", Sem).
 prereq("PHY 142", Sem) :- offered("PHY 142", Sem), permission.
@@ -507,7 +521,7 @@ pre_or_coreq("PHY 251", Sem) :- offered("PHY 251", Sem), passed_before_or_togeth
 pre_or_coreq("PHY 251", Sem) :- offered("PHY 251", Sem), passed_before_or_together_grade("AMS 261", "D", Sem).
 pre_or_coreq("PHY 251", Sem) :- offered("PHY 251", Sem), passed_before_or_together_grade("MAT 307", "D", Sem).
 has_prereq("PHY 251").
-prereq("PHY 251", Sem) :- offered("PHY 251", Sem), aux_or_1(Sem),passed_before_grade("PHY 134", "D", Sem),passed_before(("MAT 126"; "MAT 132"; "MAT 142"; "MAT 171"; "AMS 161"), Sem).
+prereq("PHY 251", Sem) :- offered("PHY 251", Sem), aux_or_2(Sem),passed_before_grade("PHY 134", "D", Sem),passed_before(("MAT 126"; "MAT 132"; "MAT 142"; "MAT 171"; "AMS 161"), Sem).
 credits("PHY 252", 1).
 has_pre_or_coreq("PHY 252").
 pre_or_coreq("PHY 252", Sem) :- offered("PHY 252", Sem), passed_before_or_together_grade("PHY 251", "D", Sem).
@@ -535,9 +549,9 @@ prereq("WRT 101", Sem) :- offered("WRT 101", Sem), unsupported_prereq.
 credits("WRT 102", 3).
 has_prereq("WRT 102").
 prereq("WRT 102", Sem) :- offered("WRT 102", Sem), passed_before("WRT 101", Sem).
-credits("MAP 101", 3).
-credits("MAP 103", 3).
-aux_or_1(Sem) :- passed_before_grade("PHY 122", "D", Sem),passed_before_grade("PHY 124", "D", Sem).
-aux_or_1(Sem) :- passed_before_grade("PHY 126", "D", Sem),passed_before_grade("PHY 127", "D", Sem).
-aux_or_1(Sem) :- passed_before_grade("PHY 132", "D", Sem).
-aux_or_1(Sem) :- passed_before_grade("PHY 142", "D", Sem).
+aux_or_1(Sem) :- passed_before("CSE 214", Sem).
+aux_or_1(Sem) :- taken_together("CSE 260", Sem).
+aux_or_2(Sem) :- passed_before_grade("PHY 122", "D", Sem),passed_before_grade("PHY 124", "D", Sem).
+aux_or_2(Sem) :- passed_before_grade("PHY 126", "D", Sem),passed_before_grade("PHY 127", "D", Sem).
+aux_or_2(Sem) :- passed_before_grade("PHY 132", "D", Sem).
+aux_or_2(Sem) :- passed_before_grade("PHY 142", "D", Sem).
