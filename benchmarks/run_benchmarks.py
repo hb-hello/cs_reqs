@@ -374,7 +374,7 @@ def run_planning_benchmarks():
         start = min((h.when for h in hist), default=(2024, 3))
         results[case_name] = {
             'ortools': timed_runs(
-                lambda h=hist, s=start: plan_courses(h, Major('CSE'), Standing('U4'), starting_semester=s),
+                lambda h=hist, s=start: plan_courses(h, Major('CSE'), Standing('U4'), start_sem=s),
                 1,
                 extract_metrics=lambda o, r, ids=input_ids, n=input_count, c=case_name: ortools_metrics(o, r, ids, n, c),
                 timing_metric_key='wall_time_s',
@@ -412,7 +412,7 @@ def run_course_wise_prereqs_analysis():
         label = 'FULL' if cid == '' else f'FULL-{cid}'
         ort_timing = timed_runs(
             lambda h=hist, s=start, offerings=normalized_offerings: plan_courses(
-                h, Major('CSE'), Standing('U4'), starting_semester=s, course_offered_terms=offerings),
+                h, Major('CSE'), Standing('U4'), start_sem=s, course_offered_terms=offerings),
             10, extract_metrics=ortools_metrics, timing_metric_key='wall_time_s', label=f'ortools {label}')
         clingo_timing = timed_runs(
             lambda t=taken: run_clingo(taken_set=t, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, timeout=TIMEOUT),
