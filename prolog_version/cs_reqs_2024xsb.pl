@@ -51,8 +51,8 @@ intro_req :-
 
 % 2. Required Advanced Courses
 c(other, 'CSE 310'). c(other, 'CSE 316'). c(other, 'CSE 320'). c(other, 'CSE 416').
-c(algs, 'CSE 373').
-c(algs2, 'CSE 385').
+c(algo, 'CSE 373').
+c(algo2, 'CSE 385').
 c(theory, 'CSE 303').
 c(theory2, 'CSE 350').
 s(adv, theory). s(adv, theory2). s(adv, algo). s(adv, algo2). s(adv, other).
