@@ -25,7 +25,7 @@ class ReqWithDomain(Requirement):
     def domain(self):
         return self._domain if self._domain is not None else self.default_domain
 
-class Semester(ReqWithDomain): pass   ## predicate to represent grade that student has achieved in a course
+class Sem(ReqWithDomain): pass   ## predicate to represent grade that student has achieved in a course
 class Grade(ReqWithDomain): pass   ## predicate to represent grade that student has achieved in a course
 # class SciSubset(Requirement): pass # to track the sci subset
 
@@ -58,7 +58,7 @@ def print_schedule(planned, grades, credits_fn):
 # starting semester indicates the starting semester from which to start planning
 # course_offered_terms is a dict of course ID : {sem names}, e.g., 'CSE 114': {'Fall', 'Spring'}
 # debug_print enables verbose solver output
-def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), check=False, starting_semester=(1, 1), ending_semester=None, course_offered_terms=None, debug_print=False, course_catalog=None):
+def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), check=False, start_sem=(1, 1), end_sem=None, course_offered_terms=None, debug_print=False, course_catalog=None):
 
     if must_include & must_exclude:
         return None # infeasible
@@ -75,10 +75,11 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     Grade.default_domain = sorted(int_grade.values())
 
     # setting up the domain for semesters; base anchors the domain, starting_semester clamped within it
-    base = min((h.when for h in taken), default=starting_semester)
-    all_sems = list(semester_range(base, ending_semester))
-    Semester.default_domain = [i for i, _ in enumerate(all_sems, start=1)]
-    starting_semester = max(starting_semester, base)
+    base = min((h.when for h in taken), default=start_sem)
+    all_sems = list(semester_range(base, end_sem))
+    Sem.default_domain = [i for i, _ in enumerate(all_sems, start=1)]
+    start_sem = max(start_sem, base)
+    sems_to_plan = list(semester_range(start_sem, end_sem))
 
     def int_sem(sem): return sem_to_int(sem, base) + 1
     def decode_sem(encoded): return all_sems[encoded - 1]
@@ -95,7 +96,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     for cid, h in history.items():
         m[Grade(cid)] = int_grade[h.grade]
         m[TakenId(cid)] = 1
-        m[Semester(cid)] = int_sem(h.when)
+        m[Sem(cid)] = int_sem(h.when)
 
     for cid in to_plan_from | (must_exclude - history.keys()):
         # grade is assigned iff course is taken (needed in both check/plan modes)
@@ -105,13 +106,13 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     if not check:
         for cid in to_plan_from:
             # course has semester assigned if and only if we take the course
-            offered_terms = course_offered_terms.get(cid)
-            if offered_terms:
+            offered_sessions = course_offered_terms.get(cid)
+            if offered_sessions:
                 # term-restricted: must land in one of the valid allowed slots
-                offered_sems = [int_sem(sem) for sem in all_sems if sem >= starting_semester and sem[1] in offered_terms]
+                offered_sems = [int_sem(sem) for sem in sems_to_plan if sem[1] in offered_sessions]
                 if offered_sems:
-                    m.set_domain(Semester(cid), offered_sems)
-                    m.iff(TakenId(cid), Semester(cid))
+                    m.set_domain(Sem(cid), offered_sems)
+                    m.iff(TakenId(cid), Sem(cid))
                 else: # can't take the course if it is not offered in any of the semesters
                     m[TakenId(cid)] = 0
             else: # can't take the course if it is not offered in any of the semesters
@@ -260,32 +261,32 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         # prereqs / coreqs / antireqs
         for cid in to_plan_from:
             if catalog[cid].prereq:
-                prereq, p_wit = m.reify(catalog[cid].prereq, with_leaves=True)
+                prereq, leaves = m.reify(catalog[cid].prereq, with_leaves=True)
                 m.implies(TakenId(cid), prereq)
-                for leaf, chosen in p_wit.items():
-                    if isinstance(leaf, Coregister): m.implies(chosen, m[Semester(cid_from(leaf))] == m[Semester(cid)])
-                    else: m.implies(chosen, m[Semester(cid_from(leaf))] < m[Semester(cid)])
+                for leaf, chosen in leaves.items():
+                    if isinstance(leaf, Coregister): m.implies(chosen, m[Sem(cid_from(leaf))] == m[Sem(cid)])
+                    else: m.implies(chosen, m[Sem(cid_from(leaf))] < m[Sem(cid)])
             if catalog[cid].coreq:
-                coreq, c_wit = m.reify(catalog[cid].coreq, with_leaves=True)
+                coreq, leaves = m.reify(catalog[cid].coreq, with_leaves=True)
                 m.implies(TakenId(cid), coreq)
-                for leaf, chosen in c_wit.items():
-                    m.implies(chosen, m[Semester(cid_from(leaf))] == m[Semester(cid)])
+                for leaf, chosen in leaves.items():
+                    m.implies(chosen, m[Sem(cid_from(leaf))] == m[Sem(cid)])
             if catalog[cid].pre_or_coreq:
-                pre_or_coreq, pc_wit = m.reify(catalog[cid].pre_or_coreq, with_leaves=True)
+                pre_or_coreq, leaves = m.reify(catalog[cid].pre_or_coreq, with_leaves=True)
                 m.implies(TakenId(cid), pre_or_coreq)
-                for leaf, chosen in pc_wit.items():
-                    m.implies(chosen, m[Semester(cid_from(leaf))] <= m[Semester(cid)])
+                for leaf, chosen in leaves.items():
+                    m.implies(chosen, m[Sem(cid_from(leaf))] <= m[Sem(cid)])
             if catalog[cid].anti_req: 
-                anti_req, a_wit = m.reify(catalog[cid].anti_req, with_leaves=True)
+                anti_req, leaves = m.reify(catalog[cid].anti_req, with_leaves=True)
                 m.implies(TakenId(cid), anti_req)
-                for leaf, chosen in a_wit.items():
-                    m.implies(chosen, m[Semester(cid_from(leaf))] < m[Semester(cid)])
+                for leaf, chosen in leaves.items():
+                    m.implies(chosen, m[Sem(cid_from(leaf))] < m[Sem(cid)])
 
         # enforce credit limit per semester using the same encoded semester domain
         # to avoid comparing against semesters that are outside Semester.domain.
-        for sem in (int_sem(s) for s in all_sems if s >= starting_semester):
-            sem_credits = [credits(cid) * m.eq(Semester(cid), sem) for cid in to_plan_from]
-            if sem_credits: m.require(sum(sem_credits) <= CREDIT_LIMIT, "credit limit")
+        for sem in range(int_sem(start_sem), int_sem(end_sem) + 1):
+            sem_credits = [credits(cid) * m.eq(Sem(cid), sem) for cid in to_plan_from]
+            if sem_credits: m.require(sum(sem_credits) <= CREDIT_LIMIT)
 
         # calculate total number of new courses taken
         new_courses = sum(m[TakenId(cid)] for cid in to_plan_from)
@@ -294,7 +295,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         grade_sum = sum(m.apply(Grade(cid), lambda g: int(grade_points[grade_of_int[g]] * 100), iff=TakenId(cid)) for cid in to_plan_from)
 
         # to minimize the number of semesters needed to graduate
-        last_sem = m.max_of(m[Semester(cid)] for cid in to_plan_from)
+        last_sem = m.max_of(m[Sem(cid)] for cid in to_plan_from)
 
         # minimizes the expressions in order of priority given
         m.minimize([last_sem, new_courses, grade_sum])
@@ -315,7 +316,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     planned = {}
     if not check:
         planned = {
-            cid: decode_sem(sol.value(Semester(cid)))
+            cid: decode_sem(sol.value(Sem(cid)))
             for cid in to_plan_from
             if sol.value(TakenId(cid)) == 1
         }
@@ -354,4 +355,4 @@ if __name__ == '__main__':
     taken_ids = {'CSE 114', 'CSE 214', 'CSE 215', 'CSE 216', 'CSE 220'}
     print([COURSE_OFFERED_TERMS[t] for t in taken_ids])
     history = [Taken(cid, CATALOG[cid].credits, "A", (2024, 1), "SB") for cid in taken_ids]
-    plan_courses(history, Major("CSE"), Standing("U4"), starting_semester=(2024, 2), ending_semester=(2025, 4), check=False, debug_print=True)
+    plan_courses(history, Major("CSE"), Standing("U4"), start_sem=(2024, 2), end_sem=(2025, 4), check=False, debug_print=True)
