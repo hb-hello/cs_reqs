@@ -7,6 +7,19 @@ atom_number(Atom, Num) :-
     atom_codes(Atom, Codes),
     number_codes(Num, Codes).
 
+aggregate_all(sum(Exp),Goal,Agg) :-
+    findall(Exp,Goal,ExpList),
+    sum_exp_list(ExpList,0,Agg).
+
+sum_exp_list([],S,S).
+sum_exp_list([E|Es],S0,S) :-
+    S1 is E+S0,
+    sum_exp_list(Es,S1,S).
+
+subseq([], []).
+subseq([H|T], [H|Sub]) :- subseq(T, Sub).
+subseq([_|T], Sub) :- subseq(T, Sub).
+
 is_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
 c_or_higher(Grade) :- is_higher(Grade, 'C').
 
@@ -81,7 +94,6 @@ elective(Id) :- \+ advanced_courses(Id),
     taken(Id, Creds, _, _, _),
     Creds >= 3,
     \+ disallowed_elective(Id),
-    \+ advanced_courses(Id),
     upperdivCS(Id).
 
 upperdivCS(Id) :- concat_atom(['CSE ', CourseNumstr], Id),
@@ -134,7 +146,7 @@ sci_courses(Id) :-
   c(sci1, Id); c(sci2, Id); c(sci3, Id); c(sci4, Id); c(sci5, Id); c(sci6, Id); c(sci7, Id); c(sci8, Id); c(scimisc, Id).
 
 sci_subseq_req :-
-  findall(f(Id, Creds, Grade), (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_points(Grade, _)), SciData),
+  findall([Id, Creds, Grade], (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_points(Grade, _)), SciData),
   subseq(SciData, SciReqData),
   lab_req(SciReqData),
   sci_req(SciReqData).
@@ -146,7 +158,7 @@ lab_req(ReqData) :-
   passed_all(sci7, ReqData); passed_all(sci8, ReqData)).
 
 sci_req(ReqData) :-
-    sci_acc(ReqData, [SciCreds, SciQP]),
+    sci_acc(ReqData, SciCreds, SciQP),
     SciCreds >= 9,
     SciQP / SciCreds >= 2.0.
 
@@ -157,40 +169,26 @@ sci_acc([[_, Creds, Grade]|T], CSum, GSum) :-
   grade_points(Grade, Points),
   GSum is SubGSum + (Points*Creds).
 
-subseq([], []).
-subseq([H|T], [H|Sub]) :- subseq(T, Sub).
-subseq([_|T], Sub) :- subseq(T, Sub).
-
-
 wit(sci, Id) :- sci_courses(Id), taken(Id, _, _, _, _).
 
 course_in_cat123(Id) :- intro_courses(Id) ; advanced_courses(Id) ; elective(Id).
-
-% XSB replacement for SWI's aggregate_all(sum(...), Goal, Total)
-sum_list([], 0).
-sum_list([H|T], Sum) :- sum_list(T, SubSum), Sum is SubSum + H.
-
 credits_at_sb_cat123(Total) :-
-    findall(Creds,
-        (taken(Id, Creds, _, _, 'SBU'),
-         passed(Id),
-         course_in_cat123(Id)),
-        CredsList),
-    sum_list(CredsList, Total).
-
+    aggregate_all(sum(Creds),
+        (taken(Cid, Creds, _, _, 'SBU'),
+         passed(Cid),
+         course_in_cat123(Cid)),
+        Total).
 satisfied_residency_123 :- credits_at_sb_cat123(Total), Total >= 24.
 wit(res123, Id) :- taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
 course_in_cat23(Id) :- advanced_courses(Id) ; elective(Id).
 
 credits_at_sb_cat23(Total) :-
-    findall(Creds,
-        (taken(Id, Creds, _, _, 'SBU'),
-         passed(Id),
-         course_in_cat23(Id)),
-        CredsList),
-    sum_list(CredsList, Total).
-
+    aggregate_all(sum(Creds),
+        (taken(Cid, Creds, _, _, 'SBU'),
+         passed(Cid),
+         course_in_cat23(Cid)),
+        Total).
 satisfied_residency_23 :- credits_at_sb_cat23(Total), Total >= 18.
 wit(res23, Id) :- taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
 
@@ -216,13 +214,3 @@ measure_wall(Goal) :-
   statistics(walltime, [_, T]),
   write('result('), write(Outcome), writeln(')'),
   write('Wall time: '), write(T), writeln(' s').
-
-% taken('CSE 215', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 214', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 114', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 216', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 220', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 4', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 0', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 20', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 2330', 3, 'A', (2024,2), 'SBU').

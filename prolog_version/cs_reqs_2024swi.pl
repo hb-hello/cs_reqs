@@ -1,3 +1,7 @@
+subseq([], []).
+subseq([H|T], [H|Sub]) :- subseq(T, Sub).
+subseq([_|T], Sub) :- subseq(T, Sub).
+
 is_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
 c_or_higher(Grade) :- is_higher(Grade, 'C').
 
@@ -63,7 +67,6 @@ disallowed_elective('CSE 301').
 disallowed_elective('CSE 300').
 disallowed_elective('CSE 312').
 
-
 elective_req() :- findall(Id, (passed(Id), elective(Id)), Electives), 
     length(Electives, Count), 
     Count > 3.
@@ -72,7 +75,6 @@ elective(Id) :- \+ advanced_courses(Id),
     taken(Id, Creds, _, _, _), 
     Creds >= 3, 
     \+ disallowed_elective(Id), 
-    \+ advanced_courses(Id),
     upperdivCS(Id).
 
 upperdivCS(Id) :-
@@ -149,11 +151,6 @@ sci_acc([[_, Creds, Grade]|T], CSum, GSum) :-
   grade_points(Grade, Points),
   GSum is SubGSum + (Points*Creds).
 
-subseq([], []).
-subseq([H|T], [H|Sub]) :- subseq(T, Sub).
-subseq([_|T], Sub) :- subseq(T, Sub).
-
-
 wit(sci, Id) :- sci_courses(Id), taken(Id, _, _, _, _).
 
 course_in_cat123(Id) :- intro_courses(Id) ; advanced_courses(Id) ; elective(Id).
@@ -165,25 +162,6 @@ credits_at_sb_cat123(Total) :-
         Total).
 satisfied_residency_123() :- credits_at_sb_cat123(Total), Total >= 24.
 wit(res123, Id) :- taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
-
-temp123(CredsList) :- 
-    findall(Creds,
-        (taken(Id, Creds, _, _, 'SBU'),
-         passed(Id),
-         course_in_cat123(Id)),
-        CredsList).
-
-temp23(CredsList) :- 
-    findall(Creds,
-        (taken(Id, _, _, _, 'SBU'),
-         passed(Id),
-         course_in_cat23(Id)),
-        CredsList).
-
-tempNone(TList) :- 
-    findall(Grade,
-        taken(Id, Grade, _, _, _),
-        TList).
 
 course_in_cat23(Id) :- advanced_courses(Id) ; elective(Id).
 credits_at_sb_cat23(Total) :-
@@ -211,14 +189,3 @@ all_requirements() :-
     sci_subseq_req(),
     passed_all(ethics),
     passed_all(writing).
-
-
-% taken('CSE 215', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 214', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 114', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 216', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 220', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 4', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 0', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 20', 3, 'A', (2024,2), 'SBU').
-% taken('CSE 2330', 3, 'A', (2024,2), 'SBU').
