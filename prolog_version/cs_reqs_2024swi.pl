@@ -1,12 +1,12 @@
-is_higher(Grade, Grade2) :- grade_toPoints(Grade, Points), grade_toPoints(Grade2, Points2), Points >= Points2.
+is_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
 c_or_higher(Grade) :- is_higher(Grade, 'C').
 
 %% mapping letter grade to points for GPA calculation
-grade_toPoints('A', 4.0). grade_toPoints('A-', 3.67).
-grade_toPoints('B+', 3.33). grade_toPoints('B', 3.0). grade_toPoints('B-', 2.67).
-grade_toPoints('C+', 2.33). grade_toPoints('C', 2.0). grade_toPoints('C-', 1.67).
-grade_toPoints('D+', 1.33). grade_toPoints('D', 1.0). grade_toPoints('D-', 0.67).
-grade_toPoints('F', 0.0).
+grade_points('A', 4.0). grade_points('A-', 3.67).
+grade_points('B+', 3.33). grade_points('B', 3.0). grade_points('B-', 2.67).
+grade_points('C+', 2.33). grade_points('C', 2.0). grade_points('C-', 1.67).
+grade_points('D+', 1.33). grade_points('D', 1.0). grade_points('D-', 0.67).
+grade_points('F', 0.0).
 
 passed(Id) :- taken(Id, _, Grade, _, _), c_or_higher(Grade).
 
@@ -126,7 +126,7 @@ sci_courses(Id) :-
   c(sci1, Id); c(sci2, Id); c(sci3, Id); c(sci4, Id); c(sci5, Id); c(sci6, Id); c(sci7, Id); c(sci8, Id); c(scimisc, Id).
 
 sci_subseq_req():-
-  findall([Id, Creds, Grade], (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_toPoints(Grade, _)), SciData),
+  findall([Id, Creds, Grade], (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_points(Grade, _)), SciData),
   subseq(SciData, SciReqData),
   lab_req(SciReqData),
   sci_req(SciReqData).
@@ -146,7 +146,7 @@ sci_acc([], 0.0, 0.0).
 sci_acc([[_, Creds, Grade]|T], CSum, GSum) :-
   sci_acc(T, SubCSum, SubGSum),
   CSum is SubCSum + Creds,
-  grade_toPoints(Grade, Points),
+  grade_points(Grade, Points),
   GSum is SubGSum + (Points*Creds).
 
 subseq([], []).
