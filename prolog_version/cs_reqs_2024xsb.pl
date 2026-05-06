@@ -24,8 +24,8 @@ upperdivCS(Id) :-
   atom_number(CourseNumstr, CourseNumInt),
   CourseNumInt >= 300.
 
-atom_concat(Prefix, Postfix, Full) :-
-  concat_atom([Prefix, Postfix], Full).
+%atom_concat(Prefix, Postfix, Full) :-
+%  concat_atom([Prefix, Postfix], Full).
 
 :- include('cs_reqs_2024swi.pl').
 
