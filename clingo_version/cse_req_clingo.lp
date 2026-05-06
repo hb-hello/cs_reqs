@@ -35,7 +35,9 @@ gpa(Tag, 0) :-
 
 % taken(Id, Credits, Grade, When, Where): taken course Id with Credits, etc.
 
-passed(Id) :- taken(Id, Credits_, Grade, When_, Where_), is_c_or_higher(Grade).
+c_or_higher(Cid) :- taken(Cid, _, Grade, _, _), is_c_or_higher(Grade).
+passed(Cid) :- c_or_higher(Cid).
+passed_with_grade(Cid, Grade) :- taken(Cid, _, Grade1, _, _), is_or_higher(Grade1, Grade).
 
 % c(Subject, Id): course Id in Subject
 
@@ -241,11 +243,11 @@ before(Sem1, Sem2) :- Sem1 = 1..finish_sem, Sem2 = 1..finish_sem, Sem1 < Sem2.
 % taken_before(Id, Sem) :- taken(Id, _, _, Sem1, _), before(Sem1, Sem).
 
 %% course taken before semester with at least grade.
-passed_before_grade(Id, Grade, Sem) :- 
-  taken(Id, _, G, Sem1, _), before(Sem1, Sem), is_or_higher(G, Grade).
+passed_before_grade(Cid, Grade, Sem) :-
+  taken(Cid, _, _, Sem1, _), before(Sem1, Sem), passed_with_grade(Cid, Grade).
 
 %% "C or higher" in prereq
-passed_before(Id, Sem):- taken(Id, _, G, Sem1, _), before(Sem1, Sem), is_c_or_higher(G). 
+passed_before(Cid, Sem):- taken(Cid, _, _, Sem1, _), before(Sem1, Sem), passed(Cid).
 
 %% course Id is taken at semester Sem.                            %% coreq
 taken_together(Id, Sem) :- taken(Id, _, _, Sem, _).
@@ -262,28 +264,11 @@ passed_before_or_together_grade(Id, Grade, Sem) :-
 
 %% if used before(Sem), Sem would need to be grounded. this is more straightforward.
 offered_in_range(Id) :- offered(Id, Sem), before(start_sem, Sem), before(Sem, finish_sem).
-
-%% prereq and anti req in gen
 {plan(Id, Sem) : offered(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
+{plan(Id, Sem) : offered(Id, Sem)} <= 1 :- offered_in_range(Id), 
+                                           not taken_id(Id), not exclude(Id).
 
-{plan(Id, Sem) : offered(Id, Sem)} <= 1 :- 
-  offered_in_range(Id), not taken_id(Id), not exclude(Id).
-
-%% 0 credits if antireq not satisfied.
-plan_credits(Id, 0) :- 
-  plan(Id, Sem), 
-  has_anti_req(Id), 
-  not anti_req(Id, Sem).
-
-%% if no anti req, or anti req satisfied, plan with credits.
-{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- 
-  plan(Id, _), 
-  not has_anti_req(Id).
-
-{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- 
-  plan(Id, Sem), 
-  has_anti_req(Id), 
-  anti_req(Id, Sem).
+{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
 
 %% assume course planned has grade A and taken in SB.
 %%  we could also make grade a variable and optimize for minimum grade needed.
@@ -297,19 +282,24 @@ taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 :- plan(Id, Sem), has_prereq(Id), not prereq(Id, Sem).
 :- plan(Id, Sem), has_coreq(Id), not coreq(Id, Sem).
 :- plan(Id, Sem), has_pre_or_coreq(Id), not pre_or_coreq(Id, Sem).
+:- plan(Id, Sem), has_anti_req(Id), not anti_req(Id, Sem).
 
-%% max credits per semester
+%% do not exceed max credits per semester
 :- plan(_, Sem),
-   #sum { Cr, Id : plan(Id, Sem), plan_credits(Id, Cr) } > sem_max_credits.
+   #sum {Cr, Id: plan(Id, Sem), plan_credits(Id, Cr)} > sem_max_credits.
 
 %%%% optimization
 
 %% minimize the number of semesters
-max_sem_plan(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }. %% get the max semester in the plan
-#minimize { Sem@2 : max_sem_plan(Sem) }.
+max_sem_plan(Sem) :- plan(_, Sem), Sem = #max {Sem1 : plan(_, Sem1)}. %% get the max semester in the plan
+#minimize {Sem@2: max_sem_plan(Sem)}.
 
 %% next, minimize the number of courses to take to satisfy all requirements.
-#minimize { 1@1, Id : plan(Id, _) }.
+#minimize {1@1, Cid: plan(Cid, _)}.
+% #minimize { 
+%     Sem@2, Cid : plan(Cid, Sem) ; 
+%     1@1, Cid : plan(Cid, _) 
+% }.
 
 #program input.
 

@@ -80,6 +80,8 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     Sem.default_domain = [i for i, _ in enumerate(all_sems, start=1)]
     start_sem = max(start_sem, base)
     sems_to_plan = list(semester_range(start_sem, end_sem))
+    if end_sem is None and sems_to_plan:
+        end_sem = sems_to_plan[-1]
 
     def int_sem(sem): return sem_to_int(sem, base) + 1
     def decode_sem(encoded): return all_sems[encoded - 1]
