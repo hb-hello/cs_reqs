@@ -27,7 +27,7 @@ upperdivCS(Id) :-
 %atom_concat(Prefix, Postfix, Full) :-
 %  concat_atom([Prefix, Postfix], Full).
 
-measure_run_xsb(Goal, T) :-
+measure_run_xsb(Goal) :-
   statistics(runtime, [_,_]),
   (call(Goal) -> Outcome = yes ; Outcome = no),
   statistics(runtime, [_,T]),
