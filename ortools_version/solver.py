@@ -52,6 +52,7 @@ class ORModel:
         self._condition_roots   = {}   # root BoolVar → set[Condition] (leaves)
         self.ignore  = tuple(ignore)
         self.requirements = {}
+        self._req_counter = 0
         self.plan = plan # when false, consume require calls and store them to maximize later, ignore optimization objectives
         # when true, set a == 1 constraint on require calls and activate optimization objectives
 
@@ -195,7 +196,9 @@ class ORModel:
         return v
     
     def require(self, expr, name=None):
-        name = name or id(expr)
+        if name is None:
+            self._req_counter += 1
+            name = f"_req_{self._req_counter}"
         conditions = set()
         v, _ = self.reify(expr, name=name, with_leaves=True, conditions=conditions)
         if v is None: return None

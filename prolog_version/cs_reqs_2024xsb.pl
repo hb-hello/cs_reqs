@@ -208,9 +208,9 @@ all_requirements :-
     sci_subseq_req,
     passed_all(ethics_comm).
 
-measure_wall(Goal) :-
-  statistics(walltime, [_, _]),
+measure_run(Goal) :-
+  statistics(runtime, [_, _]),
   (call(Goal) -> Outcome = yes ; Outcome = no),
-  statistics(walltime, [_, T]),
+  statistics(runtime, [_, T]),
   write('result('), write(Outcome), writeln(')'),
-  write('Wall time: '), write(T), writeln(' s').
+  write('CPU time: '), write(T), writeln(' s').
