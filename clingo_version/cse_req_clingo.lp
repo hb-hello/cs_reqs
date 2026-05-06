@@ -275,15 +275,10 @@ offered_in_range(Id) :- offered(Id, Sem), before(start_sem, Sem), before(Sem, fi
 taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 
 %%%% constraints
-%% all requirements must be satisfied.
-:- item(X), not req(X).
-
-%% pre/co/pre_or_co/anti requisites
-:- plan(Id, Sem), has_prereq(Id), not prereq(Id, Sem).
-:- plan(Id, Sem), has_coreq(Id), not coreq(Id, Sem).
-:- plan(Id, Sem), has_pre_or_coreq(Id), not pre_or_coreq(Id, Sem).
-:- plan(Id, Sem), has_anti_req(Id), not anti_req(Id, Sem).
-
+%% all requirements must be satisfied
+:- item(I), not req(I).
+%% all requisites must be satisfied
+:- plan(Cid, Sem), not allreq(Cid, Sem).
 %% do not exceed max credits per semester
 :- plan(_, Sem),
    #sum {Cr, Id: plan(Id, Sem), plan_credits(Id, Cr)} > sem_max_credits.
@@ -296,6 +291,7 @@ max_sem_plan(Sem) :- plan(_, Sem), Sem = #max {Sem1 : plan(_, Sem1)}. %% get the
 
 %% next, minimize the number of courses to take to satisfy all requirements.
 #minimize {1@1, Cid: plan(Cid, _)}.
+% could write in one statement (better?) as:
 % #minimize { 
 %     Sem@2, Cid : plan(Cid, Sem) ; 
 %     1@1, Cid : plan(Cid, _) 

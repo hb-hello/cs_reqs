@@ -1953,7 +1953,7 @@
   {
     "id": "PHY 125",
     "title": "Classical Physics A",
-    "desc": "First of a three-part sequence intended for physical-sciences or engineering majors. It focuses on the mechanics of point particles and simple oscillators, and emphasizes motion in one and two dimensions and the concepts",
+    "desc": "First of a three-part sequence intended for physical-sciences or engineering majors. It focuses on the mechanics of point particles and simple oscillators, and emphasizes motion in one and two dimensions and the concepts of momentum and energy. Calculus is used concurrently with its development in MAT 125. Three lecture hours and one recitation hour per week. Not for credit in addition to PHY 121, PHY 131, or PHY 141. This course has been designated as a High Demand/Controlled Access (HD/CA) course. Students registering for HD/CA courses for the first time will have priority to do so.",
     "prereq": {
       "Or": [
         {"Passed": ["MAT 125", "D"]},
