@@ -64,11 +64,11 @@ def collect_tests():
 ALL_TESTS = collect_tests()
 
 APPROACHES = [
-    ('python_version',  check_python),
-    ('ortools_version', check_ortools),
+    # ('python_version',  check_python),
+    # ('ortools_version', check_ortools),
     # ('clingo_version',  check_clingo),
-    # ('prolog_xsb',  check_prolog_xsb),
-    # ('prolog_swi',  check_prolog_swi),
+    ('prolog_xsb',  check_prolog_xsb),
+    ('prolog_swi',  check_prolog_swi),
 ]
 
 def run_one(label, check_fn):
