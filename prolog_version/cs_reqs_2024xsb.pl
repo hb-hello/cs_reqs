@@ -19,8 +19,13 @@ sum_exp_list([E|Es],S0,S) :-
     S1 is E+S0,
     sum_exp_list(Es,S1,S).
 
-atom_concat(Prefix, Postfix, Full) :-
-  concat_atom([Prefix, Postfix], Full).
+upperdivCS(Id) :- 
+  concat_atom(['CSE ', CourseNumstr], Id),
+  atom_number(CourseNumstr, CourseNumInt),
+  CourseNumInt >= 300.
+
+%atom_concat(Prefix, Postfix, Full) :-
+%  concat_atom([Prefix, Postfix], Full).
 
 measure_run_xsb(Goal, T) :-
   statistics(runtime, T0),
