@@ -28,10 +28,9 @@ upperdivCS(Id) :-
 %  concat_atom([Prefix, Postfix], Full).
 
 measure_run_xsb(Goal, T) :-
-  statistics(runtime, T0),
+  statistics(runtime, [_,_]),
   (call(Goal) -> Outcome = yes ; Outcome = no),
-  statistics(runtime, T1),
-  T is T1 - T0,
+  statistics(runtime, [_,T]),
   write('result('), write(Outcome), writeln(')'),
   write('CPU time: '), write(T), writeln(' s').
 
