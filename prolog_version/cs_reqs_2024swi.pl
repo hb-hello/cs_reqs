@@ -53,7 +53,7 @@ c(theory2, 'CSE 350').
 s(adv, theory). s(adv, theory2). s(adv, algo). s(adv, algo2). s(adv, other).
 
 advanced_courses(Id) :-
-  c(other, Id); c(algs, Id); c(algs2, Id); c(theory, Id); c(theory2, Id).
+  c(other, Id); c(algo, Id); c(algo2, Id); c(theory, Id); c(theory2, Id).
 
 advanced_req :-
   (passed_all(algs); passed_all(algs2)),
