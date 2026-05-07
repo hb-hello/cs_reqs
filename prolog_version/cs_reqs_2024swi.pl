@@ -193,7 +193,7 @@ all_requirements :-
     writing_req,
     ethics_req.
 
-measure_run(Goal) :-
+measure_run_swi(Goal, T) :-
   statistics(cputime, T0),
   (call(Goal) -> Outcome = yes ; Outcome = no),
   statistics(cputime, T1),

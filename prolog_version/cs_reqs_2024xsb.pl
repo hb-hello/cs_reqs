@@ -22,5 +22,13 @@ sum_exp_list([E|Es],S0,S) :-
 atom_concat(Prefix, Postfix, Full) :-
   concat_atom([Prefix, Postfix], Full).
 
+measure_run_xsb(Goal, T) :-
+  statistics(runtime, T0),
+  (call(Goal) -> Outcome = yes ; Outcome = no),
+  statistics(runtime, T1),
+  T is T1 - T0,
+  write('result('), write(Outcome), writeln(')'),
+  write('CPU time: '), write(T), writeln(' s').
+
 :- include('cs_reqs_2024swi.pl').
 
