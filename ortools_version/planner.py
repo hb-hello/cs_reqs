@@ -80,6 +80,8 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     Sem.default_domain = [i for i, _ in enumerate(all_sems, start=1)]
     start_sem = max(start_sem, base)
     sems_to_plan = list(semester_range(start_sem, end_sem))
+    if end_sem is None and sems_to_plan:
+        end_sem = sems_to_plan[-1]
 
     def int_sem(sem): return sem_to_int(sem, base) + 1
     def decode_sem(encoded): return all_sems[encoded - 1]
@@ -301,7 +303,6 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
         m.minimize([last_sem, new_courses, grade_sum])
 
     # run the solver
-    print("running solver")
     sol = m.solve()
     if debug_print: sol.print_metrics()
 
@@ -353,6 +354,16 @@ def fmt(cid, grades):
 if __name__ == '__main__':
     # Test: student has taken intro programming + CSE 220
     taken_ids = {'CSE 114', 'CSE 214', 'CSE 215', 'CSE 216', 'CSE 220'}
+    FULL = {
+        'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220',                  ## intro
+        'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',       ## adv
+        'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
+        'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',                  ## calc, sta, alg
+        'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
+        'CSE 300', 'CSE 312',                                                   ## writing, ethics
+    }
+
+    print(len(FULL))
     print([COURSE_OFFERED_TERMS[t] for t in taken_ids])
-    history = [Taken(cid, CATALOG[cid].credits, "A", (2024, 1), "SB") for cid in taken_ids]
-    plan_courses(history, Major("CSE"), Standing("U4"), start_sem=(2024, 2), end_sem=(2025, 4), check=False, debug_print=True)
+    history = [Taken('CSE 114', CATALOG['CSE 114'].credits, "A", (2024, 1), "SB")]
+    plan_courses(history, Major("CSE"), Standing("U4"), start_sem=(2024, 1), end_sem=(2025, 4), check=False, debug_print=True)

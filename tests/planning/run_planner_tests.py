@@ -2,6 +2,7 @@ import inspect
 import io
 import importlib
 import re
+import argparse
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 import sys
@@ -98,7 +99,7 @@ def run_ortools(history, attrs=None):
 
     checker_result, checker_ok = validate_with_checker(history, schedule, planned_credits=plan_credits)
     failed = [k for k, v in checker_result.items() if not v[0]]
-    return normalize_checked(checked), set(schedule), schedule, plan_credits, checker_ok, failed
+    return normalize_checked(checked), set(schedule), schedule, plan_credits, checker_ok, failed, None
 
 
 def run_clingo_backend(history, attrs=None):
@@ -125,6 +126,7 @@ def run_clingo_backend(history, attrs=None):
         )
 
     checked, schedule, _ = result
+    stats = result.stats
     plan_credits = dict(result.plan_credits or {})
 
     planned_courses = {}
@@ -141,10 +143,10 @@ def run_clingo_backend(history, attrs=None):
     checker_result, checker_ok = validate_with_checker(history, planned_courses, planned_credits=plan_credits)
     failed = [k for k, v in checker_result.items() if not v[0]]
     schedule_courses = {cid for courses in schedule.values() for cid in courses}
-    return normalize_checked(checked), schedule_courses, planned_courses, plan_credits, checker_ok, failed
+    return normalize_checked(checked), schedule_courses, planned_courses, plan_credits, checker_ok, failed, stats
 
 
-def run_one(system, backend):
+def run_one(system, backend, show_runtime=False):
     passed = []
     failed = []
     skipped = []
@@ -168,15 +170,22 @@ def run_one(system, backend):
                 continue
 
             backend_out = backend(history, attrs)
+            stats = None
             if len(backend_out) == 5:
                 checked, schedule_courses, schedule_by_course, checker_ok, checker_failed = backend_out
                 plan_credits = {}
             elif len(backend_out) == 6:
                 checked, schedule_courses, schedule_by_course, plan_credits, checker_ok, checker_failed = backend_out
+            elif len(backend_out) == 7:
+                checked, schedule_courses, schedule_by_course, plan_credits, checker_ok, checker_failed, stats = backend_out
             else:
-                raise ValueError(f"backend must return 5 or 6 values, got {len(backend_out)}")
+                raise ValueError(f"backend must return 5, 6, or 7 values, got {len(backend_out)}")
 
             print(name)
+            if show_runtime and stats:
+                total_time = stats.get('summary', {}).get('times', {}).get('total')
+                if total_time is not None:
+                    print(f"   runtime: {total_time:.4f}s")
             if not checker_ok and not attrs.get('skip_checker_validation', False):
                 failed.append((name, f"python checker rejected combined plan on: {checker_failed}"))
                 continue
@@ -218,16 +227,23 @@ def run_one(system, backend):
         print(schedule_courses)
 
 
-def run_all():
-    run_one('ortools_version', run_ortools)
-    run_one('clingo_version', run_clingo_backend)
+def run_all(show_runtime=False):
+    run_one('ortools_version', run_ortools, show_runtime=show_runtime)
+    run_one('clingo_version', run_clingo_backend, show_runtime=show_runtime)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run planner test cases.")
+    parser.add_argument('system', nargs='?', choices=['ortools', 'clingo'])
+    parser.add_argument('--show-runtime', action='store_true', help='Show clingo total runtime per test case.', default=True)
+    return parser.parse_args()
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        system = sys.argv[1]
-        if system == 'ortools': run_one('ortools_version', run_ortools)
-        elif system == 'clingo': run_one('clingo_version', run_clingo_backend)
-        else: print(f'unknown system: {system}, expected "ortools" or "clingo"')
+    args = parse_args()
+    if args.system == 'ortools':
+        run_one('ortools_version', run_ortools, show_runtime=args.show_runtime)
+    elif args.system == 'clingo':
+        run_one('clingo_version', run_clingo_backend, show_runtime=args.show_runtime)
     else:
-        run_all()
+        run_all(show_runtime=args.show_runtime)

@@ -283,10 +283,10 @@ def degree_reqs(taken):
   checked = {item : (check, sorted(get_wit(item)))
              for item, check in zip(items,checks)}
   checked['degree'] = all(checks), []
-  print('---- checked, from running degree_reqs:')
-  pprint(checked)
-  print('----\n'+ '\n'.join(item + '\t ' + str(check) + ' ' + str(wit)
-                  for item, (check, wit) in checked.items()))
+  # print('---- checked, from running degree_reqs:')
+  # pprint(checked)
+  # print('----\n'+ '\n'.join(item + '\t ' + str(check) + ' ' + str(wit)
+  #                 for item, (check, wit) in checked.items()))
   return checked
 
 def test():
@@ -301,7 +301,7 @@ def test():
   }
   taken = {Taken(cid, 4, 'A', (2024,2), 'SB') for cid in taken_ids}
   degree_reqs(taken)
-  print('---- witness:', w)
+  # print('---- witness:', w)
 
 test()
 

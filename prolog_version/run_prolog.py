@@ -17,6 +17,13 @@ def _normalize_where(where):
         return 'SBU'
     return key
 
+def extract_cpu_time(text):
+    for line in text.splitlines():
+        if "CPU time:" in line:
+            value = line.split("CPU time:")[1].split("s")[0].strip()
+            return float(value)
+    return None
+
 # ── public API ────────────────────────────────────────────────────────────────
 
 def _parse_prolog_list(text):
@@ -33,7 +40,7 @@ def _parse_prolog_list(text):
 
 def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False):
     if engine == 'swi':
-        return run_swi(taken, with_witness=swi_with_witness, return_timing=return_timing)
+        return run_swi(taken, return_timing=return_timing)
 
     child = pexpect.spawn('xsb', encoding='utf-8', timeout=20)
     prompt_re = r'\|\s*\?-\s*'
@@ -47,35 +54,18 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
     def query_truth(goal):
         output = run_cmd(f"({goal} -> write(yes) ; write(no)).")
         return 'yes' in output
-    
-    def get_xsb_runtime():
-        # XSB returns [TimeSinceStart, TimeSinceLastStatCall]
-        # Use a failing probe query so XSB does not pause for top-level bindings.
-        output = run_cmd("statistics(runtime, [T|_]), writeln(time_marker(T)), fail.")
-        match = re.search(r"time_marker\(([-+0-9.eE]+)\)", output)
-        return float(match.group(1)) if match else 0.0
 
     xsb_load_path = os.path.splitext(_PL_FILE_XSB)[0].replace('\\', '/')
     run_cmd(f"['{xsb_load_path}'].")
     run_cmd("retractall(taken(_,_,_,_,_)).")
 
-    t0 = get_xsb_runtime()
     for t in taken:
         where = _normalize_where(t.where)
         fact = f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{where}')"
         run_cmd(f"assertz({fact}).")
 
+    prolog_eval_s = extract_cpu_time(run_cmd("measure_run(all_requirements)."))
     ok = query_truth('all_requirements')
-    t1 = get_xsb_runtime()
-    # time_match = re.search(r"wall\s*time:\s*([-+0-9.eE]+)\s*(ms|s)", query_output.lower())
-    # if time_match:
-    #     raw = float(time_match.group(1))
-    #     unit = time_match.group(2)
-    #     prolog_eval_s = raw / 1000.0 if unit == 'ms' else raw
-    # else:
-    #     prolog_eval_s = None
-    # XSB runtime statistics are CPU time in this environment.
-    prolog_eval_s = t1 - t0
 
     # collect per-requirement witnesses
     req_predicates = {
@@ -114,28 +104,20 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
     return checked
 
 
-def run_swi(taken, with_witness=True, return_timing=False):
+def run_swi(taken, return_timing=False):
     facts = (
         f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{_normalize_where(t.where)}')"
         for t in taken
     )
 
     import janus_swi as janus
-    print(_PL_FILE_SWI)
+    janus.query_once("style_check(-singleton)")
     janus.consult(_PL_FILE_SWI)
 
-    t0 = time.perf_counter()
     janus.query_once("retractall(taken(_,_,_,_,_))")
 
     for f in facts:
         janus.query_once(f"assertz({f})")
-
-    if not with_witness:
-        ok = janus.query_once("all_requirements()").get('truth', False)
-        elapsed = time.perf_counter() - t0
-        if return_timing:
-            return {'ok': ok, 'prolog_eval_s': elapsed, 'engine': 'swi'}
-        return ok
 
     reqs = {'intro':   'intro_req()',
              'adv':    'advanced_req()',
@@ -161,7 +143,6 @@ def run_swi(taken, with_witness=True, return_timing=False):
     t23  = janus.query_once("credits_at_sb_cat23(T)")['T']
     checked['credits_at_SB'] = (t123 >= 24 and t23 >= 18,
                                  [f'items123 = {int(t123)}', f'items23 = {int(t23)}'])
-    elapsed = time.perf_counter() - t0
 
     # benchmark how long it takes to add in all taken data and check all_requirements
     janus.query_once("retractall(taken(_,_,_,_,_))")
@@ -186,28 +167,11 @@ def run_swi(taken, with_witness=True, return_timing=False):
 
     # 5. Calculate and print CPU time
     cpu_time = end_time - start_time
-    print(f"Prolog CPU time: {cpu_time:.6f} seconds")
-
-    # data = janus.query('course_in_cat123(Q)')
-    # for d in data:
-    #     print(f"{d['Q']}: {[t.credits for t in taken if t.id == d['Q']]}")
-
-    # print("23")
-    # data = janus.query('course_in_cat23(Q)')
-    # for d in data:
-    #     print(f"{d['Q']}: {[t.credits for t in taken if t.id == d['Q']]}")
-
-    # print("temp")
-    # data1 = janus.query_once('tempNone(Q)')
-    # print(data1)
-    # for d in data1:
-    #     print(f"{d['Q']}, {d['truth']}, {d}")
-
 
     if return_timing:
         return {
             'ok': checked.get('degree', (False, []))[0],
-            'prolog_eval_s': cpu_time if cpu_time else elapsed,
+            'prolog_eval_s': cpu_time,
             'engine': 'swi',
             'checked': checked,
         }
@@ -257,7 +221,8 @@ if __name__ == '__main__':
     # taken = {Taken(id='CHE 133', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 360', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 216', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CSE 215', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 316', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 310', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 361', credits=3, grade='A', when=(2025, 2), where='SB'), Taken(id='CSE 416', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='AMS 161', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='PHY 131', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 373', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='AMS 301', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CHE 132', credits=4, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 114', credits=3, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 214', credits=4, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 220', credits=4, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 303', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 300', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='AMS 310', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CHE 131', credits=4, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 312', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CSE 320', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CHE 132', credits=4, grade='D', when=(2025, 2), where='SB'), Taken(id='AMS 210', credits=3, grade='A', when=(2022, 4), where='SB')}
 
     try:
-        pprint(run_prolog(taken, 'xsb', swi_with_witness=True, return_timing=True))
+        run_prolog(taken, 'xsb', swi_with_witness=True, return_timing=True)
+        run_prolog(taken, 'swi', swi_with_witness=True, return_timing=True)
         # pprint(run_prolog(taken, 'swi', swi_with_witness=True, return_timing=True))
     except Exception as e:
         print(repr(e))

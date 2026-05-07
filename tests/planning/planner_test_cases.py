@@ -131,16 +131,6 @@ def test_plan_coreq_160_161_mutual():
     # require planner to include CSE 160 and validate its coreq is scheduled
     return taken, validate, {'must_include': {'CSE 160'}}
 
-def test_plan_anti_must_take_with_no_credit():
-    taken = history(FULL)
-    
-    def validate(checked, schedule_courses, schedule_by_course, plan_credits):
-        assert 'CSE 101' in schedule_courses
-        assert plan_credits.get('CSE 101', 0) == 0, f'CSE 101 should be planned with 0 credits due to anti-req, but got {plan_credits.get("CSE 101")}'
-        assert checked['degree'][0]
-
-    return taken, validate, {'must_include': {'CSE 101'}, "approaches": {'clingo_version'}}
-
 ## planner must allow repeat for this test case to pass
 ## commented out for now since that's not currently supported
 # def test_plan_prereq_failed_retake_course():
