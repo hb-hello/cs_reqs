@@ -194,8 +194,9 @@ all_requirements :-
     ethics_req.
 
 measure_run(Goal) :-
-  statistics(runtime, [_, _]),
+  statistics(cputime, T0),
   (call(Goal) -> Outcome = yes ; Outcome = no),
-  statistics(runtime, [_, T]),
+  statistics(cputime, T1),
+  T is T1 - T0,
   write('result('), write(Outcome), writeln(')'),
   write('CPU time: '), write(T), writeln(' s').
