@@ -64,7 +64,7 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         fact = f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{where}')"
         run_cmd(f"assertz({fact}).")
 
-    prolog_eval_s = extract_cpu_time(run_cmd("measure_run(all_requirements)."))
+    prolog_eval_s = extract_cpu_time(run_cmd("measure_run_xsb(all_requirements)."))
     ok = query_truth('all_requirements')
 
     # collect per-requirement witnesses
@@ -148,7 +148,7 @@ def run_swi(taken, return_timing=False):
     janus.query_once("retractall(taken(_,_,_,_,_))")
 
     # 1. Define a heavy Prolog goal
-    print(janus.query_once("measure_run(all_requirements, T)."))
+    print(janus.query_once("measure_run_swi(all_requirements, T)."))
     # prolog_eval_s = extract_cpu_time(janus.query_once("measure_run(all_requirements, T)."))
     # print(prolog_eval_s)
     goal = "all_requirements()"
