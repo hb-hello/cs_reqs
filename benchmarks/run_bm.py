@@ -66,13 +66,13 @@ sem_6 = sem_5 | {'CHE 152', 'CHE 154', 'CSE 300', 'CSE 373', 'CSE 416'}
 sem_7 = sem_6 | {'CSE 303', 'CSE 310', 'CSE 351', 'CSE 487', 'CSE 488'}
 
 plan_cases = {
-    'full': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL},
-    # 'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
-    'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
-    'sem_3': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_3},
-    'sem_4': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_4},
-    'sem_5': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_5},
-    'sem_6': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_6},
+    # 'full': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL},
+    'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
+    # 'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
+    # 'sem_3': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_3},
+    # 'sem_4': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_4},
+    # 'sem_5': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_5},
+    # 'sem_6': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_6},
     # 'sem_7': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_7},
 }
 
@@ -95,6 +95,7 @@ def bm_plan(version, taken, runs = 1):
                 times.append(metrics['user_time_s'])
             case 'clingo':
                 checked, _, metrics = run_clingo(taken_set=taken, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP)
+                print(checked)
                 t = metrics.get('summary', {}).get('times', {})
                 times.append(float(t.get('total', 0)))
     
@@ -149,4 +150,4 @@ if __name__ == '__main__':
             print(version, case, t)
             plan_result[case][version] = t
 
-    write_to_file('planning', plan_result, ['sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
+    write_to_file('planning', plan_result, ['sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
