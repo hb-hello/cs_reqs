@@ -64,7 +64,9 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         fact = f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{where}')"
         run_cmd(f"assertz({fact}).")
 
-    prolog_eval_s = extract_cpu_time(run_cmd("measure_run_xsb(all_requirements)."))
+    u = run_cmd("measure_run_xsb(all_requirements).")
+    print(u)
+    prolog_eval_s = extract_cpu_time(u)
     ok = query_truth('all_requirements')
 
     # collect per-requirement witnesses
@@ -112,6 +114,7 @@ def run_swi(taken, return_timing=False):
 
     import janus_swi as janus
     janus.query_once("style_check(-singleton)")
+    janus.query_once("style_check(-discontiguous)")
     janus.consult(_PL_FILE_SWI)
 
     janus.query_once("retractall(taken(_,_,_,_,_))")
@@ -148,9 +151,7 @@ def run_swi(taken, return_timing=False):
     janus.query_once("retractall(taken(_,_,_,_,_))")
 
     # 1. Define a heavy Prolog goal
-    print(janus.query_once("measure_run_swi(all_requirements, T)."))
-    # prolog_eval_s = extract_cpu_time(janus.query_once("measure_run(all_requirements, T)."))
-    # print(prolog_eval_s)
+    prolog_eval_s = float(janus.query_once("measure_run_swi(all_requirements, T).")['T'])
     goal = "all_requirements()"
 
     # 2. Get Start Time
@@ -174,7 +175,7 @@ def run_swi(taken, return_timing=False):
     if return_timing:
         return {
             'ok': checked.get('degree', (False, []))[0],
-            'prolog_eval_s': cpu_time,
+            'prolog_eval_s': prolog_eval_s,
             'engine': 'swi',
             'checked': checked,
         }
@@ -224,7 +225,7 @@ if __name__ == '__main__':
     # taken = {Taken(id='CHE 133', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 360', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 216', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CSE 215', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 316', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 310', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 361', credits=3, grade='A', when=(2025, 2), where='SB'), Taken(id='CSE 416', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='AMS 161', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='PHY 131', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 373', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='AMS 301', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CHE 132', credits=4, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 114', credits=3, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 214', credits=4, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 220', credits=4, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 303', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 300', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='AMS 310', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CHE 131', credits=4, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 312', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CSE 320', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CHE 132', credits=4, grade='D', when=(2025, 2), where='SB'), Taken(id='AMS 210', credits=3, grade='A', when=(2022, 4), where='SB')}
 
     try:
-        print(run_prolog(taken, 'xsb', swi_with_witness=True, return_timing=True))
+        # print(run_prolog(taken, 'xsb', swi_with_witness=True, return_timing=True))
         print(run_prolog(taken, 'swi', swi_with_witness=True, return_timing=True))
         # pprint(run_prolog(taken, 'swi', swi_with_witness=True, return_timing=True))
     except Exception as e:

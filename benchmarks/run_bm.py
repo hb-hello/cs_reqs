@@ -21,6 +21,9 @@ intro = {'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220'}
 adv = {'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416'}
 elect = {'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355'}
 sci = {'PHY 131', 'PHY 132', 'PHY 133', 'AST 203'}
+mat = {'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310'}
+writing = {'CSE 300'}
+ethics = {'CSE 312'}
 extra_sci = {'CHE 132', 'CHE 321', 'CHE 322', 'CHE 331', 'CHE 332', 'PHY 125', 'PHY 127', 'PHY 132', 'PHY 134', 'PHY 142'}
 extra_elect = {'CSE 380', 'CSE 356', 'CSE 370', 'CSE 355', 'CSE 391', 'CSE 353', 'CSE 362', 
          'CSE 363', 'CSE 305', 'CSE 332', 'CSE 390', 'CSE 488', 'CSE 351', 'CSE 354'}
@@ -30,7 +33,10 @@ cases = {
     'no_intro': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL - intro},
     'no_adv': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL - adv},
     'no_elect': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL - elect},
+    'no_mat': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL - mat},
     'no_sci': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL - sci},
+    'no_wrt': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL - writing},
+    'no_eth': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL - ethics},
     'extra_sci': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL | extra_sci},
     'extra_elect': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL | extra_elect}
 }
@@ -54,7 +60,7 @@ def bm_check(version, taken, runs = 1):
                 checked, _, metrics = run_clingo(taken_set=taken, mode='check', main_lp=MAIN_LP, kb_lp=KB_LP)
                 t = metrics.get('summary', {}).get('times', {})
                 times.append(float(t.get('total', 0)))
-    
+    print(version, times)
     return sum(times)/runs
 
 sem_1 = {'GEO 102', 'WRT 101'}
@@ -66,23 +72,15 @@ sem_6 = sem_5 | {'CHE 152', 'CHE 154', 'CSE 300', 'CSE 373', 'CSE 416'}
 sem_7 = sem_6 | {'CSE 303', 'CSE 310', 'CSE 351', 'CSE 487', 'CSE 488'}
 
 plan_cases = {
-    # 'full': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL},
-    'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
+    'empty': set(),
+    # 'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
     # 'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
     # 'sem_3': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_3},
     # 'sem_4': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_4},
     # 'sem_5': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_5},
     # 'sem_6': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_6},
-    # 'sem_7': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_7},
+    # 'full': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL},
 }
-
-#   year:2024 semester:2 (6 cr): GEO 102 (C+), WRT 101 (C)
-#   year:2024 semester:3 (15 cr): CSE 214 (C), CSE 311 (C), CSE 312 (C), GEO 112 (F), MAT 125 (C), MAT 130 (F)
-#   year:2024 semester:4 (14 cr): AMS 210 (C), CSE 216 (C), CSE 220 (C), MAT 126 (C)
-#   year:2025 semester:1 (13 cr): CSE 150 (C), CSE 316 (C), CSE 320 (C), MAT 127 (C)
-#   year:2025 semester:2 (9 cr): AMS 301 (C), AMS 310 (C), WRT 102 (D)
-#   year:2025 semester:3 (15 cr): CHE 152 (B+), CHE 154 (F), CSE 300 (C), CSE 373 (C), CSE 416 (C)
-#   year:2025 semester:4 (15 cr): CSE 303 (C), CSE 310 (C), CSE 351 (C), CSE 487 (C), CSE 488 (C)
 
 def bm_plan(version, taken, runs = 1):
     if version not in {'clingo', 'ortools'}: return 0
@@ -95,7 +93,6 @@ def bm_plan(version, taken, runs = 1):
                 times.append(metrics['user_time_s'])
             case 'clingo':
                 checked, _, metrics = run_clingo(taken_set=taken, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP)
-                print(checked)
                 t = metrics.get('summary', {}).get('times', {})
                 times.append(float(t.get('total', 0)))
     
@@ -114,15 +111,10 @@ def write_to_file(dir_name, results, cases_in_order):
 
         # rows
         for i, case in enumerate(cases_in_order):
-            row = [
-                str(i + 1),
-                # f"{(results.get(case, {}).get('python', 0)):.9f}",
-                # f"{(results.get(case, {}).get('swi', 0)):.9f}",
-                # f"{(results.get(case, {}).get('xsb', 0)):.9f}",
-                f"{(results.get(case, {}).get('clingo', 0)):.9f}",
-                f"{(results.get(case, {}).get('ortools', 0)):.9f}",
-                str(case)
-            ]
+            row = [f"{(results.get(case, {}).get(version, 0)):.9f}" for version in header if version in results.get(case, {}).keys()]
+            print(row)
+            row.insert(0, str(i + 1))
+            row.append(str(case))
             f.write("\t".join(row) + "\n")
 
     print(f"Saved to {filename}")
@@ -130,24 +122,24 @@ def write_to_file(dir_name, results, cases_in_order):
 if __name__ == '__main__':
     versions = {'python', 'swi', 'xsb', 'clingo', 'ortools'}
     
-    # check_results = {}
+    check_results = {}
 
-    # for case, taken in cases.items():
-    #     check_results[case] = {}
-    #     for version in versions:
-    #         t = bm_check(version, taken, 5)
-    #         print(version, case, t)
-    #         check_results[case][version] = t
-
-    # write_to_file('checking', check_results, ['no_sci', 'passing', 'extra_sci', 'extra_elect', 'no_elect', 'no_adv', 'no_intro'])
-
-
-    plan_result = {}
-    for case, taken in plan_cases.items():
-        plan_result[case] = {}
-        for version in {'clingo', 'ortools'}:
-            t = bm_plan(version, taken, 5)
+    for case, taken in cases.items():
+        check_results[case] = {}
+        for version in versions:
+            t = bm_check(version, taken, 5)
             print(version, case, t)
-            plan_result[case][version] = t
+            check_results[case][version] = t * 1000 # convert s to ms
 
-    write_to_file('planning', plan_result, ['sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
+    write_to_file('checking', check_results, ['passing', 'no_intro', 'no_adv', 'no_elect', 'no_mat', 'no_sci', 'no_wrt', 'no_eth'])
+
+
+    # plan_result = {}
+    # for case, taken in plan_cases.items():
+    #     plan_result[case] = {}
+    #     for version in {'clingo', 'ortools'}:
+    #         t = bm_plan(version, taken, 5)
+    #         print(version, case, t)
+    #         plan_result[case][version] = t
+
+    # write_to_file('planning', plan_result, ['sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
