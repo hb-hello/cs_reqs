@@ -102,7 +102,6 @@ req(adv) :-
 %%%   - removed CSE 300 and CSE 312 from elect_exclude (but still excluded as non-technical)
 %%%   - added following:
 % Students may only use 3 credits from the following courses to satisfy one upper-division technical elective for the CSE major requirements: CSE 487, CSE 496, VIP 395, VIP 396, VIP 495, VIP 496. 
-%%% todo: could 3 credits satisfy more than one? interpret as at most 3 credits from the following
 c(elect_capped, ("CSE 487"; "CSE 496"; "VIP 395"; "VIP 396"; "VIP 495"; "VIP 496")).
 
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
@@ -113,21 +112,19 @@ subset_taken(Id, elect_passed) :-
   @upper_division(Id) = 1,    %% is upper division
   Crs >= 3, not courses(Id, adv), not c((elect_exclude;elect_capped), Id).
 
-% 1. if all courses in elect_capped are 3 credits or higher:
-% choose up to 1 course from elect_capped 
-{ subset_taken(Id, elect_passed) : c(elect_capped, Id), passed(Id) } 1.
-
-% 2. if the courses in elect_capped can have different credits, we need to check the total credits from elect_capped is at most 3 if more than 1 course from elect_capped is chosen.
-% use the following two rules:
-% { subset_taken(Id, elect_passed) : c(elect_capped, Id), passed(Id) }.
-% :- #sum { Crs, Id : subset_taken(Id, elect_passed), c(elect_capped, Id), taken(Id, Crs, _, _, _) } > 3,
-%    #count { Id: subset_taken(Id, elect_passed), c(elect_capped, Id) } > 1.
+%% if courses passed in elect_capped total credits >= 3, 
+%% then it's considered as satisfying one elective.
+elect_capped_sat :-
+  #sum { Crs, Id: c(elect_capped, Id), passed(Id), taken(Id, Crs, _, _, _) } >= 3.
 
 req(elect) :- 
-  #count { Id: subset_taken(Id, elect_passed) } >= 6.
+  #count { Id: subset_taken(Id, elect_passed) ;
+           1: elect_capped_sat} >= 6.
 
-%% for elect, witness is the subset elect_passed used in elect.
+%% for elect, witness is the subset elect_passed 
 wit(elect, Id) :- subset_taken(Id, elect_passed).
+%% plus courses passed in elect_capped, if the capped is used.
+wit(elect, Id) :- elect_capped_sat, c(elect_capped, Id), passed(Id).
 
 % 4. AMS 151, AMS 161 Applied Calculus I, II
 %%% (copied from python) todo:
