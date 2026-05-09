@@ -363,7 +363,8 @@ if __name__ == '__main__':
         'CSE 300', 'CSE 312',                                                   ## writing, ethics
     }
 
-    print(len(FULL))
-    print([COURSE_OFFERED_TERMS[t] for t in taken_ids])
-    history = [Taken('CSE 114', CATALOG['CSE 114'].credits, "A", (2024, 1), "SB")]
-    plan_courses(history, Major("CSE"), Standing("U4"), start_sem=(2024, 1), end_sem=(2025, 4), check=False, debug_print=True)
+    pprint(CATALOG)
+    # print(len(FULL))
+    # print([COURSE_OFFERED_TERMS[t] for t in taken_ids])
+    # history = [Taken('CSE 114', CATALOG['CSE 114'].credits, "A", (2024, 1), "SB")]
+    # plan_courses(history, Major("CSE"), Standing("U4"), start_sem=(2024, 1), end_sem=(2025, 4), check=False, debug_print=True)

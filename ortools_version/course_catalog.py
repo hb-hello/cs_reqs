@@ -16,7 +16,109 @@ class TakenId(Requirement): pass
 ## record of a course taken by the student
 Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
 ## record of relevant course information
-Course = namedtuple('Course', ['id', 'credits', 'prereq', 'coreq', 'anti_req', 'pre_or_coreq'], defaults=[None, None, None, None])
+Course = namedtuple('Course', ['id', 'credits', 'prereq', 'coreq', 'anti_req', 'pre_or_coreq', 'allreqs'], defaults=[None, None, None, None, None])
+
+# ── allreqs: unified requirement field ────────────────────────
+# Prereq/Coreq/AntiReq wrap a req or logical expr, encoding timing semantics.
+# pre_or_coreq becomes Or(Prereq(expr), Coreq(expr)).
+# Switch in: use course.allreqs in the planner.
+# Switch out: use course.prereq / course.coreq / course.anti_req / course.pre_or_coreq instead.
+
+class Prereq(Requirement): pass
+class Coreq(Requirement): pass
+class AntiReq(Requirement): pass
+
+_keep_as_is = (Major, Standing)
+
+def _rewrite_for_allreqs(expr):
+    """Normalize KB types like _rewrite_req_ids, but keep Major and Standing."""
+    if expr is None: return None
+    if isinstance(expr, Not):
+        child = _rewrite_for_allreqs(expr.operands[0])
+        return None if child is None else Not(child)
+    if isinstance(expr, (And, Or)):
+        ops = [_rewrite_for_allreqs(op) for op in expr.operands]
+        ops = [op for op in ops if op is not None]
+        if not ops: return None
+        if len(ops) == 1: return ops[0]
+        return type(expr)(*ops)
+    if isinstance(expr, TakenReq):    return TakenId(*expr.arguments)
+    if type(expr) is Passed:
+        cls = {'C': C_or_higher, 'B+': B_plus_or_higher, 'B': B_or_higher, 'D': D_or_higher}.get(expr.min_grade)
+        return cls(expr.course_id) if cls else expr
+    if isinstance(expr, (UnsupportedRequirement, Permission)): return None
+    return expr
+
+def _filter_for_allreqs(expr, valid_ids):
+    """Like _filter_unknown_ids but keeps Major and Standing leaves."""
+    if expr is None: return None
+    if isinstance(expr, Not):
+        child = _filter_for_allreqs(expr.operands[0], valid_ids)
+        return None if child is None else Not(child)
+    if isinstance(expr, (And, Or)):
+        ops = [_filter_for_allreqs(op, valid_ids) for op in expr.operands]
+        ops = [op for op in ops if op is not None]
+        if not ops: return None
+        if len(ops) == 1: return ops[0]
+        return type(expr)(*ops)
+    if isinstance(expr, _keep_as_is):  return expr
+    if isinstance(expr, Requirement):  return expr if cid_from(expr) in valid_ids else None
+    return expr
+
+def _has_coregister(expr):
+    if isinstance(expr, Coregister):  return True
+    if isinstance(expr, (And, Or)):   return any(_has_coregister(op) for op in expr.operands)
+    return False
+
+def _wrap_as_prereqs(expr):
+    """Wrap at highest level as Prereq; only push down when Coregister forces a split."""
+    if expr is None:                      return None
+    if isinstance(expr, _keep_as_is):    return expr
+    if isinstance(expr, Coregister):     return Coreq(TakenId(*expr.arguments))
+    if not _has_coregister(expr):        return Prereq(expr)
+    # Coregister present — recurse to push Prereq down past And/Or until we reach it
+    if isinstance(expr, (And, Or)):
+        ops = [_wrap_as_prereqs(op) for op in expr.operands]
+        ops = [op for op in ops if op is not None]
+        if not ops: return None
+        if len(ops) == 1: return ops[0]
+        return type(expr)(*ops)
+    return Prereq(expr)
+
+def _coregister_to_taken(expr):
+    if isinstance(expr, Coregister):  return TakenId(*expr.arguments)
+    if isinstance(expr, (And, Or)):
+        ops = [_coregister_to_taken(op) for op in expr.operands]
+        return type(expr)(*[op for op in ops if op is not None])
+    return expr
+
+def _wrap_as_coreqs(expr):
+    if expr is None: return None
+    return Coreq(_coregister_to_taken(expr))
+
+def _build_course_allreqs(kc, valid_ids):
+    def prep(field): return _filter_for_allreqs(_rewrite_for_allreqs(field), valid_ids)
+    prereq = prep(kc.prereq)
+    coreq  = prep(kc.coreq)
+    poc    = prep(kc.pre_or_coreq)
+    anti   = prep(kc.anti_req)
+
+    parts = []
+    if prereq is not None: parts.append(_wrap_as_prereqs(prereq))
+    if coreq  is not None: parts.append(_wrap_as_coreqs(coreq))
+    if poc    is not None:
+        alts = [x for x in (_wrap_as_prereqs(poc), _wrap_as_coreqs(poc)) if x is not None]
+        if alts: parts.append(Or(*alts) if len(alts) > 1 else alts[0])
+    if anti   is not None:
+        inner = anti.operands[0] if isinstance(anti, Not) else anti
+        parts.append(AntiReq(inner))
+
+    parts = [p for p in parts if p is not None]
+    if not parts: return None
+    return And(*parts) if len(parts) > 1 else parts[0]
+
+def _load_allreqs(kb_path, valid_ids):
+    return {kc.id: _build_course_allreqs(kc, valid_ids) for kc in _load_kb(kb_path)}
 
 CATALOG = {}
 COURSE_ID_RE = re.compile(r'^[A-Z]{3} \d{3}$')
@@ -74,6 +176,7 @@ def _rewrite_req_ids(expr):
 
 import os
 _kb_path = os.path.join(os.path.dirname(__file__), '..', 'course_kb', 'kb_cse_degree.json')
+print('processing kb.')
 for kc in _load_kb(_kb_path):
     CATALOG[kc.id] = Course(
         kc.id,
@@ -178,13 +281,15 @@ def _filter_unknown_ids(expr, valid_ids):
     return expr
 
 _valid_ids = set(CATALOG.keys())
+_allreqs_map = _load_allreqs(_kb_path, _valid_ids)
 for _cid in list(CATALOG):
     _c = CATALOG[_cid]
     CATALOG[_cid] = Course(_c.id, _c.credits,
         _filter_unknown_ids(_c.prereq,        _valid_ids),
         _filter_unknown_ids(_c.coreq,         _valid_ids),
         _filter_unknown_ids(_c.anti_req,      _valid_ids),
-        _filter_unknown_ids(_c.pre_or_coreq,  _valid_ids))
+        _filter_unknown_ids(_c.pre_or_coreq,  _valid_ids),
+        _allreqs_map.get(_cid))
 
 # prereq options calculation for benchmarking
 
