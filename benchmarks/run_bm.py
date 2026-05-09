@@ -73,13 +73,13 @@ sem_7 = sem_6 | {'CSE 303', 'CSE 310', 'CSE 351', 'CSE 487', 'CSE 488'}
 
 plan_cases = {
     'empty': set(),
-    # 'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
-    # 'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
-    # 'sem_3': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_3},
-    # 'sem_4': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_4},
-    # 'sem_5': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_5},
-    # 'sem_6': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_6},
-    # 'full': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL},
+    'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
+    'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
+    'sem_3': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_3},
+    'sem_4': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_4},
+    'sem_5': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_5},
+    'sem_6': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_6},
+    'full': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL},
 }
 
 def bm_plan(version, taken, runs = 1):
@@ -124,14 +124,15 @@ if __name__ == '__main__':
     
     check_results = {}
 
-    for case, taken in cases.items():
+    for case, taken in plan_cases.items():
         check_results[case] = {}
         for version in versions:
             t = bm_check(version, taken, 5)
             print(version, case, t)
             check_results[case][version] = t * 1000 # convert s to ms
 
-    write_to_file('checking', check_results, ['passing', 'no_intro', 'no_adv', 'no_elect', 'no_mat', 'no_sci', 'no_wrt', 'no_eth'])
+    # write_to_file('checking', check_results, ['passing', 'no_intro', 'no_adv', 'no_elect', 'no_mat', 'no_sci', 'no_wrt', 'no_eth'])
+    write_to_file('checking', check_results, ['empty', 'sem_1', 'sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
 
 
     # plan_result = {}

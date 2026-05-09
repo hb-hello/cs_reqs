@@ -281,6 +281,65 @@ class ORModel:
 
         return expr, leaves
 
+    def reify_new(self, expr, path_classes=None, leaf_map=None, negated=()):
+        if leaf_map is None:     leaf_map = {}
+        if path_classes is None: path_classes = frozenset()
+
+        if isinstance(expr, self.ignore): return None, leaf_map
+        if isinstance(expr, cp_model.IntVar) and not isinstance(expr, Requirement):
+            return expr, leaf_map
+
+        if isinstance(expr, negated):
+            child_v, leaf_map = self.reify_new(expr.arguments[0], path_classes | {type(expr)}, leaf_map, negated)
+            return (child_v.negated() if child_v is not None else None), leaf_map
+
+        if isinstance(expr, Requirement):
+            new_classes = path_classes | {type(expr)}
+            inner = expr.arguments[0] if expr.arguments else None
+            if isinstance(inner, str):
+                key = (inner, new_classes)
+                if key not in leaf_map:
+                    self._req_counter += 1
+                    sel = self.model.new_bool_var(f"sel_{self._req_counter}")
+                    self.model.add(self[expr] > 0).only_enforce_if(sel)
+                    leaf_map[key] = sel
+                return leaf_map[key], leaf_map
+            return self.reify_new(inner, new_classes, leaf_map, negated)
+
+        if isinstance(expr, cp_model.BoundedLinearExpression):
+            self._req_counter += 1
+            v = self.model.new_bool_var(f"sel_{self._req_counter}")
+            contrib_vars = []
+            for var in expr.vars:
+                req = self._vars.inverse.get(var)
+                if req is not None and isinstance(req, Requirement):
+                    sel, leaf_map = self.reify_new(req, path_classes, leaf_map, negated)
+                    contrib = self._make_contribution(req, sel) if sel is not None else var
+                else:
+                    contrib = var
+                contrib_vars.append(contrib)
+            new_lexpr = cp_model.LinearExpr.weighted_sum(contrib_vars, list(expr.coeffs))
+            if expr.offset: new_lexpr = new_lexpr + expr.offset
+            self.model.add_linear_expression_in_domain(new_lexpr, expr.bounds).only_enforce_if(v)
+            return v, leaf_map
+
+        if isinstance(expr, LogicalExpr):
+            ops = []
+            for op in expr.operands:
+                if isinstance(op, self.ignore): continue
+                child_v, leaf_map = self.reify_new(op, path_classes, leaf_map, negated)
+                if child_v is not None: ops.append(child_v)
+
+            if not ops: return None, leaf_map
+            if isinstance(expr, Not): return ops[0].negated(), leaf_map
+            if len(ops) == 1:         return ops[0], leaf_map
+
+            v = self.model.new_bool_var(wit_expr(expr))
+            if isinstance(expr, Or): self.model.add_max_equality(v, ops)
+            else:                    self.model.add_min_equality(v, ops)
+            return v, leaf_map
+
+        return expr, leaf_map
 
     def _make_contribution(self, req, sel):
         fact_var = self[req]

@@ -6,7 +6,8 @@ from .course_catalog import (
     TakenId, Taken, C_or_higher, B_or_higher, B_plus_or_higher, D_or_higher, Major, Standing, UnsupportedRequirement, Permission,
     And, Or, get_reqs, Requirement, grade_points, semester_range,
     MAX_SEMS_ALLOWED, CREDIT_LIMIT, transform_leaves, cid_from,
-    get_sem_distance, sem_to_int, int_to_sem, rel_sem_to_term, Coregister
+    get_sem_distance, sem_to_int, int_to_sem, rel_sem_to_term, Coregister,
+    Prereq, Coreq, AntiReq,
 )
 
 GRADES = sorted(grade_points.keys(), key=grade_points.get)
@@ -261,28 +262,41 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
             m[TakenId(cid)] = 0
     else:
         # prereqs / coreqs / antireqs
+        # for cid in to_plan_from:
+        #     if catalog[cid].prereq:
+        #         prereq, leaves = m.reify(catalog[cid].prereq, with_leaves=True)
+        #         m.implies(TakenId(cid), prereq)
+        #         for leaf, chosen in leaves.items():
+        #             if isinstance(leaf, Coregister): m.implies(chosen, m[Sem(cid_from(leaf))] == m[Sem(cid)])
+        #             else: m.implies(chosen, m[Sem(cid_from(leaf))] < m[Sem(cid)])
+        #     if catalog[cid].coreq:
+        #         coreq, leaves = m.reify(catalog[cid].coreq, with_leaves=True)
+        #         m.implies(TakenId(cid), coreq)
+        #         for leaf, chosen in leaves.items():
+        #             m.implies(chosen, m[Sem(cid_from(leaf))] == m[Sem(cid)])
+        #     if catalog[cid].pre_or_coreq:
+        #         pre_or_coreq, leaves = m.reify(catalog[cid].pre_or_coreq, with_leaves=True)
+        #         m.implies(TakenId(cid), pre_or_coreq)
+        #         for leaf, chosen in leaves.items():
+        #             m.implies(chosen, m[Sem(cid_from(leaf))] <= m[Sem(cid)])
+        #     if catalog[cid].anti_req:
+        #         anti_req, leaves = m.reify(catalog[cid].anti_req, with_leaves=True)
+        #         m.implies(TakenId(cid), anti_req)
+        #         for leaf, chosen in leaves.items():
+        #             m.implies(chosen, m[Sem(cid_from(leaf))] < m[Sem(cid)])
+
+        # prereqs / coreqs / antireqs via allreqs
         for cid in to_plan_from:
-            if catalog[cid].prereq:
-                prereq, leaves = m.reify(catalog[cid].prereq, with_leaves=True)
-                m.implies(TakenId(cid), prereq)
-                for leaf, chosen in leaves.items():
-                    if isinstance(leaf, Coregister): m.implies(chosen, m[Sem(cid_from(leaf))] == m[Sem(cid)])
-                    else: m.implies(chosen, m[Sem(cid_from(leaf))] < m[Sem(cid)])
-            if catalog[cid].coreq:
-                coreq, leaves = m.reify(catalog[cid].coreq, with_leaves=True)
-                m.implies(TakenId(cid), coreq)
-                for leaf, chosen in leaves.items():
-                    m.implies(chosen, m[Sem(cid_from(leaf))] == m[Sem(cid)])
-            if catalog[cid].pre_or_coreq:
-                pre_or_coreq, leaves = m.reify(catalog[cid].pre_or_coreq, with_leaves=True)
-                m.implies(TakenId(cid), pre_or_coreq)
-                for leaf, chosen in leaves.items():
-                    m.implies(chosen, m[Sem(cid_from(leaf))] <= m[Sem(cid)])
-            if catalog[cid].anti_req: 
-                anti_req, leaves = m.reify(catalog[cid].anti_req, with_leaves=True)
-                m.implies(TakenId(cid), anti_req)
-                for leaf, chosen in leaves.items():
-                    m.implies(chosen, m[Sem(cid_from(leaf))] < m[Sem(cid)])
+            if not catalog[cid].allreqs: continue
+            sat, cid_cond = m.reify_new(catalog[cid].allreqs, negated=(AntiReq,))
+            m.implies(TakenId(cid), sat)
+            for (req_cid, conditions), chosen in cid_cond.items():
+                if Major in conditions or Standing in conditions:
+                    continue
+                if Prereq in conditions or AntiReq in conditions:
+                    m.implies(chosen, m[Sem(req_cid)] < m[Sem(cid)])
+                elif Coreq in conditions:
+                    m.implies(chosen, m[Sem(req_cid)] == m[Sem(cid)])
 
         # enforce credit limit per semester using the same encoded semester domain
         # to avoid comparing against semesters that are outside Semester.domain.
@@ -367,4 +381,5 @@ if __name__ == '__main__':
     # print(len(FULL))
     # print([COURSE_OFFERED_TERMS[t] for t in taken_ids])
     # history = [Taken('CSE 114', CATALOG['CSE 114'].credits, "A", (2024, 1), "SB")]
+    # history = [Taken(cid, CATALOG[cid].credits, "A", (2024, 1), "SB") for cid in FULL - {'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',}]
     # plan_courses(history, Major("CSE"), Standing("U4"), start_sem=(2024, 1), end_sem=(2025, 4), check=False, debug_print=True)
