@@ -1,11 +1,11 @@
 %% Guide: 3.1.10 Pooling
-%% the following is equivalent to c_or_higher("A"). c_or_higher("A-"). ...
+%% the following is equivalent to is_c_or_higher("A"). is_c_or_higher("A-"). ...
 %% clingo encoding for BS degree requirements in CSE at Stony Brook University (Fall 2025).
 % https://catalog.stonybrook.edu/preview_program.php?catoid=7&poid=318
 
 is_or_higher(Grade, Grade2) :- 
   grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
-c_or_higher(Grade) :- is_or_higher(Grade, "C").
+is_c_or_higher(Grade) :- is_or_higher(Grade, "C").
 
 %% mapping letter grade to points for GPA calculation
 %% scaled by 100 to make each integer
@@ -32,7 +32,9 @@ gpa(Tag, 0) :-
 
 % taken(Id, Credits, Grade, When, Where): taken course Id with Credits, etc.
 
-passed(Id) :- taken(Id, Credits_, Grade, When_, Where_), c_or_higher(Grade).
+c_or_higher(Cid) :- taken(Cid, _, Grade, _, _), is_c_or_higher(Grade).
+passed(Cid) :- c_or_higher(Cid).
+passed_with_grade(Cid, Grade) :- taken(Cid, _, Grade1, _, _), is_or_higher(Grade1, Grade).
 
 % c(Subject, Id): course Id in Subject
 
@@ -46,7 +48,6 @@ wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Subj, Id).
 
 % return set of courses in subjects in requirement item.
 courses(Id, Item) :- s(Item, Subj), c(Subj, Id).
-subset_taken(Id, Item) :- s(Item, Subj), c(Subj, Id), taken(Id, _, _, _, _).
 
 % 1. Required Introductory Courses
 %%% CHANGED for 2025: restructured from prog/prog2/dmath/dmath2/sys
@@ -107,22 +108,23 @@ c(elect_capped, ("CSE 487"; "CSE 496"; "VIP 395"; "VIP 396"; "VIP 495"; "VIP 496
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
 subset_taken(Id, elect_passed) :-
-  taken(Id, Crs, G, _, _), c_or_higher(G),
+  taken(Id, Crs, G, _, _), is_c_or_higher(G),
   @course_prog(Id) = "CSE",
   @upper_division(Id) = 1,    %% is upper division
   Crs >= 3, not courses(Id, adv), not c((elect_exclude;elect_capped), Id).
 
-%% add elect_capped course to elect_passed
-{ subset_taken(Id, elect_passed) } :- 
-  c(elect_capped, Id),
-  taken(Id, Crs, G, _, _),
-  c_or_higher(G).
+% 1. if all courses in elect_capped are 3 credits or higher:
+% choose up to 1 course from elect_capped 
+{ subset_taken(Id, elect_passed) : c(elect_capped, Id), passed(Id) } 1.
+
+% 2. if the courses in elect_capped can have different credits, we need to check the total credits from elect_capped is at most 3 if more than 1 course from elect_capped is chosen.
+% use the following two rules:
+% { subset_taken(Id, elect_passed) : c(elect_capped, Id), passed(Id) }.
+% :- #sum { Crs, Id : subset_taken(Id, elect_passed), c(elect_capped, Id), taken(Id, Crs, _, _, _) } > 3,
+%    #count { Id: subset_taken(Id, elect_passed), c(elect_capped, Id) } > 1.
 
 req(elect) :- 
-  #count { Id: subset_taken(Id, elect_passed) } >= 6,
-  %% at most 3 credits from elect_capped
-  #sum { Crs, Id : c(elect_capped, Id), subset_taken(Id, elect_passed), taken(Id, Crs, _, _, _) } <= 3.
-
+  #count { Id: subset_taken(Id, elect_passed) } >= 6.
 
 %% for elect, witness is the subset elect_passed used in elect.
 wit(elect, Id) :- subset_taken(Id, elect_passed).
