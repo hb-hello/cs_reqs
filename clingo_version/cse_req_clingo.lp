@@ -17,6 +17,8 @@ grade_points("B+", 333). grade_points("B", 300). grade_points("B-", 267).
 grade_points("C+", 233). grade_points("C", 200). grade_points("C-", 167).
 grade_points("D+", 133). grade_points("D", 100). grade_points("F", 0).
 grade_points("I/F", 0). grade_points("Q", 0).
+%% for planned courses, treat as C - minimum needed to satisfy most requirements.
+grade_points("None", 200). 
 
 %% gpa calculation, takes a subset (marked by the tag) and calculates the GPA = floor(weighted sum / sum of weights).
 %%   only consider letter grades in grade_points.
@@ -262,17 +264,23 @@ passed_before_or_together_grade(Id, Grade, Sem) :-
 
 %% offered(Id, Sem): course Id is offered at semester Sem. input taken from python.
 
+%% define history from taken?
+% grade("A"; "A-"; "B+"; "B"; "B-"; "C+"; "C"; "C-"; "D+"; "D"; "F"; "I/F"; "Q").
+% history(Id) :- taken(Id, _, G, _, _), grade(G).
+
 %% if used before(Sem), Sem would need to be grounded. this is more straightforward.
 offered_in_range(Id) :- offered(Id, Sem), before(start_sem, Sem), before(Sem, finish_sem).
 {plan(Id, Sem) : offered(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
 {plan(Id, Sem) : offered(Id, Sem)} <= 1 :- offered_in_range(Id), 
-                                           not taken_id(Id), not exclude(Id).
+                                           not taken_id(Id),
+                                           not exclude(Id).
 
 {plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
 
-%% assume course planned has grade A and taken in SB.
-%%  we could also make grade a variable and optimize for minimum grade needed.
-taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
+%% planned course has grade "None", which is treated as C in GPA calculation.
+%% we could also make grade a variable and optimize for minimum grade needed.
+% taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
+taken(Id, Cr, "None", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 
 %%%% constraints
 %% all requirements must be satisfied
