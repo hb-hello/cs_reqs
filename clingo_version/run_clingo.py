@@ -10,6 +10,7 @@ from clingo_version.configs import MAIN_LP, KB_LP
 MIN_SEM = (2024, 2)
 NUM_SEMS = 16
 NUM_CREDITS_PER_SEM = 18
+STUDENT_FACTS = """standing("U1"). standing("U2"). standing("U3"). standing("U4"). major("CSE"). permission."""
 
 class ClingoContext:
   ## can't have python code in the clingo file if using python api.
@@ -19,16 +20,18 @@ class ClingoContext:
 
   def course_prog(self, course_id):
     return clingo.String(course_id.string[:3])
+  
+  def course_level(self, course_id):  # 1 for 100-level, 2 for 200-level, etc., for heuristic purpose only
+    return clingo.Number(int(course_id.string[4]))
 
 @dataclass
-class ClingoResult:
-  checked: dict
-  schedule: dict
-  stats: dict = field(default_factory=dict)
+class ClingoResult:  # represents the output of a clingo run.
+  checked: dict[str, tuple]       # item -> (bool, witness list)
+  schedule: dict[int, list[str]]  # semester -> list of course ids
+  stats: dict = field(default_factory=dict)  # collected statistics from clingo
   plan_credits: dict = field(default_factory=dict)
 
-  ## backwards compatibility, allow:
-  ## checked, schedule, stats = run_clingo(...)
+  ## backwards compatibility, allow unpacking: checked, schedule, stats = run_clingo(...)
   def __iter__(self):
     yield self.checked
     yield self.schedule
@@ -44,31 +47,43 @@ def _collect_clingo_stats(ctrl, timed_out, model_count, min_cost):
   return {
     'problem': {'lp': {'atoms': int(lp.get('atoms', 0)), 'rules': int(lp.get('rules', 0)),
                        'bodies': int(lp.get('bodies', 0)), 'eqs': int(lp.get('eqs', 0))}},
-    'solving': {'solvers': {'choices':   int(solvers.get('choices', 0)),
-                            'conflicts': int(solvers.get('conflicts', 0)),
-                            'restarts':  int(solvers.get('restarts', 0))}},
+    'solving': {'solvers': {
+                'choices':        int(solvers.get('choices', 0)),
+                'domain_choices': int(solvers.get('extra', {}).get('domain_choices', None)),
+                'conflicts':      int(solvers.get('conflicts', 0)),
+                'restarts':       int(solvers.get('restarts', 0))}},
     'summary': {'times': {'total': total_t, 'solve': solve_t}},
     'timed_out': timed_out,
     'model_count': model_count,
     'min_cost': list(min_cost) if min_cost is not None else None,
   }
 
-def _generate_planning_input(inputs):
-  taken_set = inputs.get('taken_set', set())
-  must_include = inputs.get('must_include', set())
-  must_exclude = inputs.get('must_exclude', set())
-  min_sem = inputs.get('min_sem', MIN_SEM)
-  max_sem = inputs.get('max_sem', MIN_SEM)
-  num_sems = inputs.get('num_sems', NUM_SEMS)
-  course_offered_terms = inputs.get('course_offered_terms', COURSE_OFFERED_TERMS)
+def _generate_planning_input(inputs: dict) -> tuple[list[str], list[str]]:
+  input_dict = {  # defining defaults
+      'taken_set': set(),
+      'must_include': set(),
+      'must_exclude': set(),
+      'min_sem': MIN_SEM,
+      'max_sem': MIN_SEM,
+      'num_sems': NUM_SEMS,
+      'course_offered_terms': COURSE_OFFERED_TERMS,
+      'student_facts': STUDENT_FACTS,
+  }
+  input_dict.update(inputs)
 
-  planning_facts = []
-  planning_facts.extend(f'taken_id("{c.id}").' for c in taken_set)
-  planning_facts.extend(f'include("{cid}").' for cid in must_include)
-  planning_facts.extend(f'exclude("{cid}").' for cid in must_exclude)
+  start_sem = sem_to_int(input_dict['max_sem'], input_dict['min_sem']) + 1
+  finish_sem = start_sem + input_dict['num_sems'] - 1
 
-  start_sem = sem_to_int(max_sem, min_sem) + 1
-  finish_sem = start_sem + num_sems - 1
+  planning_facts = (
+    [f'taken_id("{c.id}").' for c in input_dict['taken_set']] +
+    [f'include("{cid}").' for cid in input_dict['must_include']] +
+    [f'exclude("{cid}").' for cid in input_dict['must_exclude']] +
+    [f'offered("{cid}", {sem}).'
+     for cid, terms in input_dict['course_offered_terms'].items()
+     for sem in range(start_sem, finish_sem + 1)
+     if rel_sem_to_term(sem, input_dict['min_sem']) in terms] +
+    [input_dict['student_facts']]
+  )
 
   planning_ctrl_args = [
     f"-c start_sem={start_sem}",
@@ -76,14 +91,40 @@ def _generate_planning_input(inputs):
     f"-c sem_max_credits={NUM_CREDITS_PER_SEM}",
   ]
 
-  for cid, terms in course_offered_terms.items():
-    # terms is a set like {2,3,4}; blank CSV entry is set()
-    for sem in range(start_sem, finish_sem + 1):
-      if rel_sem_to_term(sem, min_sem) in terms:
-        planning_facts.append(f'offered("{cid}", {sem}).')
-
   return planning_facts, planning_ctrl_args
 
+# todo: refactor run_clingo to use run below. seperate clingo execution logic from the input generation
+# def run(
+#     program: str,
+#     ctrl_args: list = None,
+#     on_model=None,
+#     context = ClingoContext(),
+#     timeout: int = 10 * 60,
+#     ground_only=False,
+# ):
+#   clingo_ctrl_args = ["0", "-Wno-atom-undefined"]
+#   if ctrl_args: clingo_ctrl_args.extend(ctrl_args)
+
+#   ctrl = clingo.Control(clingo_ctrl_args)
+#   ctrl.add("base", [], program)
+  
+#   ground_start = time.perf_counter()
+#   ctrl.ground([("base", [])], context=context)
+#   ground_elapsed = time.perf_counter() - ground_start
+
+#   with ctrl.solve(on_model=on_model, async_=True) as handle:
+#     try:
+#       finished = handle.wait(timeout)
+#       if not finished:
+#         print(f'timeout {timeout} reached.')
+#         handle.cancel()
+#     except KeyboardInterrupt:
+#       print('interrupted by user')
+#       handle.cancel()
+#     finally:
+#       handle.wait()
+#   ## return stats
+  
 def run_clingo(
     mode,               ## one of 'check' or 'plan'
     main_lp=MAIN_LP,    ## relative path to main lp file
@@ -99,13 +140,14 @@ def run_clingo(
   assert mode.startswith(('check', 'plan')), f"mode must start with 'check' or 'plan', got {mode}"
 
   taken_set = inputs.get('taken_set', set())
-  ctrl_args = ["0", "-Wno-atom-undefined"]
+  ctrl_args = ["0", "-Wno-atom-undefined", "--stats=2", "--heuristic=Domain"]
 
   items = (
     'intro', 'adv', 'elect', 'calc', 'alg', 'sta',
     'sci', 'ethics', 'writing', 'credits_at_SB', 'degree'
   )
 
+  ## min semester in the input, if input is empty, use default
   min_sem = min(c.when for c in taken_set) if taken_set else MIN_SEM
 
   input_facts = [
@@ -206,10 +248,6 @@ def run_clingo(
   if ground_only:
     stats['summary']['times']['total'] = ground_elapsed
     stats['summary']['times']['solve'] = 0.0
-
-  # if timed_out and checked:
-  #   stats['partial_reqs_sat']   = [k for k, (ok, _) in checked.items() if ok]
-  #   stats['partial_reqs_unsat'] = [k for k, (ok, _) in checked.items() if not ok]
 
   return ClingoResult(
     checked=checked, 

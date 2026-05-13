@@ -305,12 +305,19 @@ max_sem_plan(Sem) :- plan(_, Sem), Sem = #max {Sem1 : plan(_, Sem1)}. %% get the
 %     1@1, Cid : plan(Cid, _) 
 % }.
 
-#program input.
+% plan as early as possible, but causes a lot of conflicts (possibly because of prereqs)
+% #heuristic plan(Id, Sem). [20 - Sem@2, true]
 
-%% student facts
-standing("U1"). standing("U2"). standing("U3"). standing("U4").
-major("CSE"). permission.
+% plan fixed electives to reduce search. do the same for sci?
+% fast_track_elect("CSE 334"; "CSE 331"; "CSE 328"; "CSE 360").
+% #heuristic plan(Id, Sem) : not req(elect),
+%                            fast_track_elect(Id), 
+%                            not taken_id(Id),
+%                            offered(Id, Sem). [100-Sem@1, true]
 
+% input to planning:
+% standing("U1"). standing("U2"). standing("U3"). standing("U4").
+% major("CSE"). permission.
 %% from python:
   %% must exclude and must include: 
   %% exclude("CHE 322").
