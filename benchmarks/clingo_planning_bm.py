@@ -26,6 +26,13 @@ METRICS = [
   ('model_count', 'Model count'),
 ]
 
+EXPS = (
+  'allreq',
+  'cr_option',
+  'opt_order',
+  'req_in_test_vs_gen',
+  # 'plan_anti' , # not needed anymore
+)
 
 def _git_short() -> str:
   try:

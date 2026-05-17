@@ -1,15 +1,23 @@
 {plan(Id, Sem) : offered(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
 {plan(Id, Sem) : offered(Id, Sem)} <= 1 :- offered_in_range(Id),
 											not taken_id(Id), not exclude(Id).
-{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
 
-taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
+%% if anti not sat, take with 0 credits.
+plan_credits(Id, 0) :- 
+  plan(Id, Sem), 
+  has_anti_req(Id), 
+  not anti_req(Id, Sem).
 
-:- item(X), not req(X).
+%% either no anti, or anti sat, take with actual credits.
+{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _), not has_anti_req(Id).
+{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, Sem), has_anti_req(Id), anti_req(Id, Sem).
+
+taken(Id, Cr, "None", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
+
+:- item(I), not req(I).
 :- plan(Id, Sem), has_prereq(Id), not prereq(Id, Sem).
 :- plan(Id, Sem), has_coreq(Id), not coreq(Id, Sem).
 :- plan(Id, Sem), has_pre_or_coreq(Id), not pre_or_coreq(Id, Sem).
-:- plan(Id, Sem), has_anti_req(Id), not anti_req(Id, Sem).
 :- plan(_, Sem),
 	#sum { Cr, Id : plan(Id, Sem), plan_credits(Id, Cr) } > sem_max_credits.
 
