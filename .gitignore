@@ -18,3 +18,5 @@ benchmarks/ortools/*
 .claude/
 course_kb/unsup.txt
 .hypothesis/
+.VSCodeCounter/
+benchmarks/clingo_bm_results/
