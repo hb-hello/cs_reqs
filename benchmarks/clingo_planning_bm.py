@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 from clingo_version.run_clingo import run_clingo_benchmark
-from python_version.cs_reqs_2024 import Taken
+from benchmarks.run_bm import plan_cases
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,34 +48,8 @@ def _git_short() -> str:
     return 'unknown'
 
 
-def collect_tests():
-  from tests.planning.run_planner_tests import collect_tests as _collect
-  return _collect()
-
-
-def parse_case(case):
-  if len(case) == 2:
-    history, _validate = case
-    attrs = {}
-  elif len(case) == 3:
-    history, _validate, attrs = case
-  else:
-    raise ValueError('test case must return (history, validate) or (history, validate, attrs)')
-  return history, (attrs or {})
-
-
-def build_clingo_kwargs(attrs):
-  kwargs = {
-    'must_include': set(attrs.get('must_include', set())),
-    'must_exclude': set(attrs.get('must_exclude', set())),
-  }
-  if 'course_offered_terms' in attrs:
-    kwargs['course_offered_terms'] = attrs['course_offered_terms']
-  if 'num_sems' in attrs:
-    kwargs['num_sems'] = attrs['num_sems']
-  if 'timeout' in attrs:
-    kwargs['timeout'] = attrs['timeout']
-  return kwargs
+def build_clingo_kwargs():
+  return {}
 
 
 def list_experiments():
@@ -95,16 +69,8 @@ def list_experiments():
 
 def run_experiment(experiment_dir: Path, lp_files: list[Path], tests, repeats: int, timeout: float | None, out_dir: Path):
   rows = []
-  for test_name, test_fn in tests:
-    case = test_fn()
-    history, attrs = parse_case(case)
-
-    approaches = set(attrs.get('approaches', []))
-    if approaches and 'clingo_version' not in approaches:
-      continue
-
-    taken = {Taken(h.id, h.credits, h.grade, h.when, h.where) for h in history}
-    clingo_kwargs = build_clingo_kwargs(attrs)
+  for test_name, taken in tests:
+    clingo_kwargs = build_clingo_kwargs()
     if timeout is not None:
       clingo_kwargs['timeout'] = timeout
 
@@ -217,12 +183,14 @@ def plot_metrics(rows, out_dir: Path):
 
 def main():
   parser = argparse.ArgumentParser(description='Benchmark plan_compare experiments and plot metrics.')
-  parser.add_argument('--repeats', type=int, default=1, help='Number of runs per test/program')
-  parser.add_argument('--timeout', type=float, default=None, help='Override clingo timeout (seconds)')
+  parser.add_argument('--repeats', '-r', type=int, default=1, help='Number of runs per test/program')
+  parser.add_argument('--timeout', '-t', type=float, default=None, help='Override clingo timeout (seconds)')
   parser.add_argument('--experiment', '-e', default=None, help='Run a single experiment folder by name')
   args = parser.parse_args()
 
-  tests = collect_tests()
+  tests = sorted(plan_cases.items())
+  order = ['full', 'sem_6', 'sem_5', 'sem_4', 'sem_3', 'sem_2', 'sem_1', 'empty']
+  tests = sorted(tests, key=lambda item: order.index(item[0]) if item[0] in order else len(order))
   git_short = _git_short()
 
   for exp_dir, lp_files in list_experiments():

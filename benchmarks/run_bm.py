@@ -67,7 +67,7 @@ sem_1 = {'GEO 102', 'WRT 101'}
 sem_2 = sem_1 | {'CSE 214', 'CSE 311', 'CSE 312', 'GEO 112', 'MAT 125'}
 sem_3 = sem_2 | {'AMS 210', 'CSE 216', 'CSE 220', 'MAT 126'}
 sem_4 = sem_3 | {'CSE 150', 'CSE 316', 'CSE 320', 'MAT 127'}
-sem_5 = sem_4 | {'AMS 301', 'AMS 310', 'WRT 102 '}
+sem_5 = sem_4 | {'AMS 301', 'AMS 310', 'WRT 102'}
 sem_6 = sem_5 | {'CHE 152', 'CHE 154', 'CSE 300', 'CSE 373', 'CSE 416'}
 sem_7 = sem_6 | {'CSE 303', 'CSE 310', 'CSE 351', 'CSE 487', 'CSE 488'}
 
