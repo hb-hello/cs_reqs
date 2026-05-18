@@ -122,25 +122,25 @@ def write_to_file(dir_name, results, cases_in_order):
 if __name__ == '__main__':
     versions = {'python', 'swi', 'xsb', 'clingo', 'ortools'}
     
-    check_results = {}
-
-    for case, taken in plan_cases.items():
-        check_results[case] = {}
-        for version in versions:
-            t = bm_check(version, taken, 5)
-            print(version, case, t)
-            check_results[case][version] = t * 1000 # convert s to ms
+    # check_results = {}
+    #
+    # for case, taken in plan_cases.items():
+    #     check_results[case] = {}
+    #     for version in versions:
+    #         t = bm_check(version, taken, 5)
+    #         print(version, case, t)
+    #         check_results[case][version] = t * 1000 # convert s to ms
 
     # write_to_file('checking', check_results, ['passing', 'no_intro', 'no_adv', 'no_elect', 'no_mat', 'no_sci', 'no_wrt', 'no_eth'])
-    write_to_file('checking', check_results, ['empty', 'sem_1', 'sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
+    # write_to_file('checking', check_results, ['empty', 'sem_1', 'sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
 
 
-    # plan_result = {}
-    # for case, taken in plan_cases.items():
-    #     plan_result[case] = {}
-    #     for version in {'clingo', 'ortools'}:
-    #         t = bm_plan(version, taken, 5)
-    #         print(version, case, t)
-    #         plan_result[case][version] = t
+    plan_result = {}
+    for case, taken in plan_cases.items():
+        plan_result[case] = {}
+        for version in {'clingo', 'ortools'}:
+            t = bm_plan(version, taken, 1)
+            print(version, case, t)
+            plan_result[case][version] = t
 
-    # write_to_file('planning', plan_result, ['sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
+    write_to_file('planning', plan_result, ['sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
