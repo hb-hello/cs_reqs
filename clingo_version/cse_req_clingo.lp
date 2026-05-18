@@ -279,7 +279,6 @@ offered_in_range(Id) :- offered(Id, Sem), before(start_sem, Sem), before(Sem, fi
 
 %% planned course has grade "None", which is treated as C in GPA calculation.
 %% we could also make grade a variable and optimize for minimum grade needed.
-% taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 taken(Id, Cr, "None", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 
 %%%% constraints

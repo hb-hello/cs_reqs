@@ -1,11 +1,12 @@
+% don't take when antireq is not satisfied
 {plan(Id, Sem) : offered(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
 {plan(Id, Sem) : offered(Id, Sem)} <= 1 :- offered_in_range(Id),
 											not taken_id(Id), not exclude(Id).
-plan_credits(Id, Cr) :- plan(Id, _), Cr = #max { C : credits(Id, C) }.
+{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
 
-taken(Id, Cr, "A", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
+taken(Id, Cr, "None", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 
-:- item(X), not req(X).
+:- item(I), not req(I).
 :- plan(Id, Sem), has_prereq(Id), not prereq(Id, Sem).
 :- plan(Id, Sem), has_coreq(Id), not coreq(Id, Sem).
 :- plan(Id, Sem), has_pre_or_coreq(Id), not pre_or_coreq(Id, Sem).
