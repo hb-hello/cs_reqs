@@ -76,7 +76,7 @@ def _generate_planning_input(inputs: dict) -> tuple[list[str], list[str]]:
 
   return planning_facts, planning_ctrl_args
 
-def build_inputs(mode: str, **inputs):
+def build_inputs(mode: str, heuristics=None, **inputs):
   assert mode in {'check', 'plan'}, f"Invalid mode: {mode}"
 
   taken_set = inputs.get('taken_set', set())
@@ -88,7 +88,9 @@ def build_inputs(mode: str, **inputs):
     for c in taken_set
   ]
   
-  ctrl_args = ["0", "-Wno-atom-undefined", "--stats=2", "--heuristic=Domain"]
+  ctrl_args = ["0", "-Wno-atom-undefined", "--stats=2"]
+  if heuristics:
+    ctrl_args.append("--heuristic=Domain")
   
   if mode == 'plan':
     planning_facts, planning_ctrl_args = _generate_planning_input(inputs)
@@ -96,7 +98,6 @@ def build_inputs(mode: str, **inputs):
     ctrl_args.extend(planning_ctrl_args)
   
   return "\n".join(input_facts), ctrl_args
-
 class ModelParser:
   ## parses clingo model to extract witness
   ITEMS = (
@@ -219,9 +220,10 @@ def run_clingo(
     main_lp=MAIN_LP,    ## path to main lp file
     kb_lp=KB_LP,        ## path to kb lp file
     timeout=10 * 60,    ## timeout in seconds
+    heuristics:str = None,
     **inputs            ## taken_set, must_include, must_exclude, etc.
     ) -> ClingoResult:
-  input_facts, ctrl_args = build_inputs(mode, **inputs)
+  input_facts, ctrl_args = build_inputs(mode, heuristics, **inputs)
   
   assert mode in {'check', 'plan'}, f"Invalid mode: {mode}"
   lp_files = [kb_lp, main_lp] if mode == 'plan' else [kb_lp, main_lp]
@@ -231,7 +233,7 @@ def run_clingo(
   
   clingo_stats = run(
     lp_files=lp_files,
-    program_str=input_facts,
+    program_str=input_facts+heuristics if heuristics else input_facts,
     ground_targets=ground_targets,
     ctrl_args=ctrl_args,
     on_model=model_parser.on_model,
@@ -240,18 +242,19 @@ def run_clingo(
 
   return model_parser.finalize(clingo_stats)
 
-def run_clingo_benchmark(
+def run_planner_benchmark(
     program_lp,
     timeout=10 * 60,
+    heuristics:str = None,
     **inputs
     ) -> ClingoResult:
-  input_facts, ctrl_args = build_inputs('plan', **inputs)
+  input_facts, ctrl_args = build_inputs('plan', heuristics, **inputs)
   
   model_parser = ModelParser(**inputs)
   
   clingo_stats = run(
     lp_files=[program_lp],
-    program_str=input_facts,
+    program_str=input_facts+heuristics if heuristics else input_facts,
     ground_targets=[('base', [])],
     ctrl_args=ctrl_args,
     on_model=model_parser.on_model,
@@ -259,6 +262,44 @@ def run_clingo_benchmark(
   )
 
   return model_parser.finalize(clingo_stats)
+
+HEU_SCI = """
+default_sci("CHE 131"; "CHE 133").
+#heuristic plan_course(Id) : default_sci(Id), offered_in_range(Id). [100@1, true]
+"""
+
+HEU_ELECT = """
+default_elect("CSE 307"; "CSE 311"; "CSE 351"; "CSE 488").
+#heuristic plan_course(Id) : default_elect(Id), offered_in_range(Id). [100@1, true]
+"""
+
+def build_heuristics_from_witness(checked: dict, taken_set=None) -> str:
+  heuristics = []
+
+  if not checked.get('sci', [True])[0]:
+    heuristics.append(HEU_SCI)
+
+  if not checked.get('elect', [True])[0]:
+    heuristics.append(HEU_ELECT)
+
+  return "\n".join(heuristics)
+
+def run_planner_with_heuristics(
+    program_lp,
+    timeout=10*60,
+    **inputs
+    ) -> ClingoResult:
+  # first run checker to get witness for heuristics
+  checked, _schedule, _stats = run_clingo(mode='check', **inputs)
+  heuristics = build_heuristics_from_witness(checked, taken_set=inputs.get('taken_set'))
+  
+  print(f"Built heuristics from witness:\n{heuristics}\n")
+  return run_planner_benchmark(
+    program_lp=program_lp,
+    timeout=timeout,
+    heuristics=heuristics if heuristics else None,
+    **inputs,
+  )
 
 def run_planner_incremental(mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP, timeout=10 * 60, **inputs):
   max_allowed_sems = inputs.get('num_sems', NUM_SEMS)
