@@ -84,7 +84,7 @@ def plan_courses(taken, *student_reqs, must_exclude=set(), must_include=set(), c
     if end_sem is None and sems_to_plan:
         end_sem = sems_to_plan[-1]
 
-    def int_sem(sem): return sem_to_int(sem, base) + 1
+    def int_sem(sem): return sem_to_int(sem, base)
     def decode_sem(encoded): return all_sems[encoded - 1]
 
     history = {h.id: h for h in taken}
@@ -377,9 +377,9 @@ if __name__ == '__main__':
         'CSE 300', 'CSE 312',                                                   ## writing, ethics
     }
 
-    pprint(CATALOG)
+    # pprint(CATALOG)
     # print(len(FULL))
     # print([COURSE_OFFERED_TERMS[t] for t in taken_ids])
     # history = [Taken('CSE 114', CATALOG['CSE 114'].credits, "A", (2024, 1), "SB")]
-    # history = [Taken(cid, CATALOG[cid].credits, "A", (2024, 1), "SB") for cid in FULL - {'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',}]
-    # plan_courses(history, Major("CSE"), Standing("U4"), start_sem=(2024, 1), end_sem=(2025, 4), check=False, debug_print=True)
+    history = [Taken(cid, CATALOG[cid].credits, "A", (2024, 1), "SB") for cid in FULL - {'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',}]
+    plan_courses(history, Major("CSE"), Standing("U4"), start_sem=(2024, 1), end_sem=(2025, 4), check=False, debug_print=True)

@@ -42,7 +42,7 @@ def test_plan_s_cse_ams_two_with_must_include_exclude():
     attrs = {
         # OR-Tools planner currently supports must_include/must_exclude directly.
         'approaches': {'ortools_version'},
-        'must_include': {'AMS 333', 'CSE 353'},
+        'must_include': {'CSE 360', 'CSE 353'},  # both in COURSE_OFFERED_TERMS; CSE 360 only needs CSE 220 (already taken)
         'must_exclude': {'AMS 351', 'CSE 337'},
         'skip_checker_validation': True,
     }
