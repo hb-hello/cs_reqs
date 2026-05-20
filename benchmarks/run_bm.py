@@ -72,9 +72,9 @@ sem_6 = sem_5 | {'CHE 152', 'CHE 154', 'CSE 300', 'CSE 373', 'CSE 416'}
 sem_7 = sem_6 | {'CSE 303', 'CSE 310', 'CSE 351', 'CSE 487', 'CSE 488'}
 
 plan_cases = {
-    'empty': set(),
-    'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
-    'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
+    # 'empty': set(),
+    # 'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
+    # 'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
     'sem_3': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_3},
     'sem_4': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_4},
     'sem_5': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_5},
@@ -106,7 +106,9 @@ def write_to_file(dir_name, results, cases_in_order):
 
     with open(out_dir / filename, 'w') as f:
         # header
-        header = ["case", "python", "swi", "xsb", "clingo", "ortools", "case_name"]
+        header_check = ["case", "python", "swi", "xsb", "clingo", "ortools", "case_name"]
+        header_plan = ["case", "clingo", "ortools", "case_name"]
+        header = header_check if dir_name == "checking" else header_plan
         f.write("\t".join(header) + "\n")
 
         # rows
@@ -139,8 +141,8 @@ if __name__ == '__main__':
     for case, taken in plan_cases.items():
         plan_result[case] = {}
         for version in {'clingo', 'ortools'}:
-            t = bm_plan(version, taken, 1)
+            t = bm_plan(version, taken, 5)
             print(version, case, t)
             plan_result[case][version] = t
 
-    write_to_file('planning', plan_result, ['sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
+    write_to_file('planning', plan_result, ['empty', 'sem_1', 'sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
