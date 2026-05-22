@@ -63,23 +63,33 @@ def bm_check(version, taken, runs = 1):
     print(version, times)
     return sum(times)/runs
 
-sem_1 = {'GEO 102', 'WRT 101'}
-sem_2 = sem_1 | {'CSE 214', 'CSE 311', 'CSE 312', 'GEO 112', 'MAT 125'}
-sem_3 = sem_2 | {'AMS 210', 'CSE 216', 'CSE 220', 'MAT 126'}
-sem_4 = sem_3 | {'CSE 150', 'CSE 316', 'CSE 320', 'MAT 127'}
-sem_5 = sem_4 | {'AMS 301', 'AMS 310', 'WRT 102'}
-sem_6 = sem_5 | {'CHE 152', 'CHE 154', 'CSE 300', 'CSE 373', 'CSE 416'}
-sem_7 = sem_6 | {'CSE 303', 'CSE 310', 'CSE 351', 'CSE 487', 'CSE 488'}
+#   year:2024 semester:3 (11 cr): CHE 131 (A), CSE 114 (C), WRT 101 (C)
+#   year:2024 semester:4 (14 cr): CHE 152 (D), CHE 154 (Q), CSE 214 (C), MAT 125 (C), MAT 130 (F)
+#   year:2025 semester:1 (3 cr): WRT 102 (D)
+#   year:2025 semester:2 (13 cr): AMS 210 (C), CSE 215 (C), CSE 300 (C), MAT 126 (C)
+#   year:2025 semester:3 (14 cr): CSE 216 (C), CSE 220 (C), CSE 310 (C), MAT 127 (C)
+#   year:2025 semester:4 (15 cr): CSE 303 (C), CSE 312 (C), CSE 316 (C), CSE 320 (C), CSE 373 (C)
+#   year:2026 semester:1 (6 cr): AMS 301 (C), AMS 310 (C)
+#   year:2026 semester:2 (15 cr): CSE 327 (C), CSE 353 (C), CSE 354 (C), CSE 356 (C), CSE 416 (C)
+sem_1 = {'CHE 131', 'CSE 114', 'WRT 101'}
+sem_2 = sem_1 | {'CHE 152', 'CHE 154', 'CSE 214', 'MAT 125', 'MAT 130'}
+sem_3 = sem_2 | {'WRT 102'}
+sem_4 = sem_3 | {'AMS 210', 'CSE 215', 'CSE 300', 'MAT 126'}
+sem_5 = sem_4 | {'CSE 216', 'CSE 220', 'CSE 310', 'MAT 127'}
+sem_6 = sem_5 | {'CSE 303', 'CSE 312', 'CSE 316', 'CSE 320', 'CSE 373'}
+sem_7 = sem_6 | {'AMS 301', 'AMS 310'}
+complete = sem_7 | {'CSE 327', 'CSE 353', 'CSE 354', 'CSE 356', 'CSE 416'}
 
 plan_cases = {
     # 'empty': set(),
-    # 'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
-    # 'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
+    'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
+    'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
     'sem_3': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_3},
     'sem_4': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_4},
     'sem_5': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_5},
     'sem_6': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_6},
-    'full': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in FULL},
+    'sem_7': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_7},
+    'complete': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in complete},
 }
 
 def bm_plan(version, taken, runs = 1):
@@ -89,7 +99,7 @@ def bm_plan(version, taken, runs = 1):
     for i in range(runs):
         match version:
             case 'ortools': 
-                checked, _, metrics = plan_courses(taken, start_sem=(2024, 2), end_sem=(2028, 4), check=False)
+                checked, _, metrics = plan_courses(taken, start_sem=(2024, 3), end_sem=(2028, 4), check=False)
                 times.append(metrics['user_time_s'])
             case 'clingo':
                 checked, _, metrics = run_clingo(taken_set=taken, mode='plan', main_lp=MAIN_LP, kb_lp=KB_LP)
@@ -145,4 +155,4 @@ if __name__ == '__main__':
             print(version, case, t)
             plan_result[case][version] = t
 
-    write_to_file('planning', plan_result, ['empty', 'sem_1', 'sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'full'])
+    write_to_file('planning', plan_result, ['empty', 'sem_1', 'sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'sem_7', 'complete'])
