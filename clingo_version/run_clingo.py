@@ -263,6 +263,10 @@ def run_planner_benchmark(
 
   return model_parser.finalize(clingo_stats)
 
+HEU_PLAN = """
+#heuristic plan_course(Id) : not taken_id(Id), not exclude(Id), allreq(Id, start_sem). [50, init]
+"""
+
 HEU_SCI = """
 default_sci("CHE 131"; "CHE 133").
 #heuristic plan_course(Id) : default_sci(Id), offered_in_range(Id). [100@1, true]
@@ -275,6 +279,8 @@ default_elect("CSE 307"; "CSE 311"; "CSE 351"; "CSE 488").
 
 def build_heuristics_from_witness(checked: dict, taken_set=None) -> str:
   heuristics = []
+  
+  heuristics.append(HEU_PLAN)
 
   if not checked.get('sci', [True])[0]:
     heuristics.append(HEU_SCI)

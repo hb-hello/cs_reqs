@@ -81,7 +81,7 @@ sem_7 = sem_6 | {'AMS 301', 'AMS 310'}
 complete = sem_7 | {'CSE 327', 'CSE 353', 'CSE 354', 'CSE 356', 'CSE 416'}
 
 plan_cases = {
-    # 'empty': set(),
+    'empty': set(),
     'sem_1': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_1},
     'sem_2': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_2},
     'sem_3': {Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in sem_3},
