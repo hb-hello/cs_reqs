@@ -208,7 +208,7 @@ def main():
   test_cases = [(name, taken) for name, taken in plan_cases.items()]
   if args.tests:
     test_cases = [(name, taken) for name, taken in test_cases if name in set(args.tests)]
-  order = ['full', 'sem_7', 'sem_6', 'sem_5', 'sem_4', 'sem_3', 'sem_2', 'sem_1', 'empty']
+  order = ['complete', 'sem_7', 'sem_6', 'sem_5', 'sem_4', 'sem_3', 'sem_2', 'sem_1', 'empty']
   test_cases = sorted(test_cases, key=lambda item: order.index(item[0]) if item[0] in order else len(order))
 
   git_short = _git_short()
