@@ -24,16 +24,13 @@ grade_points("None", 200).
 %%   only consider letter grades in grade_points.
 %%   if a course is taken multiple times, only one would be counted. we assume no repeated courses
 %%   to allow repeats, simply add 'When' in the aggregate, but grounding takes longer.
-gpa(Tag, GPA) :-
-  subset_taken(_, Tag),
-  WeightedSum = #sum { Cr * Pts, Cid: subset_taken(Cid, Tag), taken(Cid, Cr, G, _, _), grade_points(G, Pts) },
-  SumOfWeights = #sum { Cr, Cid : subset_taken(Cid, Tag), taken(Cid, Cr, G, _, _), grade_points(G, _) },
+gpa(GPA) :-
+  WeightedSum = #sum { Cr * Pts, Cid: subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, Pts) },
+  SumOfWeights = #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, _) },
   SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
 
 %% gpa is 0 when sum of weights is 0, as in python.
-gpa(Tag, 0) :-
-  subset_taken(_, Tag),
-  #sum { Cr, Cid: subset_taken(Cid, Tag), taken(Cid, Cr, G, _, _), grade_points(G, _) } = 0.
+gpa(0) :- #sum { Cr, Cid: subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, _) } = 0.
 
 % taken(Cid, Credits, Grade, When, Where): taken course Cid with Credits, etc.
 
@@ -146,20 +143,20 @@ sci_taken(Cid) :- sci_combs(Subj), c(Subj, Cid), taken(Cid, _, _, _, _).
 sci_taken(Cid) :- c(sci_more, Cid), taken(Cid, _, _, _, _).
 
 %% generate a subset of sci_courses taken: use the same subset to satisfy sci_req, sci_cred_req and sci_grade_req.
-{ subset_taken(Cid, sci) } :- sci_taken(Cid).
+{ subset_sci_taken(Cid) } :- sci_taken(Cid).
 
 %%% separeted out because clingo treats all conditions after a colon (:) as part of the condition
-sci_combs_req :- sci_combs(Subj), subset_taken(Cid, sci) : c(Subj, Cid).
+sci_combs_req :- sci_combs(Subj), subset_sci_taken(Cid) : c(Subj, Cid).
 
 req(sci) :- 
   sci_combs_req,
   % The courses selected in 7 and 8 must carry at least 9 credits.
-  #sum { Cr, Cid : subset_taken(Cid, sci), taken(Cid, Cr, _, When, _) } >= 9,
+  #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, _, When_, _) } >= 9,
   % The grade point average for the courses in Requirements 7 and 8 must be at least 2.00.
-  gpa(sci, GPA), GPA >= 2*100.
+  gpa(GPA), GPA >= 2*100.
 
 %% witness for sci is the subset used to satisfy all sci requirements, as in python.
-wit(sci, Cid) :- subset_taken(Cid, sci).
+wit(sci, Cid) :- subset_sci_taken(Cid).
 
 % 9. Professional Ethics
 c(ethics, "CSE 312").

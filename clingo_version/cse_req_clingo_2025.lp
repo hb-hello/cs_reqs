@@ -19,16 +19,13 @@ grade_points("I/F", 0). grade_points("Q", 0).
 %%   only consider letter grades in grade_points.
 %%   if a course is taken multiple times, only one would be counted. we assume no repeated courses
 %%   to allow repeats, simply add 'When' in the aggregate, but grounding takes longer.
-gpa(Tag, GPA) :-
-  subset_taken(_, Tag),
-  WeightedSum = #sum { Cr * Pts, Cid: subset_taken(Cid, Tag), taken(Cid, Cr, G, _, _), grade_points(G, Pts) },
-  SumOfWeights = #sum { Cr, Cid : subset_taken(Cid, Tag), taken(Cid, Cr, G, _, _), grade_points(G, _) },
+gpa(GPA) :-
+  WeightedSum = #sum { Cr * Pts, Cid: subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, Pts) },
+  SumOfWeights = #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, _) },
   SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
 
 %% gpa is 0 when sum of weights is 0, as in python.
-gpa(Tag, 0) :-
-  subset_taken(_, Tag),
-  #sum { Cr, Cid: subset_taken(Cid, Tag), taken(Cid, Cr, G, _, _), grade_points(G, _) } = 0.
+gpa(0) :- #sum { Cr, Cid: subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, _) } = 0.
 
 % taken(Cid, Credits, Grade, When, Where): taken course Cid with Credits, etc.
 
@@ -44,10 +41,10 @@ passed_all(Subject) :-
   passed(Cid) : c(Subject, Cid).   %% passed for each course in subject
 
 %% course C is witness for passing all courses in a subject in requirement Item
-wit(Item, Cid) :- s(Item, Subj), passed_all(Subj), c(Subj, Cid).
+wit(I, Cid) :- item(I), s(I, Subj), passed_all(Subj), c(Subj, Cid).
 
-% return set of courses in subjects in requirement item.
-courses(Cid, Item) :- s(Item, Subj), c(Subj, Cid).
+% set of courses in subjects of requirement item
+courses(Cid, I) :- item(I), s(I, Subj), c(Subj, Cid).
 
 % 1. Required Introductory Courses
 %%% CHANGED for 2025: restructured from prog/prog2/dmath/dmath2/sys
@@ -170,7 +167,7 @@ c(che2, ("CHE 152"; "CHE 154")).
 c(phy, ("PHY 126"; "PHY 133")).
 c(phy2, ("PHY 131"; "PHY 133")).
 c(phy3, ("PHY 141"; "PHY 133")).
-sci_combs(bio; bio2; bio3; che; che2; phy; phy2; phy3).
+s(sci_combs, (bio; bio2; bio3; che; che2; phy; phy2; phy3)).
 % 8. One additional natural science course selected from above and the following list...
 % All courses taken to satisfy Requirements 1 through 9 must be taken for a letter grade.
 %%% CHANGED for 2025:
@@ -186,18 +183,15 @@ c(sci_more, ("AST 203"; "AST 205"; "BIO 201"; "BIO 202"; "BIO 203";
             "PHY 125"; "PHY 126"; "PHY 127"; "PHY 131"; "PHY 132"; "PHY 142"; "PHY 251")).
 
 %% sci_courses(taken) in python: set of all sci courses taken
-sci_taken(Cid) :- sci_combs(Subj), c(Subj, Cid), taken(Cid, _, _, _, _).
+sci_taken(Cid) :- s(sci_combs, Subj), c(Subj, Cid), taken(Cid, _, _, _, _).
 sci_taken(Cid) :- c(sci_more, Cid), taken(Cid, _, _, _, _).
 
-%% generate a subset of sci_courses taken: use the same subset to satisfy sci_req, sci_cred_req and sci_grade_req.
-{ subset_taken(Cid, sci) } :- sci_taken(Cid).
+{ subset_sci_taken(Cid) } :- sci_taken(Cid).  % subset of ids of science courses taken
 
-%%% separeted out because clingo treats all conditions after a colon (:) as part of the condition
-sci_combs_req :- sci_combs(Subj), subset_taken(Cid, sci) : c(Subj, Cid).
+req_sci_combs :- s(sci_combs, Subj), subset_sci_taken(Cid) : c(Subj, Cid).
 
-req(sci) :- 
-  sci_combs_req,
-  gpa(sci, Gpa), Gpa >= 2*100.
+req(sci) :- req_sci_combs,
+  gpa(Gpa), Gpa >= 2*100.
 
 %%% CHANGED FOR 2025:
 % Note: One may not take science courses that are deemed equivalent to satisfy 7 and 8 (e.g., PHY 125 and PHY 131). Please review course descriptions for more information. 
@@ -255,10 +249,10 @@ wit(credits_at_SB, Cid) :- items23_course(Cid), taken(Cid, _, _, _, "SB").
 item(intro; adv; elect; calc; alg; sta; sci; nontech; credits_at_SB).
 
 %% degree requirement sat if all requirements are satisfied
-degree :- req(Item) : item(Item).
+degree :- req(I) : item(I).
 
 % checking. program tag omitted
-#maximize { 1, Item : req(Item) }.    %% soft constraint: maximize the number of requirements satisfied. 
+#maximize { 1, I : req(I) }.    %% soft constraint: maximize the number of requirements satisfied. 
                                       %%   so we have a model even when not all requirements are satisfied.
 
 % plan, input: same as in cse_req_clingo.lp
