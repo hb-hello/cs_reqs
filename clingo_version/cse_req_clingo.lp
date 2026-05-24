@@ -131,7 +131,7 @@ c(che2, ("CHE 152"; "CHE 154")).
 c(phy, ("PHY 126"; "PHY 133")).
 c(phy2, ("PHY 131"; "PHY 133")).
 c(phy3, ("PHY 141"; "PHY 133")).
-sci_combs(bio; bio2; bio3; che; che2; phy; phy2; phy3).
+s(sci_combs, (bio; bio2; bio3; che; che2; phy; phy2; phy3)).
 
 % 8. Additional natural science courses selected from above and following list:
 % Note: The courses selected in 7 and 8 must carry at least 9 credits.
@@ -140,7 +140,7 @@ c(sci_more, ("AST 203"; "AST 205"; "CHE 132"; "CHE 321"; "CHE 322"; "CHE 331"; "
              "PHY 125"; "PHY 127"; "PHY 132"; "PHY 134"; "PHY 142"; "PHY 251"; "PHY 252")).
 
 %% sci_courses(taken) in python: set of all sci courses taken
-sci_taken(Cid) :- sci_combs(Subj), c(Subj, Cid), taken(Cid, _, _, _, _).
+sci_taken(Cid) :- s(sci_combs, Subj), c(Subj, Cid), taken(Cid, _, _, _, _).
 sci_taken(Cid) :- c(sci_more, Cid), taken(Cid, _, _, _, _).
 
 %% generate a subset of sci_courses taken: use the same subset to satisfy sci_req, sci_cred_req and sci_grade_req.
