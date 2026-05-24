@@ -226,7 +226,7 @@ degree :- req(Item) : item(Item).
 %%  for semesters we only use small integers, instead of a (year, semester) tuple.
 %%  python maintains the mapping between integers and (year, term) tuples.
 #const start_sem = 1.         %% earliest semester to plan for
-#const finish_sem = 4*4.      %% latest semester ...
+#const end_sem = 4*4.      %% latest semester ...
 #const sem_max_credits = 18.  %% max credits allowed per semester planned
 
 #program plan.    %% with requisites in the test
@@ -236,7 +236,7 @@ degree :- req(Item) : item(Item).
 %% helper predicate for comparing semesters.
 %%   O(N^2) grounding for semester pairs, but since the domain is small,
 %%   this is efficient.
-before(Sem1, Sem2) :- Sem1 = 1..finish_sem, Sem2 = 1..finish_sem, Sem1 < Sem2.
+before(Sem1, Sem2) :- Sem1 = 1..end_sem, Sem2 = 1..end_sem, Sem1 < Sem2.
 
 % %% course is taken before semester Sem.                           %% for prereq and antireq
 % taken_before(Cid, Sem) :- taken(Cid, _, _, Sem1, _), before(Sem1, Sem).
@@ -266,7 +266,7 @@ passed_before_or_together_grade(Cid, Grade, Sem) :-
 % history(Cid) :- taken(Cid, _, G, _, _), grade(G).
 
 %% if used before(Sem), Sem would need to be grounded. this is more straightforward.
-offered_in_range(Cid) :- offered(Cid, Sem), before(start_sem, Sem), before(Sem, finish_sem).
+offered_in_range(Cid) :- offered(Cid, Sem), start_sem <= Sem, Sem <= end_sem.
 {plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- offered_in_range(Cid), include(Cid).
 {plan(Cid, Sem) : offered(Cid, Sem)} <= 1 :- offered_in_range(Cid), 
                                            not taken_id(Cid),
