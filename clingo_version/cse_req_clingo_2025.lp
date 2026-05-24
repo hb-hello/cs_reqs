@@ -21,33 +21,33 @@ grade_points("I/F", 0). grade_points("Q", 0).
 %%   to allow repeats, simply add 'When' in the aggregate, but grounding takes longer.
 gpa(Tag, GPA) :-
   subset_taken(_, Tag),
-  WeightedSum = #sum { Cr * Pts, Id: subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, Pts) },
-  SumOfWeights = #sum { Cr, Id : subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, _) },
+  WeightedSum = #sum { Cr * Pts, Cid: subset_taken(Cid, Tag), taken(Cid, Cr, G, _, _), grade_points(G, Pts) },
+  SumOfWeights = #sum { Cr, Cid : subset_taken(Cid, Tag), taken(Cid, Cr, G, _, _), grade_points(G, _) },
   SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
 
 %% gpa is 0 when sum of weights is 0, as in python.
 gpa(Tag, 0) :-
   subset_taken(_, Tag),
-  #sum { Cr, Id: subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, _) } = 0.
+  #sum { Cr, Cid: subset_taken(Cid, Tag), taken(Cid, Cr, G, _, _), grade_points(G, _) } = 0.
 
-% taken(Id, Credits, Grade, When, Where): taken course Id with Credits, etc.
+% taken(Cid, Credits, Grade, When, Where): taken course Cid with Credits, etc.
 
 c_or_higher(Cid) :- taken(Cid, _, Grade, _, _), is_c_or_higher(Grade).
 passed(Cid) :- c_or_higher(Cid).
 passed_with_grade(Cid, Grade) :- taken(Cid, _, Grade1, _, _), is_or_higher(Grade1, Grade).
 
-% c(Subject, Id): course Id in Subject
+% c(Subject, Cid): course Cid in Subject
 
 % passed all courses in Subject
 passed_all(Subject) :-
   c(Subject, _),                 %% ground Subject
-  passed(Id) : c(Subject, Id).   %% passed for each course in subject
+  passed(Cid) : c(Subject, Cid).   %% passed for each course in subject
 
 %% course C is witness for passing all courses in a subject in requirement Item
-wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Subj, Id).
+wit(Item, Cid) :- s(Item, Subj), passed_all(Subj), c(Subj, Cid).
 
 % return set of courses in subjects in requirement item.
-courses(Id, Item) :- s(Item, Subj), c(Subj, Id).
+courses(Cid, Item) :- s(Item, Subj), c(Subj, Cid).
 
 % 1. Required Introductory Courses
 %%% CHANGED for 2025: restructured from prog/prog2/dmath/dmath2/sys
@@ -106,25 +106,25 @@ c(elect_capped, ("CSE 487"; "CSE 496"; "VIP 395"; "VIP 396"; "VIP 495"; "VIP 496
 
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
-elect_passed(Id) :-
-  taken(Id, Crs, G, _, _), is_c_or_higher(G),
-  @course_prog(Id) = "CSE",
-  @upper_division(Id) = 1,    %% is upper division
-  Crs >= 3, not courses(Id, adv), not c((elect_exclude;elect_capped), Id).
+elect_passed(Cid) :-
+  taken(Cid, Crs, G, _, _), is_c_or_higher(G),
+  @course_prog(Cid) = "CSE",
+  @upper_division(Cid) = 1,    %% is upper division
+  Crs >= 3, not courses(Cid, adv), not c((elect_exclude;elect_capped), Cid).
 
 %% if courses passed in elect_capped total credits >= 3, 
 %% then it's considered as satisfying one elective.
 elect_capped_sat :-
-  #sum { Crs, Id: c(elect_capped, Id), passed(Id), taken(Id, Crs, _, _, _) } >= 3.
+  #sum { Crs, Cid: c(elect_capped, Cid), passed(Cid), taken(Cid, Crs, _, _, _) } >= 3.
 
 req(elect) :- 
-  #count { Id: elect_passed(Id) ;
+  #count { Cid: elect_passed(Cid) ;
            1: elect_capped_sat} >= 6.
 
 %% for elect, witness is the subset elect_passed 
-wit(elect, Id) :- elect_passed(Id).
+wit(elect, Cid) :- elect_passed(Cid).
 %% plus courses passed in elect_capped, if the capped is used.
-wit(elect, Id) :- elect_capped_sat, c(elect_capped, Id), passed(Id).
+wit(elect, Cid) :- elect_capped_sat, c(elect_capped, Cid), passed(Cid).
 
 % 4. AMS 151, AMS 161 Applied Calculus I, II
 %%% (copied from python) todo:
@@ -186,14 +186,14 @@ c(sci_more, ("AST 203"; "AST 205"; "BIO 201"; "BIO 202"; "BIO 203";
             "PHY 125"; "PHY 126"; "PHY 127"; "PHY 131"; "PHY 132"; "PHY 142"; "PHY 251")).
 
 %% sci_courses(taken) in python: set of all sci courses taken
-sci_taken(Id) :- sci_combs(Subj), c(Subj, Id), taken(Id, _, _, _, _).
-sci_taken(Id) :- c(sci_more, Id), taken(Id, _, _, _, _).
+sci_taken(Cid) :- sci_combs(Subj), c(Subj, Cid), taken(Cid, _, _, _, _).
+sci_taken(Cid) :- c(sci_more, Cid), taken(Cid, _, _, _, _).
 
 %% generate a subset of sci_courses taken: use the same subset to satisfy sci_req, sci_cred_req and sci_grade_req.
-{ subset_taken(Id, sci) } :- sci_taken(Id).
+{ subset_taken(Cid, sci) } :- sci_taken(Cid).
 
 %%% separeted out because clingo treats all conditions after a colon (:) as part of the condition
-sci_combs_req :- sci_combs(Subj), subset_taken(Id, sci) : c(Subj, Id).
+sci_combs_req :- sci_combs(Subj), subset_taken(Cid, sci) : c(Subj, Cid).
 
 req(sci) :- 
   sci_combs_req,
@@ -207,7 +207,7 @@ req(sci) :-
 :- subset_taken(C1, sci), subset_taken(C2, sci), equiv(C1, C2).
 
 %% witness for sci is the subset used to satisfy all sci requirements, as in python.
-wit(sci, Id) :- subset_taken(Id, sci).
+wit(sci, Cid) :- subset_taken(Cid, sci).
 
 % 9. Required Non-Technical Courses
 %%% CHANGED for 2025: req 9 and 10 in 2024 merged.
@@ -235,20 +235,20 @@ req(nontech) :- passed_all(nontech).
 %%% assume to be not about "The courses taken to satisfy Requirements ..."
 
 %% courses in items 1,2,3
-items123_course(Id) :- courses(Id, intro).
-items123_course(Id) :- courses(Id, adv).
-items123_course(Id) :- elect_passed(Id).
+items123_course(Cid) :- courses(Cid, intro).
+items123_course(Cid) :- courses(Cid, adv).
+items123_course(Cid) :- elect_passed(Cid).
 
 %% courses in items 2,3
-items23_course(Id) :- courses(Id, adv).
-items23_course(Id) :- elect_passed(Id).
+items23_course(Cid) :- courses(Cid, adv).
+items23_course(Cid) :- elect_passed(Cid).
 
 req(credits_at_SB) :-
-  #sum { Cr, Id : taken(Id, Cr, _, _, "SB"), items123_course(Id) } >= 24,
-  #sum { Cr, Id : taken(Id, Cr, _, _, "SB"), items23_course(Id) } >= 18.
+  #sum { Cr, Cid : taken(Cid, Cr, _, _, "SB"), items123_course(Cid) } >= 24,
+  #sum { Cr, Cid : taken(Cid, Cr, _, _, "SB"), items23_course(Cid) } >= 18.
 
-wit(credits_at_SB, Id) :- items123_course(Id), taken(Id, _, _, _, "SB").
-wit(credits_at_SB, Id) :- items23_course(Id), taken(Id, _, _, _, "SB").
+wit(credits_at_SB, Cid) :- items123_course(Cid), taken(Cid, _, _, _, "SB").
+wit(credits_at_SB, Cid) :- items23_course(Cid), taken(Cid, _, _, _, "SB").
 
 %% requirements items
 %%% CHANGED for 2025: replaced ethics and writing with nontech
