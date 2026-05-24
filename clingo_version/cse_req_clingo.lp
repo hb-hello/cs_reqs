@@ -25,6 +25,7 @@ grade_points("None", 200).
 %%   if a course is taken multiple times, only one would be counted. we assume no repeated courses
 %%   to allow repeats, simply add 'When' in the aggregate, but grounding takes longer.
 gpa(GPA) :-
+  subset_sci_taken(_),
   WeightedSum = #sum { Cr * Pts, Cid: subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, Pts) },
   SumOfWeights = #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, _) },
   SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 

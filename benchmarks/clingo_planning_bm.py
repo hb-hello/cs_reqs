@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import re
 import subprocess
 from collections import defaultdict
 from pathlib import Path
@@ -220,8 +221,18 @@ def main():
     
   out_dir = RESULTS_ROOT / args.name
   if out_dir.exists():
-    print(f"Output directory {out_dir} already exists. Please choose a different name or remove it.")
-    return
+    base_name = args.name
+    counter = 1
+    match = re.match(r"^(.*?)-(\d+)$", args.name)
+    if match:
+      base_name = match.group(1)
+      counter = int(match.group(2)) + 1
+    while True:
+      candidate = RESULTS_ROOT / f"{base_name}-{counter}"
+      if not candidate.exists():
+        out_dir = candidate
+        break
+      counter += 1
 
   print("Selected programs:", ", ".join(sorted({lp.stem for lp in test_programs})))
   print("Results will be saved to:", out_dir)

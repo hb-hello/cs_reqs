@@ -1,0 +1,1 @@
+python benchmarks/clingo_planning_bm.py -e exp_allow_repeat -t 1800 -ts complete sem_7 sem_6 sem_5 sem_4 sem_3 sem_2 sem_1 -r 3 -n repeat-all-but-empty
