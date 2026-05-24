@@ -1,10 +1,4 @@
-%% comments in this file:
-%%    %: english text from the degree requirements, comments in python, or commented out code
-%%   %%: my own comments explaining the logic
-%%  %%%: issues, some are copied from python
-
-%% clingo version for checking and planning for BS degree requirements in CSE at Stony Brook University (Fall 2024).
-%% python version: https://github.com/unicomputing/cs_reqs/blob/main/cs_reqs_2024.da (checking only)
+#include "../kb_allreq.lp".
 
 is_or_higher(Grade, Grade2) :- 
   grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
@@ -26,8 +20,8 @@ grade_points("None", 200).
 %%   to allow repeats, simply add 'When' in the aggregate, but grounding takes longer.
 gpa(Tag, GPA) :-
   subset_taken(_, Tag),
-  WeightedSum = #sum { Cr * Pts, Id: subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, Pts) },
-  SumOfWeights = #sum { Cr, Id : subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, _) },
+  WeightedSum = #sum { Cr * Pts, Id, When: subset_taken(Id, Tag), taken(Id, Cr, G, When, _), grade_points(G, Pts) },
+  SumOfWeights = #sum { Cr, Id, When: subset_taken(Id, Tag), taken(Id, Cr, G, When, _), grade_points(G, _) },
   SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
 
 %% gpa is 0 when sum of weights is 0, as in python.
@@ -220,20 +214,6 @@ item(intro; adv; elect; calc; alg; sta; sci; ethics; writing; credits_at_SB).
 %% degree requirement sat if all requirements are satisfied
 degree :- req(Item) : item(Item).
 
-#program check.
-
-#maximize { 1, Item : req(Item) }.    %% soft constraint: maximize the number of requirements satisfied. 
-                                      %%   so we have a model even when not all requirements are satisfied.
-
-%% Default planning constants (can be overridden by python).
-%%  for semesters we only use small integers, instead of a (year, semester) tuple.
-%%  python maintains the mapping between integers and (year, term) tuples.
-#const start_sem = 1.         %% earliest semester to plan for
-#const finish_sem = 4*4.      %% latest semester ...
-#const sem_max_credits = 18.  %% max credits allowed per semester planned
-
-#program plan.    %% with requisites in the test
-
 %% Temporal relations used by the KB to evaluate requisites (e.g., passed_before, taken_together). 
 
 %% helper predicate for comparing semesters.
@@ -298,29 +278,3 @@ max_sem_plan(Sem) :- plan(_, Sem), Sem = #max {Sem1 : plan(_, Sem1)}. %% get the
 
 %% next, minimize the number of courses to take to satisfy all requirements.
 #minimize {1@1, Cid: plan(Cid, _)}.
-% could write in one statement (better?) as:
-% #minimize { 
-%     Sem@2, Cid : plan(Cid, Sem) ; 
-%     1@1, Cid : plan(Cid, _) 
-% }.
-
-% plan as early as possible, but causes a lot of conflicts (possibly because of prereqs)
-% #heuristic plan(Id, Sem). [20 - Sem@2, true]
-
-% plan fixed electives to reduce search. do the same for sci?
-% fast_track_elect("CSE 334"; "CSE 331"; "CSE 328"; "CSE 360").
-% #heuristic plan(Id, Sem) : not req(elect),
-%                            fast_track_elect(Id), 
-%                            not taken_id(Id),
-%                            offered(Id, Sem). [100-Sem@1, true]
-
-% input to planning:
-% standing("U1"). standing("U2"). standing("U3"). standing("U4").
-% major("CSE"). permission.
-%% from python:
-  %% must exclude and must include: 
-  %% exclude("CHE 322").
-  %% include("CHE 322").
-
-  %% taken_id(Id).
-  %% taken(Id, ...)

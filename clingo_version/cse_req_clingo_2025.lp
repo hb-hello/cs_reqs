@@ -106,7 +106,7 @@ c(elect_capped, ("CSE 487"; "CSE 496"; "VIP 395"; "VIP 396"; "VIP 495"; "VIP 496
 
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
-subset_taken(Id, elect_passed) :-
+elect_passed(Id) :-
   taken(Id, Crs, G, _, _), is_c_or_higher(G),
   @course_prog(Id) = "CSE",
   @upper_division(Id) = 1,    %% is upper division
@@ -118,11 +118,11 @@ elect_capped_sat :-
   #sum { Crs, Id: c(elect_capped, Id), passed(Id), taken(Id, Crs, _, _, _) } >= 3.
 
 req(elect) :- 
-  #count { Id: subset_taken(Id, elect_passed) ;
+  #count { Id: elect_passed(Id) ;
            1: elect_capped_sat} >= 6.
 
 %% for elect, witness is the subset elect_passed 
-wit(elect, Id) :- subset_taken(Id, elect_passed).
+wit(elect, Id) :- elect_passed(Id).
 %% plus courses passed in elect_capped, if the capped is used.
 wit(elect, Id) :- elect_capped_sat, c(elect_capped, Id), passed(Id).
 
@@ -237,11 +237,11 @@ req(nontech) :- passed_all(nontech).
 %% courses in items 1,2,3
 items123_course(Id) :- courses(Id, intro).
 items123_course(Id) :- courses(Id, adv).
-items123_course(Id) :- subset_taken(Id, elect_passed).
+items123_course(Id) :- elect_passed(Id).
 
 %% courses in items 2,3
 items23_course(Id) :- courses(Id, adv).
-items23_course(Id) :- subset_taken(Id, elect_passed).
+items23_course(Id) :- elect_passed(Id).
 
 req(credits_at_SB) :-
   #sum { Cr, Id : taken(Id, Cr, _, _, "SB"), items123_course(Id) } >= 24,
