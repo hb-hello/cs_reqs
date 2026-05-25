@@ -1,3 +1,3 @@
 #include "plan.lp".
 
-{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
+{plan_credits(Cid, Cr) : credits(Cid, Cr)} == 1 :- plan(Cid, _).

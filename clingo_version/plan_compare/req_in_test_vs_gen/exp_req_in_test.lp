@@ -1,8 +1,8 @@
 #include "plan.lp".
 #include "../kb_allreq.lp".
 
-{plan(Id, Sem) : offered(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
-{plan(Id, Sem) : offered(Id, Sem)} <= 1 :- offered_in_range(Id), not taken_id(Id), not exclude(Id).
+{plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- offered_in_range(Cid), include(Cid).
+{plan(Cid, Sem) : offered(Cid, Sem)} <= 1 :- offered_in_range(Cid), not taken_id(Cid), not exclude(Cid).
 
 % requisites constraints only in tests
-:- plan(Id, Sem), not allreq(Id, Sem).
+:- plan(Cid, Sem), not allreq(Cid, Sem).

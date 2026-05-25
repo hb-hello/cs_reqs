@@ -24,11 +24,11 @@ def solve_combo(enable_reqs=None, enable_features=None, num_sems=NUM_SEMS, timeo
 
     min_sem = MIN_SEM
     start_sem = 1
-    finish_sem = start_sem + num_sems - 1
+    end_sem = start_sem + num_sems - 1
     credits_per_sem = NUM_CREDITS_PER_SEM if 'credit_limits' in features_on else 999
 
     ctrl_args = ["0", "-Wno-atom-undefined",
-                 f"-c start_sem={start_sem}", f"-c finish_sem={finish_sem}",
+                 f"-c start_sem={start_sem}", f"-c end_sem={end_sem}",
                  f"-c sem_max_credits={credits_per_sem}"]
 
     # build facts to inject
@@ -49,7 +49,7 @@ def solve_combo(enable_reqs=None, enable_features=None, num_sems=NUM_SEMS, timeo
     # offered facts: all terms when offering disabled, else respect course_offered_terms
     offering_terms = COURSE_OFFERED_TERMS if 'offering' in features_on else {cid: {1, 2, 3, 4} for cid in COURSE_OFFERED_TERMS}
     for cid, terms in offering_terms.items():
-        for sem in range(start_sem, finish_sem + 1):
+        for sem in range(start_sem, end_sem + 1):
             if rel_sem_to_term(sem, min_sem) in terms:
                 facts.append(f'offered("{cid}", {sem}).')
 

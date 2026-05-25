@@ -24,35 +24,32 @@ grade_points("None", 200).
 %%   only consider letter grades in grade_points.
 %%   if a course is taken multiple times, only one would be counted. we assume no repeated courses
 %%   to allow repeats, simply add 'When' in the aggregate, but grounding takes longer.
-gpa(Tag, GPA) :-
-  subset_taken(_, Tag),
-  WeightedSum = #sum { Cr * Pts, Id: subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, Pts) },
-  SumOfWeights = #sum { Cr, Id : subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, _) },
+gpa(GPA) :-
+  WeightedSum = #sum { Cr * Pts, Cid: subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, Pts) },
+  SumOfWeights = #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, _) },
   SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
 
 %% gpa is 0 when sum of weights is 0, as in python.
-gpa(Tag, 0) :-
-  subset_taken(_, Tag),
-  #sum { Cr, Id: subset_taken(Id, Tag), taken(Id, Cr, G, _, _), grade_points(G, _) } = 0.
+gpa(0) :- #sum { Cr, Cid: subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, _) } = 0.
 
-% taken(Id, Credits, Grade, When, Where): taken course Id with Credits, etc.
+% taken(Cid, Credits, Grade, When, Where): taken course Cid with Credits, etc.
 
 c_or_higher(Cid) :- taken(Cid, _, Grade, _, _), is_c_or_higher(Grade).
 passed(Cid) :- c_or_higher(Cid).
 passed_with_grade(Cid, Grade) :- taken(Cid, _, Grade1, _, _), is_or_higher(Grade1, Grade).
 
-% c(Subject, Id): course Id in Subject
+% c(Subject, Cid): course Cid in Subject
 
 % passed all courses in Subject
 passed_all(Subject) :-
   c(Subject, _),                 %% ground Subject
-  passed(Id) : c(Subject, Id).   %% passed for each course in subject
+  passed(Cid) : c(Subject, Cid).   %% passed for each course in subject
 
 %% course C is witness for passing all courses in a subject in requirement Item
-wit(Item, Id) :- s(Item, Subj), passed_all(Subj), c(Subj, Id).
+wit(Item, Cid) :- s(Item, Subj), passed_all(Subj), c(Subj, Cid).
 
 % set of courses in subjects of requirement item
-courses(Id, Item) :- s(Item, Subj), c(Subj, Id).
+courses(Cid, Item) :- s(Item, Subj), c(Subj, Cid).
 
 % 1. Required Introductory Courses
 c(prog, ("CSE 114"; "CSE 214"; "CSE 216")).
@@ -81,17 +78,17 @@ req(adv) :-
 % 3. Computer Science Electives  %% simpler than 2025
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
-subset_taken(Id, elect_passed) :-
-  taken(Id, Crs, G, _, _), is_c_or_higher(G),
-  @course_prog(Id) = "CSE",
-  @upper_division(Id) = 1,    %% is upper division
-  Crs >= 3, not courses(Id, adv), not c(elect_exclude, Id).
+elect_passed(Cid) :-
+  taken(Cid, Crs, G, _, _), is_c_or_higher(G),
+  @course_prog(Cid) = "CSE",
+  @upper_division(Cid) = 1,    %% is upper division
+  Crs >= 3, not courses(Cid, adv), not c(elect_exclude, Cid).
 
 req(elect) :- 
-  #count { Id: subset_taken(Id, elect_passed) } >= 4.
+  #count { Cid: elect_passed(Cid) } >= 4.
 
 %% witness for elect is the subset elect_passed used in elect.
-wit(elect, Id) :- subset_taken(Id, elect_passed).
+wit(elect, Cid) :- elect_passed(Cid).
 
 % 4. AMS 151, AMS 161 Applied Calculus I, II
 %%% (copied from python) todo:
@@ -142,24 +139,24 @@ c(sci_more, ("AST 203"; "AST 205"; "CHE 132"; "CHE 321"; "CHE 322"; "CHE 331"; "
              "PHY 125"; "PHY 127"; "PHY 132"; "PHY 134"; "PHY 142"; "PHY 251"; "PHY 252")).
 
 %% sci_courses(taken) in python: set of all sci courses taken
-sci_taken(Id) :- sci_combs(Subj), c(Subj, Id), taken(Id, _, _, _, _).
-sci_taken(Id) :- c(sci_more, Id), taken(Id, _, _, _, _).
+sci_taken(Cid) :- sci_combs(Subj), c(Subj, Cid), taken(Cid, _, _, _, _).
+sci_taken(Cid) :- c(sci_more, Cid), taken(Cid, _, _, _, _).
 
 %% generate a subset of sci_courses taken: use the same subset to satisfy sci_req, sci_cred_req and sci_grade_req.
-{ subset_taken(Id, sci) } :- sci_taken(Id).
+{ subset_sci_taken(Cid) } :- sci_taken(Cid).
 
 %%% separeted out because clingo treats all conditions after a colon (:) as part of the condition
-sci_combs_req :- sci_combs(Subj), subset_taken(Id, sci) : c(Subj, Id).
+sci_combs_req :- sci_combs(Subj), subset_sci_taken(Cid) : c(Subj, Cid).
 
 req(sci) :- 
   sci_combs_req,
   % The courses selected in 7 and 8 must carry at least 9 credits.
-  #sum { Cr, Id : subset_taken(Id, sci), taken(Id, Cr, _, When, _) } >= 9,
+  #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, _, When_, _) } >= 9,
   % The grade point average for the courses in Requirements 7 and 8 must be at least 2.00.
-  gpa(sci, GPA), GPA >= 2*100.
+  gpa(GPA), GPA >= 2*100.
 
 %% witness for sci is the subset used to satisfy all sci requirements, as in python.
-wit(sci, Id) :- subset_taken(Id, sci).
+wit(sci, Cid) :- subset_sci_taken(Cid).
 
 % 9. Professional Ethics
 c(ethics, "CSE 312").
@@ -189,20 +186,20 @@ req(writing) :- passed_all(writing).
 %%% assume to be not about "The courses taken to satisfy Requirements ..."
 
 %% courses in items 1,2,3
-items123_course(Id) :- courses(Id, intro).
-items123_course(Id) :- courses(Id, adv).
-items123_course(Id) :- subset_taken(Id, elect_passed).
+items123_course(Cid) :- courses(Cid, intro).
+items123_course(Cid) :- courses(Cid, adv).
+items123_course(Cid) :- elect_passed(Cid).
 
 %% courses in items 2,3
-items23_course(Id) :- courses(Id, adv).
-items23_course(Id) :- subset_taken(Id, elect_passed).
+items23_course(Cid) :- courses(Cid, adv).
+items23_course(Cid) :- elect_passed(Cid).
 
 req(credits_at_SB) :-
-  #sum { Cr, Id : taken(Id, Cr, _, _, "SB"), items123_course(Id) } >= 24,
-  #sum { Cr, Id : taken(Id, Cr, _, _, "SB"), items23_course(Id) } >= 18.
+  #sum { Cr, Cid : taken(Cid, Cr, _, _, "SB"), items123_course(Cid) } >= 24,
+  #sum { Cr, Cid : taken(Cid, Cr, _, _, "SB"), items23_course(Cid) } >= 18.
 
-wit(credits_at_SB, Id) :- items123_course(Id), taken(Id, _, _, _, "SB").
-wit(credits_at_SB, Id) :- items23_course(Id), taken(Id, _, _, _, "SB").
+wit(credits_at_SB, Cid) :- items123_course(Cid), taken(Cid, _, _, _, "SB").
+wit(credits_at_SB, Cid) :- items23_course(Cid), taken(Cid, _, _, _, "SB").
 
 % Grading (%%% comments are copied from python)
 %
@@ -229,7 +226,7 @@ degree :- req(Item) : item(Item).
 %%  for semesters we only use small integers, instead of a (year, semester) tuple.
 %%  python maintains the mapping between integers and (year, term) tuples.
 #const start_sem = 1.         %% earliest semester to plan for
-#const finish_sem = 4*4.      %% latest semester ...
+#const end_sem = 4*4.      %% latest semester ...
 #const sem_max_credits = 18.  %% max credits allowed per semester planned
 
 #program plan.    %% with requisites in the test
@@ -239,10 +236,10 @@ degree :- req(Item) : item(Item).
 %% helper predicate for comparing semesters.
 %%   O(N^2) grounding for semester pairs, but since the domain is small,
 %%   this is efficient.
-before(Sem1, Sem2) :- Sem1 = 1..finish_sem, Sem2 = 1..finish_sem, Sem1 < Sem2.
+before(Sem1, Sem2) :- Sem1 = 1..end_sem, Sem2 = 1..end_sem, Sem1 < Sem2.
 
 % %% course is taken before semester Sem.                           %% for prereq and antireq
-% taken_before(Id, Sem) :- taken(Id, _, _, Sem1, _), before(Sem1, Sem).
+% taken_before(Cid, Sem) :- taken(Cid, _, _, Sem1, _), before(Sem1, Sem).
 
 %% course taken before semester with at least grade.
 passed_before_grade(Cid, Grade, Sem) :-
@@ -251,35 +248,35 @@ passed_before_grade(Cid, Grade, Sem) :-
 %% "C or higher" in prereq
 passed_before(Cid, Sem):- taken(Cid, _, _, Sem1, _), before(Sem1, Sem), passed(Cid).
 
-%% course Id is taken at semester Sem.                            %% coreq
-taken_together(Id, Sem) :- taken(Id, _, _, Sem, _).
+%% course Cid is taken at semester Sem.                            %% coreq
+taken_together(Cid, Sem) :- taken(Cid, _, _, Sem, _).
 
 %% could be taken before or at the same semester.                 %% pre_or_coreq
-passed_before_or_together_grade(Id, Grade, Sem) :- 
-  grade_points(Grade, _), passed_before_grade(Id, Grade, Sem).
-passed_before_or_together_grade(Id, Grade, Sem) :- 
-  grade_points(Grade, _), taken_together(Id, Sem).
+passed_before_or_together_grade(Cid, Grade, Sem) :- 
+  grade_points(Grade, _), passed_before_grade(Cid, Grade, Sem).
+passed_before_or_together_grade(Cid, Grade, Sem) :- 
+  grade_points(Grade, _), taken_together(Cid, Sem).
 
 %%%% generate 
 
-%% offered(Id, Sem): course Id is offered at semester Sem. input taken from python.
+%% offered(Cid, Sem): course Cid is offered at semester Sem. input taken from python.
 
 %% define history from taken?
 % grade("A"; "A-"; "B+"; "B"; "B-"; "C+"; "C"; "C-"; "D+"; "D"; "F"; "I/F"; "Q").
-% history(Id) :- taken(Id, _, G, _, _), grade(G).
+% history(Cid) :- taken(Cid, _, G, _, _), grade(G).
 
 %% if used before(Sem), Sem would need to be grounded. this is more straightforward.
-offered_in_range(Id) :- offered(Id, Sem), before(start_sem, Sem), before(Sem, finish_sem).
-{plan(Id, Sem) : offered(Id, Sem)} == 1 :- offered_in_range(Id), include(Id).
-{plan(Id, Sem) : offered(Id, Sem)} <= 1 :- offered_in_range(Id), 
-                                           not taken_id(Id),
-                                           not exclude(Id).
+offered_in_range(Cid) :- offered(Cid, Sem), start_sem <= Sem, Sem <= end_sem.
+{plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- offered_in_range(Cid), include(Cid).
+{plan(Cid, Sem) : offered(Cid, Sem)} <= 1 :- offered_in_range(Cid), 
+                                           not taken_id(Cid),
+                                           not exclude(Cid).
 
-{plan_credits(Id, Cr) : credits(Id, Cr)} == 1 :- plan(Id, _).
+{plan_credits(Cid, Cr) : credits(Cid, Cr)} == 1 :- plan(Cid, _).
 
 %% planned course has grade "None", which is treated as C in GPA calculation.
 %% we could also make grade a variable and optimize for minimum grade needed.
-taken(Id, Cr, "None", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
+taken(Cid, Cr, "None", Sem, "SB") :- plan(Cid, Sem), plan_credits(Cid, Cr).
 
 %%%% constraints
 %% all requirements must be satisfied
@@ -288,7 +285,7 @@ taken(Id, Cr, "None", Sem, "SB") :- plan(Id, Sem), plan_credits(Id, Cr).
 :- plan(Cid, Sem), not allreq(Cid, Sem).
 %% do not exceed max credits per semester
 :- plan(_, Sem),
-   #sum {Cr, Id: plan(Id, Sem), plan_credits(Id, Cr)} > sem_max_credits.
+   #sum {Cr, Cid: plan(Cid, Sem), plan_credits(Cid, Cr)} > sem_max_credits.
 
 %%%% optimization
 
@@ -305,14 +302,14 @@ max_sem_plan(Sem) :- plan(_, Sem), Sem = #max {Sem1 : plan(_, Sem1)}. %% get the
 % }.
 
 % plan as early as possible, but causes a lot of conflicts (possibly because of prereqs)
-% #heuristic plan(Id, Sem). [20 - Sem@2, true]
+% #heuristic plan(Cid, Sem). [20 - Sem@2, true]
 
 % plan fixed electives to reduce search. do the same for sci?
 % fast_track_elect("CSE 334"; "CSE 331"; "CSE 328"; "CSE 360").
-% #heuristic plan(Id, Sem) : not req(elect),
-%                            fast_track_elect(Id), 
-%                            not taken_id(Id),
-%                            offered(Id, Sem). [100-Sem@1, true]
+% #heuristic plan(Cid, Sem) : not req(elect),
+%                            fast_track_elect(Cid), 
+%                            not taken_id(Cid),
+%                            offered(Cid, Sem). [100-Sem@1, true]
 
 % input to planning:
 % standing("U1"). standing("U2"). standing("U3"). standing("U4").
@@ -322,5 +319,5 @@ max_sem_plan(Sem) :- plan(_, Sem), Sem = #max {Sem1 : plan(_, Sem1)}. %% get the
   %% exclude("CHE 322").
   %% include("CHE 322").
 
-  %% taken_id(Id).
-  %% taken(Id, ...)
+  %% taken_id(Cid).
+  %% taken(Cid, ...)

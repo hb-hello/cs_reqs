@@ -55,7 +55,7 @@ def _generate_planning_input(inputs: dict) -> tuple[list[str], list[str]]:
   input_dict.update(inputs)
 
   start_sem = sem_to_int(input_dict['max_sem'], input_dict['min_sem']) + 1
-  finish_sem = start_sem + input_dict['num_sems'] - 1
+  end_sem = start_sem + input_dict['num_sems'] - 1
 
   planning_facts = (
     [f'taken_id("{c.id}").' for c in input_dict['taken_set']] +
@@ -63,14 +63,14 @@ def _generate_planning_input(inputs: dict) -> tuple[list[str], list[str]]:
     [f'exclude("{cid}").' for cid in input_dict['must_exclude']] +
     [f'offered("{cid}", {sem}).'
      for cid, terms in input_dict['course_offered_terms'].items()
-     for sem in range(start_sem, finish_sem + 1)
+     for sem in range(start_sem, end_sem + 1)
      if rel_sem_to_term(sem, input_dict['min_sem']) in terms] +
     [input_dict['student_facts']]
   )
 
   planning_ctrl_args = [
     f"-c start_sem={start_sem}",
-    f"-c finish_sem={finish_sem}",
+    f"-c end_sem={end_sem}",
     f"-c sem_max_credits={NUM_CREDITS_PER_SEM}",
   ]
 
@@ -85,7 +85,7 @@ def build_inputs(mode: str, heuristics=None, **inputs):
   
   input_facts = [
     f'taken("{c.id}", {c.credits}, "{c.grade}", {sem_to_int(c.when, min_sem)}, "{c.where}").'
-    for c in taken_set
+        for c in taken_set
   ]
   
   ctrl_args = ["0", "-Wno-atom-undefined", "--stats=2"]
@@ -165,7 +165,7 @@ def run(
     lp_files: list[str],    ## paths to lp files
     program_str: str,       ## additional program string to add
     ground_targets,         ## e.g. [('base', []), ('check', [])] or [('base', []), ('plan', [])]
-    ctrl_args: list[str] = None,  ## extra control arguments, including constants (start_sem, finish_sem, max_credits).
+    ctrl_args: list[str] = None,  ## extra control arguments, including constants (start_sem, end_sem, max_credits).
     on_model = None,        ## callback for model found
     timeout: int = 10 * 60,
 ):
@@ -263,6 +263,10 @@ def run_planner_benchmark(
 
   return model_parser.finalize(clingo_stats)
 
+HEU_PLAN = """
+#heuristic plan_course(Id) : not taken_id(Id), not exclude(Id), allreq(Id, start_sem). [50, init]
+"""
+
 HEU_SCI = """
 default_sci("CHE 131"; "CHE 133").
 #heuristic plan_course(Id) : default_sci(Id), offered_in_range(Id). [100@1, true]
@@ -275,6 +279,8 @@ default_elect("CSE 307"; "CSE 311"; "CSE 351"; "CSE 488").
 
 def build_heuristics_from_witness(checked: dict, taken_set=None) -> str:
   heuristics = []
+  
+  heuristics.append(HEU_PLAN)
 
   if not checked.get('sci', [True])[0]:
     heuristics.append(HEU_SCI)

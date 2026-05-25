@@ -26,6 +26,12 @@ def test_plan_no_electives():
 
     return taken, validate
 
+def test_plan_no_sci():
+    taken = history(FULL - {'PHY 131', 'PHY 132', 'PHY 133', 'AST 203'})
+    def validate(checked, schedule_courses, schedule_by_course):
+        assert len(schedule_courses) >= 1
+        assert checked['sci'][0] == True
+    return taken, validate
 
 def test_plan_no_calc():
     """Remove all science — planner picks combo + extras for >= 9 credits."""
