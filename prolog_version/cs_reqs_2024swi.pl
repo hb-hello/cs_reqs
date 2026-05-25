@@ -39,7 +39,7 @@ s(intro, prog). s(intro, prog2). s(intro, dmath). s(intro, dmath2). s(intro, sys
 intro_courses(Id) :-
   c(prog, Id); c(prog2, Id); c(dmath, Id); c(dmath2, Id); c(sys, Id).
 
-intro_req :-
+req(intro) :-
   (passed_all(prog); passed_all(prog2)),
   (passed_all(dmath); passed_all(dmath2)),
   passed_all(sys).
@@ -55,8 +55,8 @@ s(adv, theory). s(adv, theory2). s(adv, algo). s(adv, algo2). s(adv, other).
 advanced_courses(Id) :-
   c(other, Id); c(algo, Id); c(algo2, Id); c(theory, Id); c(theory2, Id).
 
-advanced_req :-
-  (passed_all(algs); passed_all(algs2)),
+req(adv) :-
+  (passed_all(algo); passed_all(algo2)),
   (passed_all(theory); passed_all(theory2)),
   passed_all(other).
 
@@ -68,7 +68,7 @@ elective_exclude('CSE 301').
 elective_exclude('CSE 300').
 elective_exclude('CSE 312').
 
-elective_req :- findall(Id, (passed(Id), elective(Id)), Electives),
+req(elect) :- findall(Id, (passed(Id), elective(Id)), Electives),
   length(Electives, Count),
     Count > 3.
 
@@ -90,14 +90,14 @@ c(calc, 'AMS 151'). c(calc, 'AMS 161').
 c(calc2, 'MAT 125'). c(calc2, 'MAT 126'). c(calc2, 'MAT 127').
 c(calc3, 'MAT 131'). c(calc3, 'MAT 132').
 s(calc, calc). s(calc, calc2). s(calc, calc3).
-calc_req :-
+req(calc) :-
   (passed_all(calc); passed_all(calc2); passed_all(calc3)).
 
 % Req 5. Linear Algebra
 c(alg1, 'MAT 211').
 c(alg2, 'AMS 210').
 s(alg, alg1). s(alg, alg2).
-alg_req :-
+req(alg) :-
   (passed_all(alg1); passed_all(alg2)).
 
 % Req 6. Statistics / Finite Math
@@ -105,7 +105,7 @@ c(fmath, 'AMS 301').
 c(sta1, 'AMS 310').
 c(sta2, 'AMS 311').
 s(sta, fmath). s(sta, sta1). s(sta, sta2).
-sta_req :-
+req(sta) :-
   passed_all(fmath),
   (passed_all(sta1); passed_all(sta2)).
 
@@ -128,7 +128,7 @@ c(scimisc, 'PHY 125'). c(scimisc, 'PHY 127'). c(scimisc, 'PHY 132'). c(scimisc, 
 sci_courses(Id) :-
   c(sci1, Id); c(sci2, Id); c(sci3, Id); c(sci4, Id); c(sci5, Id); c(sci6, Id); c(sci7, Id); c(sci8, Id); c(scimisc, Id).
 
-sci_subseq_req :-
+req(sci) :-
   findall([Id, Creds, Grade], (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_points(Grade, _)), SciData),
   subseq(SciData, SciReqData),
   lab_req(SciReqData),
@@ -154,44 +154,38 @@ sci_acc([[_, Creds, Grade]|T], CSum, GSum) :-
 
 wit(sci, Id) :- sci_courses(Id), taken(Id, _, _, _, _).
 
-course_in_cat123(Id) :- intro_courses(Id) ; advanced_courses(Id) ; elective(Id).
-credits_at_sb_cat123(Total) :-
-    aggregate_all(sum(Creds),
-        (taken(Cid, Creds, _, _, 'SBU'),
-         passed(Cid),
-         course_in_cat123(Cid)),
-        Total).
-satisfied_residency_123 :- credits_at_sb_cat123(Total), Total >= 24.
-wit(res123, Id) :- taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
+items123_course(Id) :- intro_courses(Id) ; advanced_courses(Id) ; elective(Id).
+items23_course(Id) :- advanced_courses(Id) ; elective(Id).
 
-course_in_cat23(Id) :- advanced_courses(Id) ; elective(Id).
+items123_credits(Crs) :-
+  aggregate_all(
+  sum(Creds),
+  (taken(Cid, Creds, _, _, 'SB'), passed(Cid), items123_course(Cid)),
+  Crs).
 
-credits_at_sb_cat23(Total) :-
-    aggregate_all(sum(Creds),
-        (taken(Cid, Creds, _, _, 'SBU'),
-         passed(Cid),
-         course_in_cat23(Cid)),
-        Total).
-satisfied_residency_23 :- credits_at_sb_cat23(Total), Total >= 18.
-wit(res23, Id) :- taken(Id, Creds, _, _, 'SBU'), passed(Id), course_in_cat123(Id).
+items23_credits(Crs) :-
+  aggregate_all(
+  sum(Creds),
+  (taken(Cid, Creds, _, _, 'SB'), passed(Cid), items23_course(Cid)),
+  Crs).
+
+req(credits_at_sb) :-
+  items123_credits(Items123_credit), Items123_credit >= 24,
+  items23_credits(Items23_credit), Items23_credit >= 18.
+
+wit(credits_at_sb, Id) :- (items123_course(Id); items23_course(Id)), taken(Id, _, _, _, 'SB'), passed(Id).
 
 % ethics and communication courses
 c(ethics, 'CSE 312'). c(writing, 'CSE 300').
 s(ethics, ethics). s(writing, writing).
-writing_req :- passed_all(writing).
-ethics_req :- passed_all(ethics).
-all_requirements :-
-    intro_req,
-    advanced_req,
-    elective_req,
-    satisfied_residency_123,
-    satisfied_residency_23,
-    calc_req,
-    alg_req,
-    sta_req,
-    sci_subseq_req,
-    writing_req,
-    ethics_req.
+req(writing) :- passed_all(writing).
+req(ethics) :- passed_all(ethics).
+
+item(intro). item(adv). item(elect). 
+item(calc). item(alg). item(sta). item(sci).
+item(ethics). item(writing). item(credits_at_sb).
+
+degree :- forall(item(I), req(I)).
 
 measure_run_swi(Goal, T) :-
   statistics(cputime, T0),

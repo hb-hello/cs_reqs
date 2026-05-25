@@ -11,12 +11,6 @@ _PL_FILE_SWI = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cs_reqs
 _PL_FILE_XSB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cs_reqs_2024xsb.pl')
 
 
-def _normalize_where(where):
-    key = str(where).strip().upper()
-    if key == 'SB':
-        return 'SBU'
-    return key
-
 def extract_cpu_time(text):
     for line in text.splitlines():
         if "CPU time:" in line:
@@ -60,26 +54,25 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
     run_cmd("retractall(taken(_,_,_,_,_)).")
 
     for t in taken:
-        where = _normalize_where(t.where)
-        fact = f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{where}')"
+        fact = f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{t.where}')"
         run_cmd(f"assertz({fact}).")
 
-    u = run_cmd("measure_run_xsb(all_requirements).")
+    u = run_cmd("measure_run_xsb(degree).")
     print(u)
     prolog_eval_s = extract_cpu_time(u)
-    ok = query_truth('all_requirements')
+    ok = query_truth('degree')
 
     # collect per-requirement witnesses
     req_predicates = {
-        'intro':   'intro_req',
-        'adv':     'advanced_req',
-        'elect':   'elective_req',
-        'sci':     'sci_subseq_req',
-        'ethics':  "passed('CSE 312')",
-        'writing': "passed('CSE 300')",
-        'calc':    'calc_req',
-        'alg':     'alg_req',
-        'sta':     'sta_req',
+        'intro':   'req(intro)',
+        'adv':     'req(adv)',
+        'elect':   'req(elect)',
+        'sci':     'req(sci)',
+        'ethics':  'req(ethics)',
+        'writing': 'req(writing)',
+        'calc':    'req(calc)',
+        'alg':     'req(alg)',
+        'sta':     'req(sta)',
     }
     checked = {}
     for key, pred in req_predicates.items():
@@ -88,8 +81,8 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
         courses = _parse_prolog_list(wit_out)
         checked[key] = (sat, courses)
 
-    t123_out = run_cmd("credits_at_sb_cat123(T), write(credit_total(T)), fail.")
-    t23_out  = run_cmd("credits_at_sb_cat23(T), write(credit_total(T)), fail.")
+    t123_out = run_cmd("items123_credits(T), write(credit_total(T)), fail.")
+    t23_out  = run_cmd("items23_credits(T), write(credit_total(T)), fail.")
     t123_m = re.search(r'credit_total\(([\d.]+)\)', t123_out)
     t23_m  = re.search(r'credit_total\(([\d.]+)\)', t23_out)
     t123 = float(t123_m.group(1)) if t123_m else 0.0
@@ -108,7 +101,7 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
 
 def run_swi(taken, return_timing=False):
     facts = (
-        f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{_normalize_where(t.where)}')"
+        f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{t.where}')"
         for t in taken
     )
 
@@ -122,15 +115,15 @@ def run_swi(taken, return_timing=False):
     for f in facts:
         janus.query_once(f"assertz({f})")
 
-    reqs = {'intro':   'intro_req()',
-             'adv':    'advanced_req()',
-             'elect':  'elective_req()',
-             'sci':    'sci_subseq_req()',
-             'ethics': "passed('CSE 312')",
-             'writing':"passed('CSE 300')",
-             'calc':   'calc_req()',
-             'alg':    'alg_req()',
-             'sta':    'sta_req()'}
+    reqs = {'intro':   'req(intro)',
+             'adv':    'req(adv)',
+             'elect':  'req(elect)',
+             'sci':    'req(sci)',
+             'ethics': 'req(ethics)',
+             'writing':'req(writing)',
+             'calc':   'req(calc)',
+             'alg':    'req(alg)',
+             'sta':    'req(sta)'}
     checked = {}
     for name, pred in reqs.items():
         sat = janus.query_once(pred).get('truth', False)
@@ -140,19 +133,19 @@ def run_swi(taken, return_timing=False):
                 if 'Q' in d:
                     courses.append(d['Q'])
         checked[name] = (sat, courses)
-    checked['degree'] = (janus.query_once("all_requirements()").get('truth', False), [])
+    checked['degree'] = (janus.query_once("degree()").get('truth', False), [])
 
-    t123 = janus.query_once("credits_at_sb_cat123(T)")['T']
-    t23  = janus.query_once("credits_at_sb_cat23(T)")['T']
+    t123 = janus.query_once("items123_credits(T)")['T']
+    t23  = janus.query_once("items23_credits(T)")['T']
     checked['credits_at_SB'] = (t123 >= 24 and t23 >= 18,
                                  [f'items123 = {int(t123)}', f'items23 = {int(t23)}'])
 
-    # benchmark how long it takes to add in all taken data and check all_requirements
+    # benchmark how long it takes to add in all taken data and check degree
     janus.query_once("retractall(taken(_,_,_,_,_))")
 
     # 1. Define a heavy Prolog goal
-    prolog_eval_s = float(janus.query_once("measure_run_swi(all_requirements, T).")['T'])
-    goal = "all_requirements()"
+    prolog_eval_s = float(janus.query_once("measure_run_swi(degree, T).")['T'])
+    goal = "degree()"
 
     # 2. Get Start Time
     start_stats = janus.query_once("statistics(cputime, T)")
@@ -199,15 +192,15 @@ if __name__ == '__main__':
     }
     Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
     # taken = [
-    #     Taken('CSE 114', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 214', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 216', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 215', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 220', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 303', 3, 'A', (2024,2), 'SBU'),
-    #     # Taken('PHY 131', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('PHY 132', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('PHY 133', 3, 'A', (2024,2), 'SBU'),
+    #     Taken('CSE 114', 3, 'A', (2024,2), 'SB'),
+    #     Taken('CSE 214', 3, 'A', (2024,2), 'SB'),
+    #     Taken('CSE 216', 3, 'A', (2024,2), 'SB'),
+    #     Taken('CSE 215', 3, 'A', (2024,2), 'SB'),
+    #     Taken('CSE 220', 3, 'A', (2024,2), 'SB'),
+    #     Taken('CSE 303', 3, 'A', (2024,2), 'SB'),
+    #     # Taken('PHY 131', 3, 'A', (2024,2), 'SB'),
+    #     Taken('PHY 132', 3, 'A', (2024,2), 'SB'),
+    #     Taken('PHY 133', 3, 'A', (2024,2), 'SB'),
     # ]
 
     some = {

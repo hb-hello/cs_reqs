@@ -115,6 +115,11 @@ def passing_taken(ids: set[str], credits: int = 3) -> frozenset[Taken]:
 # These have no pre-conditions. They hold for ALL inputs.
 # ─────────────────────────────────────────────────────────────────────────────
 
+REQ_KEYS = [
+    'intro', 'adv', 'elect', 'calc', 'alg', 'sta',
+    'sci', 'ethics', 'writing', 'credits_at_SB',
+]
+
 class TestGPA(unittest.TestCase):
     """GPA is a pure function with strong mathematical invariants."""
 
@@ -296,8 +301,7 @@ class TestWitnessConsistency(unittest.TestCase):
         global w
         w = {}
         result = degree_reqs(taken)
-        expected_keys = {'intro','adv','elect','calc','alg','sta',
-                         'sci','ethics','writing','credits_at_SB','degree'}
+        expected_keys = set(REQ_KEYS) | {'degree'}
         assert set(result.keys()) == expected_keys
 
     @given(transcript)
