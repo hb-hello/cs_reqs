@@ -5,7 +5,7 @@
 % {plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- offered_in_range(Cid), include(Cid).
 % {plan(Cid, Sem) : offered(Cid, Sem)} <= 1 :- offered_in_range(Cid),
 % 											not taken_id(Cid), not exclude(Cid).
-{ plan_course(Cid) } :- offered_in_range(Cid), not taken_id(Cid), not exclude(Cid).
+{plan_course(Cid)} :- offered_in_range(Cid), not taken_id(Cid), not exclude(Cid).
 plan_course(Cid) :- offered_in_range(Cid), include(Cid).
 
 {plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- plan_course(Cid).
