@@ -112,38 +112,37 @@ req(sta) :-
 % 7. At least one of the following natural science lecture/laboratory combinations:
 % BIO 201/204 or BIO 202/204 or BIO 203/204 or CHE 131/133 or CHE 152/154 or PHY 126/133 or
 % PHY 131/133 or PHY 141/133
-c(sci1, 'BIO 201'). c(sci1, 'BIO 204').
-c(sci2, 'BIO 202'). c(sci2, 'BIO 204').
-c(sci3, 'BIO 203'). c(sci3, 'BIO 204').
-c(sci4, 'CHE 131'). c(sci4, 'CHE 133').
-c(sci5, 'CHE 152'). c(sci5, 'CHE 154').
-c(sci6, 'PHY 126'). c(sci6, 'PHY 133').
-c(sci7, 'PHY 131'). c(sci7, 'PHY 133').
-c(sci8, 'PHY 141'). c(sci8, 'PHY 133').
-c(scimisc, 'AST 203'). c(scimisc, 'AST 205').
-c(scimisc, 'CHE 132'). c(scimisc, 'CHE 321'). c(scimisc, 'CHE 322'). c(scimisc, 'CHE 331'). c(scimisc, 'CHE 332').
-c(scimisc, 'GEO 113'). c(scimisc, 'GEO 122'). c(scimisc, 'GEO 102'). c(scimisc, 'GEO 103'). c(scimisc, 'GEO 112').
-c(scimisc, 'PHY 125'). c(scimisc, 'PHY 127'). c(scimisc, 'PHY 132'). c(scimisc, 'PHY 134'). c(scimisc, 'PHY 142'). c(scimisc, 'PHY 251'). c(scimisc, 'PHY 252').
+c(bio, 'BIO 201'). c(bio, 'BIO 204').
+c(bio2, 'BIO 202'). c(bio2, 'BIO 204').
+c(bio3, 'BIO 203'). c(bio3, 'BIO 204').
+c(che, 'CHE 131'). c(che, 'CHE 133').
+c(che2, 'CHE 152'). c(che2, 'CHE 154').
+c(phy, 'PHY 126'). c(phy, 'PHY 133').
+c(phy2, 'PHY 131'). c(phy2, 'PHY 133').
+c(phy3, 'PHY 141'). c(phy3, 'PHY 133').
+s(sci_combs, bio). s(sci_combs, bio2). s(sci_combs, bio3). s(sci_combs, che). s(sci_combs, che2). s(sci_combs, phy). s(sci_combs, phy2). s(sci_combs, phy3).
 
-sci_courses(Id) :-
-  c(sci1, Id); c(sci2, Id); c(sci3, Id); c(sci4, Id); c(sci5, Id); c(sci6, Id); c(sci7, Id); c(sci8, Id); c(scimisc, Id).
+% 8. Additional natural science courses selected from above and following list:
+% Note: The courses selected in 7 and 8 must carry at least 9 credits.
+c(sci_more, 'AST 203'). c(sci_more, 'AST 205').
+c(sci_more, 'CHE 132'). c(sci_more, 'CHE 321'). c(sci_more, 'CHE 322'). c(sci_more, 'CHE 331'). c(sci_more, 'CHE 332').
+c(sci_more, 'GEO 102'). c(sci_more, 'GEO 103'). c(sci_more, 'GEO 112'). c(sci_more, 'GEO 123'). c(sci_more, 'GEO 122').
+c(sci_more, 'PHY 125'). c(sci_more, 'PHY 127'). c(sci_more, 'PHY 132'). c(sci_more, 'PHY 134'). c(sci_more, 'PHY 142'). c(sci_more, 'PHY 251'). c(sci_more, 'PHY 252').
+
+sci_taken(Id) :- distinct(Id, (   % distinct/2 for deduplicating courses that appears multiple times (e.g. PHY 133)
+  (s(sci_combs, Subj), c(Subj, Id), taken(Id, _, _, _, _));
+  (c(sci_more, Id), taken(Id, _, _, _, _))
+  )).
+
+req_sci_combs(ReqData) :- s(sci_combs, Subj), passed_all(Subj, ReqData).
 
 req(sci) :-
-  findall([Id, Creds, Grade], (taken(Id, Creds, Grade, _, _), sci_courses(Id), grade_points(Grade, _)), SciData),
+  findall([Id, Creds, Grade], (sci_taken(Id), taken(Id, Creds, Grade, _, _), grade_points(Grade, _)), SciData),
   subseq(SciData, SciReqData),
-  lab_req(SciReqData),
-  sci_req(SciReqData).
-
-lab_req(ReqData) :-
-  (passed_all(sci1, ReqData); passed_all(sci2, ReqData);
-  passed_all(sci3, ReqData); passed_all(sci4, ReqData);
-  passed_all(sci5, ReqData); passed_all(sci6, ReqData);
-  passed_all(sci7, ReqData); passed_all(sci8, ReqData)).
-
-sci_req(ReqData) :-
-    sci_acc(ReqData, SciCreds, SciQP),
-    SciCreds >= 9,
-    SciQP / SciCreds >= 2.0.
+  req_sci_combs(SciReqData),
+  sci_acc(SciReqData, SciCreds, SciQP),
+  SciCreds >= 9,
+  SciQP / SciCreds >= 2.0.
 
 sci_acc([], 0.0, 0.0).
 sci_acc([[_, Creds, Grade]|T], CSum, GSum) :-
@@ -152,7 +151,7 @@ sci_acc([[_, Creds, Grade]|T], CSum, GSum) :-
   grade_points(Grade, Points),
   GSum is SubGSum + (Points*Creds).
 
-wit(sci, Id) :- sci_courses(Id), taken(Id, _, _, _, _).
+wit(sci, Id) :- sci_taken(Id).
 
 items123_course(Id) :- intro_courses(Id) ; advanced_courses(Id) ; elective(Id).
 items23_course(Id) :- advanced_courses(Id) ; elective(Id).
