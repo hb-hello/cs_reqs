@@ -16,12 +16,17 @@ class Vars(dict): # technically a var holder?
     def __setitem__(self, key, value):
         if key in super():
             raise "can't replace existing var"
+        # call self.model.var instead.
         if not isinstance(value, cp_model.IntVar):
-            raise "can only store values of type cp_model.IntVar"
-        super().__setitem__(self, key, value)
+            # raise "can only store values of type cp_model.IntVar"
+            v = self.model.var(value)
+            if v: super().__setitem__(key, v)
+        super().__setitem__(key, value)
 
-class LogicalExpr(Vars):
-    pass
+class SpecialVars(Vars):
+    def __init__(self, domain:Iterable=None, model:ORModel=None, op=None):
+        self.op = op
+        super().__init__(domain, model)
         
 class ORModel:
     def __init__(self, ignore=(), plan=False):
@@ -38,6 +43,7 @@ class ORModel:
             v = self.new_var()
             self.model.add(expr).only_enforce_if(v)
             return v
+        return None
     
     def new_var(self, domain, is_integer=False):
         self.counter += 1
