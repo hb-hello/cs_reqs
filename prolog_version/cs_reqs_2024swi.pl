@@ -129,10 +129,10 @@ c(sci_more, 'CHE 132'). c(sci_more, 'CHE 321'). c(sci_more, 'CHE 322'). c(sci_mo
 c(sci_more, 'GEO 102'). c(sci_more, 'GEO 103'). c(sci_more, 'GEO 112'). c(sci_more, 'GEO 123'). c(sci_more, 'GEO 122').
 c(sci_more, 'PHY 125'). c(sci_more, 'PHY 127'). c(sci_more, 'PHY 132'). c(sci_more, 'PHY 134'). c(sci_more, 'PHY 142'). c(sci_more, 'PHY 251'). c(sci_more, 'PHY 252').
 
-sci_taken(Id) :- distinct(Id, (   % distinct/2 for deduplicating courses that appears multiple times (e.g. PHY 133)
-  (s(sci_combs, Subj), c(Subj, Id), taken(Id, _, _, _, _));
-  (c(sci_more, Id), taken(Id, _, _, _, _))
-  )).
+%% distinct/2 for deduplicating courses that appears multiple times (e.g. PHY 133)
+sci_taken(Id) :- distinct(Id,
+  (taken(Id, _, _, _, _), 
+  ((s(sci_combs, Subj), c(Subj, Id)); c(sci_more, Id)))).
 
 req_sci_combs(ReqData) :- s(sci_combs, Subj), passed_all(Subj, ReqData).
 
