@@ -299,7 +299,7 @@ for kc in _load_kb(_kb_path):
 
 def _stub(id, credits):
     if id not in CATALOG:
-        CATALOG[id] = Course(id, credits)
+        CATALOG[id] = Course(credits)
 
 
 _stub("AMS 151", 3)
@@ -398,7 +398,7 @@ _allreqs_map = _load_allreqs(_kb_path, _valid_ids)
 for _cid in list(CATALOG):
     _c = CATALOG[_cid]
     CATALOG[_cid] = Course(
-        _c.id,
+        # _c.id,
         _c.credits,
         _filter_unknown_ids(_c.prereq, _valid_ids),
         _filter_unknown_ids(_c.coreq, _valid_ids),
