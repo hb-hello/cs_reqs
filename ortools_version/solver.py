@@ -216,6 +216,11 @@ class ORModel:
         self.model.add(expr > n).only_enforce_if(v.negated())
         return v
 
+    def constrain_slots(self, slots, costs, capacity):
+        pairs = list(zip(slots, costs))
+        ivars = [self.model.new_fixed_size_interval_var(self[slot], 1, f"ci_{i}") for i, (slot, _) in enumerate(pairs)]
+        self.model.add_cumulative(ivars, [cost for _, cost in pairs], capacity)
+
     def require(self, expr, name=None):
         if name is None:
             self._req_counter += 1

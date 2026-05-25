@@ -68,10 +68,10 @@ class Grade(ReqWithDomain):
 # class SciSubset(Requirement): pass # to track the sci subset
 
 
-# pre-process raw history: one entry per course, best known grade, ignoring in-progress (None) entries
-def best_attempts(history):
+# pre-process raw taken_ids: one entry per course, best known grade, ignoring in-progress (None) entries
+def best_attempts(taken_ids):
     best = {}
-    for h in history:
+    for h in taken_ids:
         if h.grade not in grade_points:
             continue
         if h.id not in best or grade_points[h.grade] > grade_points[best[h.id].grade]:
@@ -90,7 +90,7 @@ def print_schedule(planned, grades, credits_fn):
         print(f"  year:{yr} semester:{sn} ({total} cr): {', '.join(fmt(c, grades) for c in sorted(by_sem[s]))}")
 
 
-# history is the list of taken namedtuples — pre-processed to one entry per course
+# taken_ids is the list of taken namedtuples — pre-processed to one entry per course
 # student_reqs are additional attributes of the student such as major, standing, etc.
 # must_exclude courses are always excluded when planning
 # must_include are always included when planning
@@ -141,12 +141,13 @@ def plan_courses(
         return all_sems[encoded - 1]
 
     history = {h.id: h for h in taken}
+    taken_ids = {h.id for h in taken}
 
-    to_plan_from = catalog.keys() - (history.keys() | must_exclude)
+    to_plan_from = catalog.keys() - (taken_ids | must_exclude)
     to_plan_from &= course_offered_terms.keys()
 
-    # courses not in history and not plannable (not offered in any term) cannot be taken
-    for cid in catalog.keys() - to_plan_from - history.keys():
+    # courses not in taken_ids and not plannable (not offered in any term) cannot be taken
+    for cid in catalog.keys() - to_plan_from - taken_ids:
         m[TakenId(cid)] = 0
 
     for cid, h in history.items():
@@ -154,14 +155,15 @@ def plan_courses(
         m[TakenId(cid)] = 1
         m[Sem(cid)] = int_sem(h.when)
 
-    for cid in to_plan_from | (must_exclude - history.keys()):
+    for cid in to_plan_from | (must_exclude - taken_ids):
         # grade is assigned iff course is taken (needed in both check/plan modes)
         m.iff(TakenId(cid), Grade(cid))
 
     # plan mode
     if not check:
+        # pre-compute offered semesters for each course
         offered_sems = {
-            cid: [int_sem(sem) for sem in sems_to_plan if sem[1] in course_offered_terms[cid]]
+            cid: [int_sem(sem) for sem in semester_range(start_sem, end_sem) if sem[1] in course_offered_terms[cid]]
             for cid in to_plan_from & course_offered_terms.keys()
         }
 
@@ -174,7 +176,7 @@ def plan_courses(
             m[TakenId(cid)] = 0
 
         # hardcoded must_exclude courses to zero
-        for cid in must_exclude - history.keys():
+        for cid in must_exclude - taken_ids:
             m[TakenId(cid)] = 0
 
         # hardcoded must_include courses to 1
@@ -199,7 +201,7 @@ def plan_courses(
     m[B_plus_or_higher] = b_plus_or_higher
     m[D_or_higher] = d_or_higher
 
-    # use actual credits earned from history if available, else for future courses get credits from the catalog
+    # use actual credits earned from taken_ids if available, else for future courses get credits from the catalog
     credits = lambda c: history[c].credits if c in history else catalog[c].credits
 
     reqs = {}
@@ -218,7 +220,7 @@ def plan_courses(
             Or(And(*map(C_or_higher, dmath)), And(*map(C_or_higher, dmath2))),
             And(*map(C_or_higher, sys)),
         ),
-        "intro",
+        # "intro",
     )
 
     # 2. Required Advanced Courses
@@ -403,10 +405,15 @@ def plan_courses(
 
         # enforce credit limit per semester using the same encoded semester domain
         # to avoid comparing against semesters that are outside Semester.domain.
-        for sem in range(int_sem(start_sem), int_sem(end_sem) + 1):
-            sem_credits = [credits(cid) * m.eq(Sem(cid), sem) for cid in to_plan_from]
-            if sem_credits:
-                m.require(sum(sem_credits) <= CREDIT_LIMIT)
+        # for sem in range(int_sem(start_sem), int_sem(end_sem) + 1):
+        #     sem_credits = [credits(cid) * m.eq(Sem(cid), sem) for cid in to_plan_from]
+        #     if sem_credits:
+        #         m.require(sum(sem_credits) <= CREDIT_LIMIT)
+        m.constrain_slots(
+            slots=(Sem(cid) for cid in to_plan_from),
+            costs=(credits(cid) * m[TakenId(cid)] for cid in to_plan_from),
+            capacity=CREDIT_LIMIT,
+        )
 
         # calculate total number of new courses taken
         new_courses = sum(m[TakenId(cid)] for cid in to_plan_from)
@@ -510,8 +517,8 @@ if __name__ == "__main__":
     # pprint(CATALOG)
     # print(len(FULL))
     # print([COURSE_OFFERED_TERMS[t] for t in taken_ids])
-    # history = [Taken('CSE 114', CATALOG['CSE 114'].credits, "A", (2024, 1), "SB")]
-    # history = [Taken(cid, CATALOG[cid].credits, "A", (2024, 1), "SB") for cid in FULL - {'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',}]
+    # taken_ids = [Taken('CSE 114', CATALOG['CSE 114'].credits, "A", (2024, 1), "SB")]
+    # taken_ids = [Taken(cid, CATALOG[cid].credits, "A", (2024, 1), "SB") for cid in FULL - {'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',}]
     plan_courses(
         [], Major("CSE"), Standing("U4"), start_sem=(2024, 3), end_sem=(2026, 4), check=False, debug_print=True
     )
