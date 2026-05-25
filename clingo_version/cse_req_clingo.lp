@@ -143,18 +143,13 @@ c(sci_more, ("AST 203"; "AST 205"; "CHE 132"; "CHE 321"; "CHE 322"; "CHE 331"; "
 sci_taken(Cid) :- s(sci_combs, Subj), c(Subj, Cid), taken(Cid, _, _, _, _).
 sci_taken(Cid) :- c(sci_more, Cid), taken(Cid, _, _, _, _).
 
-%% generate a subset of sci_courses taken: use the same subset to satisfy sci_req, sci_cred_req and sci_grade_req.
-{ subset_sci_taken(Cid) } :- sci_taken(Cid).
+{ subset_sci_taken(Cid) } :- sci_taken(Cid).  % subset of ids of science courses taken
 
-%%% separeted out because clingo treats all conditions after a colon (:) as part of the condition
-sci_combs_req :- sci_combs(Subj), subset_sci_taken(Cid) : c(Subj, Cid).
+req_sci_combs :- s(sci_combs, Subj), subset_sci_taken(Cid) : c(Subj, Cid).
 
-req(sci) :- 
-  sci_combs_req,
-  % The courses selected in 7 and 8 must carry at least 9 credits.
-  #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, _, When_, _) } >= 9,
-  % The grade point average for the courses in Requirements 7 and 8 must be at least 2.00.
-  gpa(GPA), GPA >= 2*100.
+req(sci) :- req_sci_combs,
+  #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, _, When, _) } >= 9,
+  gpa(GPA), GPA >= 2*100.  % GPA of courses selected by subset_sci_taken(Cid)
 
 %% witness for sci is the subset used to satisfy all sci requirements, as in python.
 wit(sci, Cid) :- subset_sci_taken(Cid).
