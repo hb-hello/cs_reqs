@@ -80,10 +80,10 @@ req(adv) :-
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
 elect_passed(Cid) :-
-  taken(Cid, Crs, G, _, _), is_c_or_higher(G),
+  taken(Cid, Cr, G, _, _), is_c_or_higher(G),
   @course_prog(Cid) = "CSE",
   @upper_division(Cid) = 1,    %% is upper division
-  Crs >= 3, not courses(Cid, adv), not c(elect_exclude, Cid).
+  Cr >= 3, not courses(Cid, adv), not c(elect_exclude, Cid).
 
 req(elect) :- 
   #count { Cid: elect_passed(Cid) } >= 4.

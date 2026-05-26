@@ -73,8 +73,8 @@ req(elect) :- findall(Id, (passed(Id), elective(Id)), Electives),
     Count > 3.
 
 elective(Id) :- \+ advanced_courses(Id),
-    taken(Id, Creds, _, _, _),
-    Creds >= 3,
+    taken(Id, Cr, _, _, _),
+    Cr >= 3,
     \+ elective_exclude(Id),
     upperdivCS(Id).
 
@@ -136,20 +136,22 @@ sci_taken(Id) :- distinct(Id,
 
 req_sci_combs(ReqData) :- s(sci_combs, Subj), passed_all(Subj, ReqData).
 
-req(sci) :-
-  findall([Id, Creds, Grade], (sci_taken(Id), taken(Id, Creds, Grade, _, _), grade_points(Grade, _)), SciData),
-  subseq(SciData, SciReqData),
-  req_sci_combs(SciReqData),
-  sci_acc(SciReqData, SciCreds, SciQP),
-  SciCreds >= 9,
-  SciQP / SciCreds >= 2.0.
+best_taken(Id, Cr, Grade, When, Where) :- 
+    taken(Id, Cr, Grade, When, Where), 
+    grade_points(Grade, GPts),
+    \+ (taken(Id, _, BetterGrade, _, _), grade_points(BetterGrade, BGPts), BGPts > GPts).
 
-sci_acc([], 0.0, 0.0).
-sci_acc([[_, Creds, Grade]|T], CSum, GSum) :-
-  sci_acc(T, SubCSum, SubGSum),
-  CSum is SubCSum + Creds,
-  grade_points(Grade, Points),
-  GSum is SubGSum + (Points*Creds).
+req(sci) :-
+  findall(
+    [Id, Cr, Grade], 
+    (sci_taken(Id), once(best_taken(Id, Cr, Grade, _, _)), grade_points(Grade, _)), 
+    SciData),
+  once((subseq(SciData, SciReqData),
+        req_sci_combs(SciReqData),
+        aggregate_all(sum(Cr), member([_, Cr, _], SciReqData), SciCreds),
+        SciCreds >= 9,
+        aggregate_all(sum(Cr * Pts), (member([_, Cr, G], SciReqData), grade_points(G, Pts)), SciWtdGradeSum),
+        SciWtdGradeSum / SciCreds >= 2.0)).
 
 wit(sci, Id) :- sci_taken(Id).
 
@@ -158,14 +160,14 @@ items23_course(Id) :- advanced_courses(Id) ; elective(Id).
 
 items123_credits(Crs) :-
   aggregate_all(
-  sum(Creds),
-  (taken(Cid, Creds, _, _, 'SB'), passed(Cid), items123_course(Cid)),
+  sum(Cr),
+  (taken(Cid, Cr, _, _, 'SB'), passed(Cid), items123_course(Cid)),
   Crs).
 
 items23_credits(Crs) :-
   aggregate_all(
-  sum(Creds),
-  (taken(Cid, Creds, _, _, 'SB'), passed(Cid), items23_course(Cid)),
+  sum(Cr),
+  (taken(Cid, Cr, _, _, 'SB'), passed(Cid), items23_course(Cid)),
   Crs).
 
 req(credits_at_sb) :-

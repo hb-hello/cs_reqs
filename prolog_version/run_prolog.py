@@ -208,7 +208,7 @@ if __name__ == '__main__':
         'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',       ## adv
         # 'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
         # 'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',                  ## calc, sta, alg
-        # 'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
+        'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
         # 'CSE 300', 'CSE 312',                                                   ## writing, ethics
     }
 
