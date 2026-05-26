@@ -3,14 +3,11 @@ import csv
 import json
 import re
 import subprocess
-from collections import defaultdict
 from pathlib import Path
-from statistics import mean
 from clingo_version.run_clingo import run_planner_benchmark, run_planner_with_heuristics
 from benchmarks.run_bm import plan_cases
 
-import matplotlib.pyplot as plt
-import numpy as np
+from benchmarks.plot_result import plot_metrics
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN_COMPARE_DIR = ROOT / 'clingo_version' / 'plan_compare'
@@ -138,62 +135,6 @@ def write_csv(rows, out_csv: Path):
     writer = csv.DictWriter(f, fieldnames=fieldnames)
     writer.writeheader()
     writer.writerows(rows)
-
-
-def plot_metrics(rows, out_dir: Path):
-  out_dir.mkdir(parents=True, exist_ok=True)
-  if not rows:
-    return
-
-  metric_keys = [
-    key for key in ROW_FIELDS
-    if key not in {'experiment', 'program', 'test', 'run'}
-  ]
-
-  buckets = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-  tests = set()
-  programs = set()
-  for row in rows:
-    test = row['test']
-    program = row['program']
-    tests.add(test)
-    programs.add(program)
-    for metric in metric_keys:
-      val = row.get(metric)
-      if val is None:
-        continue
-      try:
-        buckets[test][program][metric].append(float(val))
-      except (TypeError, ValueError):
-        continue
-
-  tests = sorted(tests)
-  programs = sorted(programs)
-  width = 0.8 / max(1, len(programs))
-  center = (len(programs) - 1) / 2
-
-  for metric_key in metric_keys:
-    x = np.arange(len(tests))
-    fig, ax = plt.subplots(figsize=(max(10, len(tests) * 0.75), 5))
-    for i, program in enumerate(programs):
-      y_vals = [
-        mean(buckets[test][program][metric_key])
-        if buckets[test][program][metric_key] else 0.0
-        for test in tests
-      ]
-      offset = (i - center) * width
-      ax.bar(x + offset, y_vals, width, label=program, alpha=0.9)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(tests, rotation=35, ha='right')
-    ax.set_ylabel(metric_key)
-    ax.set_title(metric_key)
-    ax.legend()
-    ax.grid(axis='y', alpha=0.3)
-
-    fig.tight_layout()
-    fig.savefig(out_dir / f'{metric_key}.png', dpi=150)
-    plt.close(fig)
 
 
 def main():
