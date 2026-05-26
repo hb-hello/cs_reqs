@@ -135,12 +135,14 @@ req(sci) :-
           (sci_taken(Id), once(best_taken(Id, Cr, Grade, _, _)), % once/1 break ties if repeats have same grade
                           grade_points(Grade, _)), 
           SciData),
-  once((subseq(SciData, SciReqData),
+  once(
+        (subseq(SciData, SciReqData),
         req_sci_combs(SciReqData),
         aggregate_all(sum(Cr), member([_, Cr, _], SciReqData), SciCreds),
         SciCreds >= 9,
         aggregate_all(sum(Cr * Pts), (member([_, Cr, G], SciReqData), grade_points(G, Pts)), SciWtdGradeSum),
-        SciWtdGradeSum / SciCreds >= 2.0)).
+        SciWtdGradeSum / SciCreds >= 2.0)
+      ).
 
 wit(sci, Id) :- sci_taken(Id).
 

@@ -1,5 +1,4 @@
-:- import memberchk/2 from basics.
-:- import length/2 from lists.
+:- import memberchk/2, length/2 from basics.
 :- import concat_atom/2 from string.
 :- dynamic taken/5.
 
@@ -9,6 +8,11 @@ discontiguous(_).
 atom_number(Atom, Num) :-
     atom_codes(Atom, Codes),
     number_codes(Num, Codes).
+
+distinct(X,Goal) :-
+    findall(X,Goal,List),
+    sort(List,SList),
+    member(X,SList).
 
 aggregate_all(sum(Exp),Goal,Agg) :-
     findall(Exp,Goal,ExpList),
