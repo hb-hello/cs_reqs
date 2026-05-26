@@ -47,10 +47,10 @@ passed_all(Subject) :-
   passed(Cid) : c(Subject, Cid).   %% passed for each course in subject
 
 %% course C is witness for passing all courses in a subject in requirement Item
-wit(Item, Cid) :- s(Item, Subj), passed_all(Subj), c(Subj, Cid).
+wit(I, Cid) :- item(I), s(I, Subj), passed_all(Subj), c(Subj, Cid).
 
 % set of courses in subjects of requirement item
-courses(Cid, Item) :- s(Item, Subj), c(Subj, Cid).
+courses(Cid, I) :- item(I), s(I, Subj), c(Subj, Cid).
 
 % 1. Required Introductory Courses
 c(prog, ("CSE 114"; "CSE 214"; "CSE 216")).
@@ -211,7 +211,7 @@ wit(credits_at_SB, Cid) :- items23_course(Cid), taken(Cid, _, _, _, "SB").
 item(intro; adv; elect; calc; alg; sta; sci; ethics; writing; credits_at_SB).
 
 %% degree requirement sat if all requirements are satisfied
-degree :- req(Item) : item(Item).
+degree :- req(I) : item(I).
 
 #program check.
 
