@@ -1,3 +1,7 @@
+:- discontiguous(wit/2).
+:- discontiguous(c/2).
+:- discontiguous(s/2).
+
 subseq([], []).
 subseq([H|T], [H|Sub]) :- subseq(T, Sub).
 subseq([_|T], Sub) :- subseq(T, Sub).
@@ -17,14 +21,10 @@ passed(Cid) :- taken(Cid, _, Grade, _, _), is_c_or_higher(Grade).
 % passed all courses with course Cid in Subject
 passed_all(Subject) :- forall(c(Subject, Cid), passed(Cid)).
 
-:- dynamic(wit/2).
 % course C is witness for passing all courses in a subject in requirement Item
 wit(I, Cid) :- item(I), s(I, Subj), passed_all(Subj), c(Subj, Cid).
 
 courses(Cid, I) :- item(I), s(I, Subj), c(Subj, Cid).
-
-:- dynamic(c/2).
-:- dynamic(s/2).
 
 % 1. Required Introductory Courses
 c(prog, 'CSE 114'). c(prog, 'CSE 214'). c(prog, 'CSE 216').
@@ -126,9 +126,9 @@ req_sci_combs(SciCrGrades) :-
 
 %% TODO: this is more general than sci requirement, might want to move it to the top and use it other requirements as well.
 best_taken(Cid, Cr, Grade, When, Where) :- 
-    taken(Cid, Cr, Grade, When, Where), 
-    grade_points(Grade, GPts),
-    \+ (taken(Cid, _, BetterGrade, _, _), grade_points(BetterGrade, BGPts), BGPts > GPts).
+  taken(Cid, Cr, Grade, When, Where), 
+  grade_points(Grade, GPts),
+  \+ (taken(Cid, _, BetterGrade, _, _), grade_points(BetterGrade, BGPts), BGPts > GPts).
 
 req(sci) :-
   findall([Cid, Cr, Grade], 
