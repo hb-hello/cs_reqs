@@ -7,7 +7,7 @@ from pathlib import Path
 from clingo_version.run_clingo import run_planner_benchmark, run_planner_with_heuristics
 from benchmarks.run_bm import plan_cases
 
-from benchmarks.plot_result import plot_metrics
+from benchmarks.plot_clingo_result import plot_metrics
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN_COMPARE_DIR = ROOT / 'clingo_version' / 'plan_compare'
