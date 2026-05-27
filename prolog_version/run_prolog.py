@@ -36,7 +36,9 @@ def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False)
     if engine == 'swi':
         return run_swi(taken, return_timing=return_timing)
 
-    child = pexpect.spawn('xsb', encoding='utf-8', timeout=20)
+    # spawn xsb from the prolog dir so the relative :- include('cs_reqs_2024swi.pl') resolves
+    child = pexpect.spawn('xsb', encoding='utf-8', timeout=20,
+                          cwd=os.path.dirname(os.path.abspath(__file__)))
     prompt_re = r'\|\s*\?-\s*'
     child.expect(prompt_re)
 
@@ -206,7 +208,7 @@ if __name__ == '__main__':
     some = {
         'CSE 114', 'CSE 214', 'CSE 216', #'CSE 215', 'CSE 220',                  ## intro
         'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',       ## adv
-        # 'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
+        'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
         # 'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',                  ## calc, sta, alg
         'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
         # 'CSE 300', 'CSE 312',                                                   ## writing, ethics

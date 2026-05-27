@@ -34,4 +34,3 @@ measure_run_xsb(Goal) :-
   write('CPU time: '), write(T), writeln(' s').
 
 :- include('cs_reqs_2024swi.pl').
-

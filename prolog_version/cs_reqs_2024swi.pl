@@ -1,7 +1,6 @@
 :- discontiguous(wit/2).
 :- discontiguous(c/2).
 :- discontiguous(s/2).
-
 subseq([], []).
 subseq([H|T], [H|Sub]) :- subseq(T, Sub).
 subseq([_|T], Sub) :- subseq(T, Sub).
@@ -124,27 +123,19 @@ req_sci_combs(SciCrGrades) :-
   s(sci_combs, Subj), 
   forall(c(Subject, Cid), memberchk([Cid, _, _], SciCrGrades)).
 
-%% TODO: this is more general than sci requirement, might want to move it to the top and use it other requirements as well.
-best_taken(Cid, Cr, Grade, When, Where) :- 
-  taken(Cid, Cr, Grade, When, Where), 
-  grade_points(Grade, GPts),
-  \+ (taken(Cid, _, BetterGrade, _, _), grade_points(BetterGrade, BGPts), BGPts > GPts).
-
 req(sci) :-
   findall([Cid, Cr, Grade], 
           (sci_taken(Cid),
-           once(best_taken(Cid, Cr, Grade, _, _)), % once/1 break ties if repeats have same grade
+           taken(Cid, Cr, Grade, _, _),
            grade_points(Grade, _)), 
           SciCrGrades
          ),
-  once(
-       (subseq(SciCrGrades, SubsetSciCrGrades),
-        req_sci_combs(SubsetSciCrGrades),
-        aggregate_all(sum(Cr), member([_, Cr, _], SubsetSciCrGrades), SciCrs),
-        SciCrs >= 9,
-        aggregate_all(sum(Cr * Pts), (member([_, Cr, G], SubsetSciCrGrades), grade_points(G, Pts)), SciWtdGradeSum),
-        SciWtdGradeSum / SciCrs >= 2.0)
-      ).
+  subseq(SciCrGrades, SubsetSciCrGrades),
+  req_sci_combs(SubsetSciCrGrades),
+  aggregate_all(sum(Cr), member([_, Cr, _], SubsetSciCrGrades), SciCrs),
+  SciCrs >= 9,
+  aggregate_all(sum(Cr * Pts), (member([_, Cr, G], SubsetSciCrGrades), grade_points(G, Pts)), SciWtdGradeSum),
+  SciWtdGradeSum / SciCrs >= 2.0.
 
 wit(sci, Cid) :- sci_taken(Cid).
 
