@@ -12,13 +12,10 @@ grade_points('C+', 2.33). grade_points('C', 2.0). grade_points('C-', 1.67).
 grade_points('D+', 1.33). grade_points('D', 1.0). grade_points('D-', 0.67).
 grade_points('F', 0.0).
 
-passed(Id) :- taken(Id, _, Grade, _, _), is_c_or_higher(Grade).
+passed(Cid) :- taken(Cid, _, Grade, _, _), is_c_or_higher(Grade).
 
-% passed all courses with course Id in Subject
-passed_all(Subject) :- forall(c(Subject, Id), passed(Id)).
-
-% passed all courses with course Id in Subject
-passed_all(Subject, ReqData) :- forall(c(Subject, Id), memberchk([Id, _, _], ReqData)).
+% passed all courses with course Cid in Subject
+passed_all(Subject) :- forall(c(Subject, Cid), passed(Cid)).
 
 :- dynamic(wit/2).
 % course C is witness for passing all courses in a subject in requirement Item
@@ -57,20 +54,20 @@ req(adv) :-
 % 3. Computer Science Electives  %% simpler than 2025
 c(elect_exclude, 'CSE 475'). c(elect_exclude, 'CSE 495'). c(elect_exclude, 'CSE 496'). c(elect_exclude, 'CSE 301'). c(elect_exclude, 'CSE 300'). c(elect_exclude, 'CSE 312').
 
-cse_upper_division(Id) :- 
-  atom_concat('CSE ', CourseNumstr, Id),
+cse_upper_division(Cid) :- 
+  atom_concat('CSE ', CourseNumstr, Cid),
   atom_number(CourseNumstr, CourseNumInt),
   CourseNumInt >= 300.
 
-elect_passed(Id) :- 
-  taken(Id, Cr, G, _, _), cse_upper_division(Id), 
+elect_passed(Cid) :- 
+  taken(Cid, Cr, G, _, _), cse_upper_division(Cid), 
   is_c_or_higher(G), Cr >= 3,
-  \+ courses(Id, adv), \+ c(elect_exclude, Id).
+  \+ courses(Cid, adv), \+ c(elect_exclude, Cid).
 
 req(elect) :-
-  aggregate_all(count, distinct(Id, elect_passed(Id)), Count), Count >= 4.
+  aggregate_all(count, distinct(Cid, elect_passed(Cid)), Count), Count >= 4.
 
-wit(elect, Id) :- elect_passed(Id).
+wit(elect, Cid) :- elect_passed(Cid).
 
 % Req 4. Calculus
 c(calc, 'AMS 151'). c(calc, 'AMS 161').
@@ -118,33 +115,38 @@ c(sci_more, 'GEO 102'). c(sci_more, 'GEO 103'). c(sci_more, 'GEO 112'). c(sci_mo
 c(sci_more, 'PHY 125'). c(sci_more, 'PHY 127'). c(sci_more, 'PHY 132'). c(sci_more, 'PHY 134'). c(sci_more, 'PHY 142'). c(sci_more, 'PHY 251'). c(sci_more, 'PHY 252').
 
 %% distinct/2 for deduplicating courses that appears multiple times (e.g. PHY 133)
-sci_taken(Id) :- distinct(Id,
-  (taken(Id, _, _, _, _), 
-  ((s(sci_combs, Subj), c(Subj, Id)); c(sci_more, Id)))).
+sci_taken(Cid) :- 
+  distinct(Cid,
+           (taken(Cid, _, _, _, _), ((s(sci_combs, Subj), c(Subj, Cid)); c(sci_more, Cid)))
+          ).
 
-req_sci_combs(ReqData) :- s(sci_combs, Subj), passed_all(Subj, ReqData).
+req_sci_combs(SciCrGrades) :- 
+  s(sci_combs, Subj), 
+  forall(c(Subject, Cid), memberchk([Cid, _, _], SciCrGrades)).
 
 %% TODO: this is more general than sci requirement, might want to move it to the top and use it other requirements as well.
-best_taken(Id, Cr, Grade, When, Where) :- 
-    taken(Id, Cr, Grade, When, Where), 
+best_taken(Cid, Cr, Grade, When, Where) :- 
+    taken(Cid, Cr, Grade, When, Where), 
     grade_points(Grade, GPts),
-    \+ (taken(Id, _, BetterGrade, _, _), grade_points(BetterGrade, BGPts), BGPts > GPts).
+    \+ (taken(Cid, _, BetterGrade, _, _), grade_points(BetterGrade, BGPts), BGPts > GPts).
 
 req(sci) :-
-  findall([Id, Cr, Grade], 
-          (sci_taken(Id), once(best_taken(Id, Cr, Grade, _, _)), % once/1 break ties if repeats have same grade
-                          grade_points(Grade, _)), 
-          SciData),
+  findall([Cid, Cr, Grade], 
+          (sci_taken(Cid),
+           once(best_taken(Cid, Cr, Grade, _, _)), % once/1 break ties if repeats have same grade
+           grade_points(Grade, _)), 
+          SciCrGrades
+         ),
   once(
-        (subseq(SciData, SciReqData),
-        req_sci_combs(SciReqData),
-        aggregate_all(sum(Cr), member([_, Cr, _], SciReqData), SciCreds),
-        SciCreds >= 9,
-        aggregate_all(sum(Cr * Pts), (member([_, Cr, G], SciReqData), grade_points(G, Pts)), SciWtdGradeSum),
-        SciWtdGradeSum / SciCreds >= 2.0)
+       (subseq(SciCrGrades, SubsetSciCrGrades),
+        req_sci_combs(SubsetSciCrGrades),
+        aggregate_all(sum(Cr), member([_, Cr, _], SubsetSciCrGrades), SciCrs),
+        SciCrs >= 9,
+        aggregate_all(sum(Cr * Pts), (member([_, Cr, G], SubsetSciCrGrades), grade_points(G, Pts)), SciWtdGradeSum),
+        SciWtdGradeSum / SciCrs >= 2.0)
       ).
 
-wit(sci, Id) :- sci_taken(Id).
+wit(sci, Cid) :- sci_taken(Cid).
 
 % ethics and communication courses
 c(ethics, 'CSE 312'). 
@@ -175,7 +177,7 @@ req(credits_at_sb) :-
   items23_credits(Items23_credit), Items23_credit >= 18.
 
 %% TODO: items123 includes items23. only need to include items123.
-wit(credits_at_sb, Id) :- (items123_course(Id); items23_course(Id)), taken(Id, _, _, _, 'SB'), passed(Id).
+wit(credits_at_sb, Cid) :- (items123_course(Cid); items23_course(Cid)), taken(Cid, _, _, _, 'SB'), passed(Cid).
 
 item(intro). item(adv). item(elect). 
 item(calc). item(alg). item(sta). item(sci).
