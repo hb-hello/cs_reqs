@@ -139,7 +139,6 @@ c(sci_more, ("AST 203"; "AST 205"; "CHE 132"; "CHE 321"; "CHE 322"; "CHE 331"; "
              "GEO 102"; "GEO 103"; "GEO 112"; "GEO 123"; "GEO 122";
              "PHY 125"; "PHY 127"; "PHY 132"; "PHY 134"; "PHY 142"; "PHY 251"; "PHY 252")).
 
-%% sci_courses(taken) in python: set of all sci courses taken
 sci_taken(Cid) :- s(sci_combs, Subj), c(Subj, Cid), taken(Cid, _, _, _, _).
 sci_taken(Cid) :- c(sci_more, Cid), taken(Cid, _, _, _, _).
 
@@ -286,8 +285,8 @@ taken(Cid, Cr, "None", Sem, "SB") :- plan(Cid, Sem), plan_credits(Cid, Cr).
 %%%% optimization
 
 %% minimize the number of semesters
-max_sem_plan(Sem) :- plan(_, Sem), Sem = #max {Sem1 : plan(_, Sem1)}. %% get the max semester in the plan
-#minimize {Sem@2: max_sem_plan(Sem)}.
+max_sem(Sem) :- plan(_, Sem), Sem = #max {Sem1 : plan(_, Sem1)}. %% get the max semester in the plan
+#minimize {Sem@2: max_sem(Sem)}.
 
 %% next, minimize the number of courses to take to satisfy all requirements.
 #minimize {1@1, Cid: plan(Cid, _)}.
