@@ -157,7 +157,6 @@ degree :- forall(item(I), req(I)).
 measure_run_swi(Goal, T) :-
   statistics(cputime, T0),
   (call(Goal) -> Outcome = yes ; Outcome = no),
-  statistics(cputime, T1),
-  T is T1 - T0,
+  statistics(cputime, T1), T is T1 - T0,
   write('result('), write(Outcome), writeln(')'),
   write('CPU time: '), write(T), writeln(' s').
