@@ -3,8 +3,7 @@
 %% clingo encoding for BS degree requirements in CSE at Stony Brook University (Fall 2025).
 % https://catalog.stonybrook.edu/preview_program.php?catoid=7&poid=318
 
-is_or_higher(Grade, Grade2) :- 
-  grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
+is_or_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
 is_c_or_higher(Grade) :- is_or_higher(Grade, "C").
 
 %% mapping letter grade to points for GPA calculation
@@ -14,12 +13,14 @@ grade_points("B+", 333). grade_points("B", 300). grade_points("B-", 267).
 grade_points("C+", 233). grade_points("C", 200). grade_points("C-", 167).
 grade_points("D+", 133). grade_points("D", 100). grade_points("F", 0).
 grade_points("I/F", 0). grade_points("Q", 0).
+%% for planned courses, treat as C -- minimum needed to satisfy most requirements.
+grade_points("None", 200).
 
 %% gpa calculation, takes a subset (marked by the tag) and calculates the GPA = floor(weighted sum / sum of weights).
 %%   only consider letter grades in grade_points.
 %%   if a course is taken multiple times, only one would be counted. we assume no repeated courses
 %%   to allow repeats, simply add 'When' in the aggregate, but grounding takes longer.
-gpa(GPA) :-
+gpa(GPA) :- subset_sci_taken(_), % only calculate when subset_sci_taken is not empty.
   WeightedSum = #sum { Cr * Pts, Cid: subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, Pts) },
   SumOfWeights = #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, _) },
   SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
@@ -36,9 +37,7 @@ passed_with_grade(Cid, Grade) :- taken(Cid, _, Grade1, _, _), is_or_higher(Grade
 % c(Subject, Cid): course Cid in Subject
 
 % passed all courses in Subject
-passed_all(Subject) :-
-  c(Subject, _),                 %% ground Subject
-  passed(Cid) : c(Subject, Cid).   %% passed for each course in subject
+passed_all(Subject) :- c(Subject, _), passed(Cid) : c(Subject, Cid).
 
 %% course C is witness for passing all courses in a subject in requirement Item
 wit(I, Cid) :- item(I), s(I, Subj), passed_all(Subj), c(Subj, Cid).
@@ -64,11 +63,8 @@ c(focs_ii2, "CSE 350").
 c(sys, "CSE 220"). 
 s(intro, (focs; focs2; prog; prog2; focs_ii; focs_ii2; sys)).
 
-req(intro) :- 
-  passed_all(focs; focs2),
-  passed_all(prog; prog2),
-  passed_all(focs_ii; focs_ii2),
-  passed_all(sys).
+req(intro) :- passed_all(focs; focs2), passed_all(prog; prog2),
+              passed_all(focs_ii; focs_ii2), passed_all(sys).
 
 % 2. Required Advanced Courses
 %%% CHANGED for 2025: restructured from theory/theory2/algo/algo2/common
@@ -86,12 +82,9 @@ c(cloud, "CSE 356").
 c(se, "CSE 416").
 s(adv, (pl; softdev; sysfund; algo; algo2; cloud; se)).
 
-req(adv) :- 
-  passed_all(pl; prog2),     %% CSE 307, or honors prog2 substitutes for it
-  passed_all(softdev),
-  passed_all(sysfund),
-  passed_all(algo; algo2),
-  passed_all(cloud; se).
+req(adv) :- passed_all(pl; prog2),  %% CSE 307, or honors prog2 substitutes for it
+            passed_all(softdev), passed_all(sysfund),
+            passed_all(algo; algo2), passed_all(cloud; se).
 
 % 3. Computer Science Electives
 %%% CHANGED for 2025:
@@ -105,18 +98,14 @@ c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
 elect_passed(Cid) :-
   taken(Cid, Crs, G, _, _), is_c_or_higher(G),
-  @course_prog(Cid) = "CSE",
-  @upper_division(Cid) = 1,    %% is upper division
+  @course_prog(Cid) = "CSE", @upper_division(Cid) = 1,    %% is upper division
   Crs >= 3, not courses(Cid, adv), not c((elect_exclude;elect_capped), Cid).
 
 %% if courses passed in elect_capped total credits >= 3, 
 %% then it's considered as satisfying one elective.
-elect_capped_sat :-
-  #sum { Crs, Cid: c(elect_capped, Cid), passed(Cid), taken(Cid, Crs, _, _, _) } >= 3.
+elect_capped_sat :- #sum { Crs, Cid: c(elect_capped, Cid), passed(Cid), taken(Cid, Crs, _, _, _) } >= 3.
 
-req(elect) :- 
-  #count { Cid: elect_passed(Cid) ;
-           1: elect_capped_sat} >= 6.
+req(elect) :- #count { Cid: elect_passed(Cid); 1: elect_capped_sat} >= 6.
 
 %% for elect, witness is the subset elect_passed 
 wit(elect, Cid) :- elect_passed(Cid).
@@ -133,8 +122,7 @@ c(calc2, ("MAT 125"; "MAT 126"; "MAT 127")).
 c(calc3, ("MAT 131"; "MAT 132")).
 s(calc, (calc; calc2; calc3)).
 
-req(calc) :- 
-  passed_all(calc;calc2;calc3).
+req(calc) :- passed_all(calc; calc2; calc3).
 
 % 5. One of the following:
 %%% NO CHANGE for 2025
@@ -142,8 +130,7 @@ c(alg, "MAT 211").
 c(alg2, "AMS 210").
 s(alg, (alg; alg2)).
 
-req(alg) :- 
-  passed_all(alg; alg2).
+req(alg) :- passed_all(alg; alg2).
 
 % 6. Required Upper-Division Statistics Course
 %%% CHANGED for 2025: simplified
@@ -153,8 +140,7 @@ req(alg) :-
 c(sta, "AMS 310").
 s(sta, sta).
 
-sta_req :-
-  passed_all(sta).
+sta_req :- passed_all(sta).
 
 % 7. At least one of the following natural science lecture/laboratory combinations...
 % All courses taken to satisfy Requirements 1 through 9 must be taken for a letter grade.
@@ -190,18 +176,18 @@ sci_taken(Cid) :- c(sci_more, Cid), taken(Cid, _, _, _, _).
 
 req_sci_combs :- s(sci_combs, Subj), subset_sci_taken(Cid) : c(Subj, Cid).
 
-req(sci) :- req_sci_combs,
-  gpa(Gpa), Gpa >= 2*100.
+req(sci) :- req_sci_combs, 
+            gpa(Gpa), Gpa >= 2*100.
 
 %%% CHANGED FOR 2025:
 % Note: One may not take science courses that are deemed equivalent to satisfy 7 and 8 (e.g., PHY 125 and PHY 131). Please review course descriptions for more information. 
 
 % equiv(C1, C2): courses C1 and C2 are deemed equivalent for satisfying the sci requirement. to be taken from KB.
 
-:- subset_taken(C1, sci), subset_taken(C2, sci), equiv(C1, C2).
+:- subset_sci_taken(C1), subset_sci_taken(C2), equiv(C1, C2).
 
 %% witness for sci is the subset used to satisfy all sci requirements, as in python.
-wit(sci, Cid) :- subset_taken(Cid, sci).
+wit(sci, Cid) :- subset_sci_taken(Cid).
 
 % 9. Required Non-Technical Courses
 %%% CHANGED for 2025: req 9 and 10 in 2024 merged.
@@ -242,7 +228,6 @@ req(credits_at_SB) :-
   #sum { Cr, Cid : taken(Cid, Cr, _, _, "SB"), items23_course(Cid) } >= 18.
 
 wit(credits_at_SB, Cid) :- items123_course(Cid), taken(Cid, _, _, _, "SB").
-wit(credits_at_SB, Cid) :- items23_course(Cid), taken(Cid, _, _, _, "SB").
 
 %% requirements items
 %%% CHANGED for 2025: replaced ethics and writing with nontech
