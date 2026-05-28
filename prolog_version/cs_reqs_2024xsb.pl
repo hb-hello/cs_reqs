@@ -1,5 +1,4 @@
 :- import memberchk/2, length/2 from basics.
-:- import concat_atom/2 from string.
 :- dynamic taken/5.
 
 :- op(1150,fx,(discontiguous)).
@@ -23,6 +22,7 @@ sum_exp_list([E|Es],S0,S) :-
     S1 is E+S0,
     sum_exp_list(Es,S1,S).
 
+:- import concat_atom/2 from string.
 %atom_concat(Prefix, Postfix, Full) :-
 %  concat_atom([Prefix, Postfix], Full).
 

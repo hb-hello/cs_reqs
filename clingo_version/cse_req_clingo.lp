@@ -6,8 +6,7 @@
 %% clingo version for checking and planning for BS degree requirements in CSE at Stony Brook University (Fall 2024).
 %% python version: https://github.com/unicomputing/cs_reqs/blob/main/cs_reqs_2024.da (checking only)
 
-is_or_higher(Grade, Grade2) :- 
-  grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
+is_or_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
 is_c_or_higher(Grade) :- is_or_higher(Grade, "C").
 
 %% mapping letter grade to points for GPA calculation
@@ -24,8 +23,7 @@ grade_points("None", 200).
 %%   only consider letter grades in grade_points.
 %%   if a course is taken multiple times, only one would be counted. we assume no repeated courses
 %%   to allow repeats, simply add 'When' in the aggregate, but grounding takes longer.
-gpa(GPA) :-
-  subset_sci_taken(_),
+gpa(GPA) :- subset_sci_taken(_), % only calculate when subset_sci_taken is not empty.
   WeightedSum = #sum { Cr * Pts, Cid: subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, Pts) },
   SumOfWeights = #sum { Cr, Cid : subset_sci_taken(Cid), taken(Cid, Cr, G, _, _), grade_points(G, _) },
   SumOfWeights > 0, GPA = WeightedSum / SumOfWeights. %%% integer floor division. 
@@ -42,9 +40,7 @@ passed_with_grade(Cid, Grade) :- taken(Cid, _, Grade1, _, _), is_or_higher(Grade
 % c(Subject, Cid): course Cid in Subject
 
 % passed all courses in Subject
-passed_all(Subject) :-
-  c(Subject, _),                 %% ground Subject
-  passed(Cid) : c(Subject, Cid).   %% passed for each course in subject
+passed_all(Subject) :- c(Subject, _), passed(Cid) : c(Subject, Cid).
 
 %% course C is witness for passing all courses in a subject in requirement Item
 wit(I, Cid) :- item(I), s(I, Subj), passed_all(Subj), c(Subj, Cid).
@@ -60,10 +56,8 @@ c(dmath2, "CSE 150").
 c(sys, "CSE 220"). 
 s(intro, (prog; prog2; dmath; dmath2; sys)).
 
-req(intro) :-
-  passed_all(prog; prog2),
-  passed_all(dmath; dmath2),
-  passed_all(sys).
+req(intro) :- passed_all(prog; prog2), 
+              passed_all(dmath; dmath2), passed_all(sys).
 
 % 2. Required Advanced Courses
 c(theory, "CSE 303"). c(theory2, "CSE 350").
@@ -71,22 +65,18 @@ c(algo, "CSE 373"). c(algo2, "CSE 385").
 c(other, ("CSE 310"; "CSE 316"; "CSE 320"; "CSE 416")).
 s(adv, (theory; theory2; algo; algo2; other)).
 
-req(adv) :- 
-  passed_all(theory; theory2),
-  passed_all(algo; algo2),
-  passed_all(other).
+req(adv) :- passed_all(theory; theory2),
+            passed_all(algo; algo2), passed_all(other).
 
 % 3. Computer Science Electives  %% simpler than 2025
 c(elect_exclude, ("CSE 475"; "CSE 495"; "CSE 300"; "CSE 301"; "CSE 312")).
 
 elect_passed(Cid) :-
   taken(Cid, Cr, G, _, _), is_c_or_higher(G),
-  @course_prog(Cid) = "CSE",
-  @upper_division(Cid) = 1,    %% is upper division
+  @course_prog(Cid) = "CSE", @upper_division(Cid) = 1,
   Cr >= 3, not courses(Cid, adv), not c(elect_exclude, Cid).
 
-req(elect) :- 
-  #count { Cid: elect_passed(Cid) } >= 4.
+req(elect) :- #count { Cid: elect_passed(Cid) } >= 4.
 
 %% witness for elect is the subset elect_passed used in elect.
 wit(elect, Cid) :- elect_passed(Cid).
@@ -100,16 +90,14 @@ c(calc2, ("MAT 125"; "MAT 126"; "MAT 127")).
 c(calc3, ("MAT 131"; "MAT 132")).
 s(calc, (calc; calc2; calc3)).
 
-req(calc) :- 
-  passed_all(calc; calc2; calc3).
+req(calc) :- passed_all(calc; calc2; calc3).
 
 % 5. One of the following:
 c(alg, "MAT 211").
 c(alg2, "AMS 210").
 s(alg, (alg; alg2)).
 
-req(alg) :- 
-  passed_all(alg; alg2).
+req(alg) :- passed_all(alg; alg2).
 
 % 6. Both of the following:
 c(fmath, "AMS 301").
@@ -117,9 +105,7 @@ c(sta, "AMS 310").
 c(sta2, "AMS 311").
 s(sta, (fmath; sta; sta2)).
 
-req(sta) :-
-  passed_all(fmath),
-  passed_all(sta; sta2).
+req(sta) :- passed_all(fmath), passed_all(sta; sta2).
 
 % 7. At least one of the following natural science lecture/laboratory combinations...
 % combinations:
@@ -194,7 +180,6 @@ req(credits_at_SB) :-
   #sum { Cr, Cid : taken(Cid, Cr, _, _, "SB"), items23_course(Cid) } >= 18.
 
 wit(credits_at_SB, Cid) :- items123_course(Cid), taken(Cid, _, _, _, "SB").
-wit(credits_at_SB, Cid) :- items23_course(Cid), taken(Cid, _, _, _, "SB").
 
 % Grading (%%% comments are copied from python)
 %
@@ -237,8 +222,7 @@ before(Sem1, Sem2) :- Sem1 = 1..end_sem, Sem2 = 1..end_sem, Sem1 < Sem2.
 % taken_before(Cid, Sem) :- taken(Cid, _, _, Sem1, _), before(Sem1, Sem).
 
 %% course taken before semester with at least grade.
-passed_before_grade(Cid, Grade, Sem) :-
-  taken(Cid, _, _, Sem1, _), before(Sem1, Sem), passed_with_grade(Cid, Grade).
+passed_before_grade(Cid, G, Sem) :- taken(Cid, _, _, Sem1, _), before(Sem1, Sem), passed_with_grade(Cid, G).
 
 %% "C or higher" in prereq
 passed_before(Cid, Sem):- taken(Cid, _, _, Sem1, _), before(Sem1, Sem), passed(Cid).
@@ -247,10 +231,8 @@ passed_before(Cid, Sem):- taken(Cid, _, _, Sem1, _), before(Sem1, Sem), passed(C
 taken_together(Cid, Sem) :- taken(Cid, _, _, Sem, _).
 
 %% could be taken before or at the same semester.                 %% pre_or_coreq
-passed_before_or_together_grade(Cid, Grade, Sem) :- 
-  grade_points(Grade, _), passed_before_grade(Cid, Grade, Sem).
-passed_before_or_together_grade(Cid, Grade, Sem) :- 
-  grade_points(Grade, _), taken_together(Cid, Sem).
+passed_before_or_together_grade(Cid, G, Sem) :- grade_points(G, _), passed_before_grade(Cid, G, Sem).
+passed_before_or_together_grade(Cid, G, Sem) :- grade_points(G, _), taken_together(Cid, Sem).
 
 %%%% generate 
 
@@ -264,8 +246,7 @@ passed_before_or_together_grade(Cid, Grade, Sem) :-
 offered_in_range(Cid) :- offered(Cid, Sem), start_sem <= Sem, Sem <= end_sem.
 {plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- offered_in_range(Cid), include(Cid).
 {plan(Cid, Sem) : offered(Cid, Sem)} <= 1 :- offered_in_range(Cid), 
-                                           not taken_id(Cid),
-                                           not exclude(Cid).
+                                             not taken_id(Cid), not exclude(Cid).
 
 {plan_credits(Cid, Cr) : credits(Cid, Cr)} == 1 :- plan(Cid, _).
 
