@@ -2,9 +2,10 @@ subseq([], []).
 subseq([H|T], [H|Sub]) :- subseq(T, Sub).
 subseq([_|T], Sub) :- subseq(T, Sub).
 
-:- discontiguous(wit/2).
-:- discontiguous(c/2).
-:- discontiguous(s/2).
+:- discontiguous wit/2.
+:- discontiguous c/2.
+:- discontiguous s/2.
+:- discontiguous req/1.
 is_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
 is_c_or_higher(Grade) :- is_higher(Grade, 'C').
 
