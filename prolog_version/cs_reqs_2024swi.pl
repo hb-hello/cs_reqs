@@ -109,7 +109,7 @@ c(sci_more, 'PHY 125'). c(sci_more, 'PHY 127'). c(sci_more, 'PHY 132'). c(sci_mo
 sci_taken(Cid) :- 
   distinct(Cid, (taken(Cid, _, _, _, _), ((s(sci_combs, Subj), c(Subj, Cid)); c(sci_more, Cid)))).
 
-req_sci_combs(SciCrGrades) :- s(sci_combs, Subj), forall(c(Subject, Cid), memberchk([Cid, _, _], SciCrGrades)).
+req_sci_combs(SciCrGrades) :- s(sci_combs, Subj), forall(c(Subj, Cid), memberchk([Cid, _, _], SciCrGrades)).
 
 req(sci) :-
   findall([Cid, Cr, Grade], 
