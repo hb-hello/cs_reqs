@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import tempfile
 
 import pexpect
 
@@ -28,65 +29,63 @@ def run_prolog(taken, engine=XSB, return_timing=False):
     return run_xsb(taken, return_timing=return_timing)
 
 def run_xsb(taken, return_timing=False):
-    # spawn xsb from the prolog dir so the relative :- include('cs_reqs_2024swi.pl') resolves
-    child = pexpect.spawn(XSB, encoding='utf-8', timeout=20,
-                          cwd=os.path.dirname(os.path.abspath(__file__)))
-    prompt_re = r'\|\s*\?-\s*'
-    child.expect(prompt_re)
+    pl_dir = os.path.dirname(os.path.abspath(__file__))
+    prompt = r'\|\s*\?-\s*'
+    child = pexpect.spawn(XSB, encoding='utf-8', timeout=20, cwd=pl_dir)
+    child.expect(prompt)
 
-    def run_cmd(command):
-        child.sendline(command)
-        child.expect(prompt_re)
+    def run(cmd):
+        child.sendline(cmd)
+        child.expect(prompt)
         return child.before.strip()
 
-    def query_truth(goal):
-        output = run_cmd(f"({goal} -> write(yes) ; write(no)).")
-        return 'yes' in output
+    def truth(goal):
+        # XSB writes "yes" or "no" as the last word based on whether the goal
+        # succeeded. once/1 forces a single solution so there's no "More?" prompt.
+        return run(f"once({goal}).").endswith('yes')
 
-    xsb_load_path = os.path.splitext(_PL_FILE_XSB)[0].replace('\\', '/')
-    run_cmd(f"['{xsb_load_path}'].")
-    run_cmd("retractall(taken(_,_,_,_,_)).")
+    def parse_list(out):
+        # extract the first [...] in the output as a list of atoms.
+        m = re.search(r'\[([^\]]*)\]', out)
+        if not m or not m.group(1).strip(): return []
+        return [a or b for a, b in re.findall(r"'([^']*)'|([^\s,]+)", m.group(1))]
 
-    for t in taken: run_cmd(f"assertz({_taken_fact(t)}).")
-    u = run_cmd("measure_run_xsb(degree).")
+    # load encoding, clear old taken/5, assert new facts via a temp file
+    # (long inline assertz lines are too slow via pty echo).
+    run(f"['{os.path.splitext(_PL_FILE_XSB)[0]}'].")
+    run("retractall(taken(_,_,_,_,_)).")
+    if taken:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.P') as f:
+            for t in taken: f.write(f":- assert({_taken_fact(t)}).\n")
+            f.flush()
+            run(f"['{os.path.splitext(f.name)[0]}'].")
 
-    def extract_cpu_time(text):
-      for line in text.splitlines():
-          if "CPU time:" in line:
-              value = line.split("CPU time:")[1].split("s")[0].strip()
-              return float(value)
-      return None
+    # measure_run_xsb prints `result(yes|no)` and `CPU time: <s> s`; parse both.
+    degree_out = run("measure_run_xsb(degree).")
+    ok = 'result(yes)' in degree_out
+    cpu = re.search(r'CPU time:\s*([\d.eE+-]+)', degree_out)
+    prolog_eval_s = float(cpu.group(1)) if cpu else None
 
-    ok, prolog_eval_s = query_truth('degree'), extract_cpu_time(u)
-
-    def _parse_prolog_list(text):
-        """Parse a Prolog list written via write/1, e.g. ['CSE 114','CSE 373'] → list of strings."""
-        m = re.search(r'\[([^\]]*)\]', text)
-        if not m: return []
-        inner = m.group(1).strip()
-        if not inner: return []
-        items = re.findall(r"'([^']*)'|([^\s,]+)", inner)
-        return [a or b for a, b in items if a or b]
-
+    # per-req: truth + witness list
     checked = {}
     for name in REQS:
-        sat = query_truth(f'req({name})')
-        wit_out = run_cmd(f"findall(Id, wit({name}, Id), Ids), writeq(Ids), fail.")
-        checked[name] = (sat, _parse_prolog_list(wit_out))
+        sat = truth(f'req({name})')
+        wits = parse_list(run(f"findall(Id, wit({name}, Id), Ids), writeq(Ids), fail."))
+        checked[name] = (sat, wits)
 
-    def parse_credits(query):
-        m = re.search(r'credit_total\(([\d.]+)\)', run_cmd(query))
+    # credits totals -> witness for credits_at_SB
+    def credits(query):
+        m = re.search(r'credit_total\(([\d.]+)\)', run(query))
         return float(m.group(1)) if m else 0.0
-
-    t123 = parse_credits("items123_credits(T), write(credit_total(T)), fail.")
-    t23  = parse_credits("items23_credits(T), write(credit_total(T)), fail.")
+    t123 = credits("items123_credits(T), write(credit_total(T)), fail.")
+    t23  = credits("items23_credits(T), write(credit_total(T)), fail.")
     checked['credits_at_SB'] = _credits_at_sb(t123, t23)
     checked['degree'] = (ok, [])
 
     child.sendline('halt.')
     child.expect(pexpect.EOF)
 
-    if return_timing: 
+    if return_timing:
         return {'ok': ok, 'prolog_eval_s': prolog_eval_s, 'engine': XSB, 'checked': checked}
     return checked
 
