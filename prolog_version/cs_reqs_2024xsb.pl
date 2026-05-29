@@ -1,4 +1,4 @@
-:- import memberchk/2, length/2 from basics.
+:- import memberchk/2, member/2, length/2 from basics.
 :- dynamic taken/5.
 
 :- op(1150,fx,(discontiguous)).
@@ -13,14 +13,16 @@ distinct(X,Goal) :-
     sort(List,SList),
     member(X,SList).
 
-aggregate_all(sum(Exp),Goal,Agg) :-
-    findall(Exp,Goal,ExpList),
-    sum_exp_list(ExpList,0,Agg).
+aggregate_all(count, Goal, Counts) :-
+    findall(_, Goal, Results),
+    length(Results, Counts).
 
-sum_exp_list([],S,S).
-sum_exp_list([E|Es],S0,S) :-
-    S1 is E+S0,
-    sum_exp_list(Es,S1,S).
+aggregate_all(sum(Exp), Goal, Sum) :-
+    findall(Exp, Goal, Vs),
+    sum_acc(Vs, 0, Sum).
+
+sum_acc([], S, S).
+sum_acc([V|Vs], A, S) :- A1 is A + V, sum_acc(Vs, A1, S).
 
 :- import concat_atom/2 from string.
 %atom_concat(Prefix, Postfix, Full) :-

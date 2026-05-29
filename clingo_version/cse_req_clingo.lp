@@ -16,8 +16,6 @@ grade_points("B+", 333). grade_points("B", 300). grade_points("B-", 267).
 grade_points("C+", 233). grade_points("C", 200). grade_points("C-", 167).
 grade_points("D+", 133). grade_points("D", 100). grade_points("F", 0).
 grade_points("I/F", 0). grade_points("Q", 0).
-%% for planned courses, treat as C - minimum needed to satisfy most requirements.
-grade_points("None", 200). 
 
 %% gpa calculation, takes a subset (marked by the tag) and calculates the GPA = floor(weighted sum / sum of weights).
 %%   only consider letter grades in grade_points.
@@ -220,6 +218,9 @@ before(Sem1, Sem2) :- Sem1 = 1..end_sem, Sem2 = 1..end_sem, Sem1 < Sem2.
 
 % %% course is taken before semester Sem.                           %% for prereq and antireq
 % taken_before(Cid, Sem) :- taken(Cid, _, _, Sem1, _), before(Sem1, Sem).
+
+%% for planned courses, treat as C - minimum needed to satisfy most requirements.
+grade_points("None", 200). 
 
 %% course taken before semester with at least grade.
 passed_before_grade(Cid, G, Sem) :- taken(Cid, _, _, Sem1, _), before(Sem1, Sem), passed_with_grade(Cid, G).

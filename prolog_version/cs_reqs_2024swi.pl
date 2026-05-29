@@ -59,7 +59,7 @@ elect_passed(Cid) :-
   cse_upper_division(Cid), 
   Cr >= 3, \+ courses(Cid, adv), \+ c(elect_exclude, Cid).
 
-req(elect) :- aggregate_all(count, distinct(Cid, elect_passed(Cid)), Count), Count >= 4.
+req(elect) :- aggregate_all(count, distinct(Cid, elect_passed(Cid)), Counts), Counts >= 4.
 
 wit(elect, Cid) :- elect_passed(Cid).
 
