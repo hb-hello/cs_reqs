@@ -22,3 +22,4 @@ course_kb/unsup.txt
 benchmarks/clingo_bm_results/
 .nvim.lua
 *.xwam
+benchmarks/docker/

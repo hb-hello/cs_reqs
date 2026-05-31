@@ -12,20 +12,20 @@ class Condition(Expr):
         return ", ".join(self.arguments)
 
 
-class Var(Expr):  # the "variable-representing" class represents a decision that the solver can take.
-    default_domain = None
-
-    def __init__(self, *args, domain: Iterable = None):
-        self._domain = domain
-        super().__init__(*args)
-
-    @property
-    def domain(self):
-        return self._domain if self._domain is not None else self.default_domain
-
-    def __setattr__(self, name, value):
-        if name == "domain" and isinstance(value, Iterable):
-            self._domain = value
+# class Var(Expr):  # the "variable-representing" class represents a decision that the solver can take.
+#     default_domain = None
+#
+#     def __init__(self, *args, domain: Iterable = None):
+#         self._domain = domain
+#         super().__init__(*args)
+#
+#     @property
+#     def domain(self):
+#         return self._domain if self._domain is not None else self.default_domain
+#
+#     def __setattr__(self, name, value):
+#         if name == "domain" and isinstance(value, Iterable):
+#             self._domain = value
 
 
 def wit_expr(expr) -> str:
@@ -169,25 +169,25 @@ class ORModel:
         else:  # multi-valued IntVar (e.g. Grade): implied ↔ non-zero
             self.model.add(c > 0).only_enforce_if(bv)
 
-    def negated(self, expr):
-        if isinstance(expr, cp_model.IntVar) and list(expr.proto.domain) == [0, 1]:
-            return expr.negated()
-        if isinstance(expr, Requirement):
-            v = self[expr]
-            if list(v.proto.domain) == [0, 1]:
-                return v.negated()
-        return self.reify(expr)[0].negated()
+    # def negated(self, expr):
+    #     if isinstance(expr, cp_model.IntVar) and list(expr.proto.domain) == [0, 1]:
+    #         return expr.negated()
+    #     if isinstance(expr, Requirement):
+    #         v = self[expr]
+    #         if list(v.proto.domain) == [0, 1]:
+    #             return v.negated()
+    #     return self.reify(expr)[0].negated()
 
-    # a → NOT b
-    def forbids(self, a, b):
-        c = self.resolve(b)
-        if c is None:
-            return
-        if isinstance(c, int):
-            if c:
-                self.model.add(self._var(a) == 0)  # b always true → a must be 0
-        else:
-            self.model.add_implication(self._var(a), c.negated())
+    # # a → NOT b
+    # def forbids(self, a, b):
+    #     c = self.resolve(b)
+    #     if c is None:
+    #         return
+    #     if isinstance(c, int):
+    #         if c:
+    #             self.model.add(self._var(a) == 0)  # b always true → a must be 0
+    #     else:
+    #         self.model.add_implication(self._var(a), c.negated())
 
     # bv is true ↔ iv > 0  (used to tie a bool predicate to a categorical one)
     def iff(self, bv, iv):
@@ -202,24 +202,24 @@ class ORModel:
         self.model.add(expr != n).only_enforce_if(v.negated())
         return v
 
-    def ge(self, expr, n):
-        expr = self[expr] if isinstance(expr, Requirement) else expr
-        v = self.model.new_bool_var(f"geq_{n}_{id(expr)}")
-        self.model.add(expr >= n).only_enforce_if(v)
-        self.model.add(expr < n).only_enforce_if(v.negated())
-        return v
+    # def ge(self, expr, n):
+    #     expr = self[expr] if isinstance(expr, Requirement) else expr
+    #     v = self.model.new_bool_var(f"geq_{n}_{id(expr)}")
+    #     self.model.add(expr >= n).only_enforce_if(v)
+    #     self.model.add(expr < n).only_enforce_if(v.negated())
+    #     return v
 
-    def le(self, expr, n):
-        expr = self[expr] if isinstance(expr, Requirement) else expr
-        v = self.model.new_bool_var(f"leq_{n}_{id(expr)}")
-        self.model.add(expr <= n).only_enforce_if(v)
-        self.model.add(expr > n).only_enforce_if(v.negated())
-        return v
+    # def le(self, expr, n):
+    #     expr = self[expr] if isinstance(expr, Requirement) else expr
+    #     v = self.model.new_bool_var(f"leq_{n}_{id(expr)}")
+    #     self.model.add(expr <= n).only_enforce_if(v)
+    #     self.model.add(expr > n).only_enforce_if(v.negated())
+    #     return v
 
-    def constrain_slots(self, slots, costs, capacity):
-        pairs = list(zip(slots, costs))
-        ivars = [self.model.new_fixed_size_interval_var(self[slot], 1, f"ci_{i}") for i, (slot, _) in enumerate(pairs)]
-        self.model.add_cumulative(ivars, [cost for _, cost in pairs], capacity)
+    # def constrain_slots(self, slots, costs, capacity):
+    #     pairs = list(zip(slots, costs))
+    #     ivars = [self.model.new_fixed_size_interval_var(self[slot], 1, f"ci_{i}") for i, (slot, _) in enumerate(pairs)]
+    #     self.model.add_cumulative(ivars, [cost for _, cost in pairs], capacity)
 
     def product(self, a, b):
         if isinstance(a, int):
@@ -479,14 +479,14 @@ class ORModel:
             scale *= 100_000
         self.model.minimize(expr)
 
-    def maximize(self, objectives):
-        if not self.plan:
-            return
-        scale, expr = 1, 0
-        for obj in reversed(objectives):
-            expr += obj * scale
-            scale *= 100_000
-        self.model.maximize(expr)
+    # def maximize(self, objectives):
+    #     if not self.plan:
+    #         return
+    #     scale, expr = 1, 0
+    #     for obj in reversed(objectives):
+    #         expr += obj * scale
+    #         scale *= 100_000
+    #     self.model.maximize(expr)
 
     def _expr_bounds(self, expr):
         if isinstance(expr, int):

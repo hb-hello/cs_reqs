@@ -191,30 +191,115 @@ def write_to_file(dir_name, results, cases_in_order):
     print(f"Saved to {filename}")
 
 
-if __name__ == "__main__":
-    versions = {"python", "swi", "xsb", "clingo", "ortools"}
+def write_to_table_file(dir_name, results, cases_in_order):
+    filename = datetime.now().strftime("bm_%Y%m%d_%H%M%S.txt")
+    out_dir = Path(__file__).resolve().parent / dir_name
+    out_dir.mkdir(exist_ok=True)
+    with open(out_dir / filename, "w") as f:
+        is_checking = dir_name == "checking"
+        versions = ["python", "swi", "xsb", "clingo", "ortools"] if is_checking else ["clingo", "ortools"]
 
-    # check_results = {}
-    #
-    # for case, taken in plan_cases.items():
-    #     check_results[case] = {}
-    #     for version in versions:
-    #         t = bm_check(version, taken, 5)
-    #         print(version, case, t)
-    #         check_results[case][version] = t * 1000 # convert s to ms
-    #
-    # # write_to_file('checking', check_results, ['passing', 'no_intro', 'no_adv', 'no_elect', 'no_mat', 'no_sci', 'no_wrt', 'no_eth'])
-    # write_to_file('checking', check_results, ['empty', 'sem_1', 'sem_2', 'sem_3', 'sem_4', 'sem_5', 'sem_6', 'sem_7', 'complete'])
-    #
+        for case in cases_in_order:
+            case_results = results.get(case, {})
+            values = " & ".join(f"{case_results.get(v, 0):.3f}" for v in versions)
+            f.write(f"\\co{{{case}}} & {values} \\\\\n")
 
+    print(f"Saved to {filename}")
+
+
+versions = {"python", "swi", "xsb", "clingo", "ortools"}
+
+
+def check_by_sems_and_reqs():
+    check_results = {}
+
+    for case, taken in plan_cases.items():
+        check_results[case] = {}
+        for version in versions:
+            t = bm_check(version, taken, 5)
+            print(version, case, t)
+            check_results[case][version] = t * 1000  # convert s to ms
+
+    for case, taken in cases.items():
+        check_results[case] = {}
+        for version in versions:
+            t = bm_check(version, taken, 5)
+            print(version, case, t)
+            check_results[case][version] = t * 1000  # convert s to ms
+
+    write_to_file(
+        "checking",
+        check_results,
+        [
+            "empty",
+            "sem_1",
+            "sem_2",
+            "sem_3",
+            "sem_4",
+            "sem_5",
+            "sem_6",
+            "sem_7",
+            "complete",
+            "no_intro",
+            "no_adv",
+            "no_elect",
+            "no_mat",
+            "no_sci",
+            "no_wrt",
+            "no_eth",
+        ],
+    )
+
+
+def check_by_reqs():
+    check_results = {}
+
+    for case, taken in cases.items():
+        check_results[case] = {}
+        for version in versions:
+            t = bm_check(version, taken, 5)
+            print(version, case, t)
+            check_results[case][version] = t * 1000  # convert s to ms
+
+    write_to_file(
+        "checking",
+        check_results,
+        ["complete", "no_intro", "no_adv", "no_elect", "no_mat", "no_sci", "no_wrt", "no_eth"],
+    )
+
+
+def plan_by_sems():
     plan_result = {}
     for case, taken in plan_cases.items():
         plan_result[case] = {}
-        for version in {"ortools"}:
-            t = bm_plan(version, taken, 5)
+        for version in {"ortools", "clingo"}:
+            t = bm_plan(version, taken, 2)
             print(version, case, t)
             plan_result[case][version] = t
 
     write_to_file(
         "planning", plan_result, ["empty", "sem_1", "sem_2", "sem_3", "sem_4", "sem_5", "sem_6", "sem_7", "complete"]
     )
+
+
+def plan_by_reqs():
+    plan_result = {}
+    for case, taken in cases.items():
+        plan_result[case] = {}
+        for version in {"ortools", "clingo"}:
+            t = bm_plan(version, taken, 2)
+            print(version, case, t)
+            plan_result[case][version] = t
+
+    write_to_file(
+        "planning_by_reqs",
+        plan_result,
+        ["complete", "no_intro", "no_adv", "no_elect", "no_mat", "no_sci", "no_wrt", "no_eth"],
+    )
+
+
+if __name__ == "__main__":
+    check_by_sems_and_reqs()
+    # check_by_reqs()
+    # plan_by_sems()
+    # plan_by_reqs()
