@@ -6,15 +6,15 @@ subseq([_|T], Sub) :- subseq(T, Sub).
 :- discontiguous c/2.
 :- discontiguous s/2.
 :- discontiguous req/1.
-is_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
-is_c_or_higher(Grade) :- is_higher(Grade, 'C').
+is_or_higher(Grade, Grade2) :- grade_points(Grade, Points), grade_points(Grade2, Points2), Points >= Points2.
+is_c_or_higher(Grade) :- is_or_higher(Grade, 'C').
 
 %% mapping letter grade to points for GPA calculation
 grade_points('A', 4.0). grade_points('A-', 3.67).
 grade_points('B+', 3.33). grade_points('B', 3.0). grade_points('B-', 2.67).
 grade_points('C+', 2.33). grade_points('C', 2.0). grade_points('C-', 1.67).
-grade_points('D+', 1.33). grade_points('D', 1.0). grade_points('D-', 0.67).
-grade_points('F', 0.0).
+grade_points('D+', 1.33). grade_points('D', 1.0).
+grade_points('F', 0.0). grade_points('I/F', 0.0). grade_points('Q', 0.0).
 
 passed(Cid) :- taken(Cid, _, Grade, _, _), is_c_or_higher(Grade).
 
@@ -44,11 +44,11 @@ c(algo, 'CSE 373'). c(algo2, 'CSE 385').
 c(other, 'CSE 310'). c(other, 'CSE 316'). c(other, 'CSE 320'). c(other, 'CSE 416').
 s(adv, theory). s(adv, theory2). s(adv, algo). s(adv, algo2). s(adv, other).
 
-req(adv) :- (passed_all(algo); passed_all(algo2)),
-            (passed_all(theory); passed_all(theory2)), passed_all(other).
+req(adv) :- (passed_all(theory); passed_all(theory2)),
+            (passed_all(algo); passed_all(algo2)), passed_all(other).
 
 % 3. Computer Science Electives  %% simpler than 2025
-c(elect_exclude, 'CSE 475'). c(elect_exclude, 'CSE 495'). c(elect_exclude, 'CSE 496'). c(elect_exclude, 'CSE 301'). c(elect_exclude, 'CSE 300'). c(elect_exclude, 'CSE 312').
+c(elect_exclude, 'CSE 475'). c(elect_exclude, 'CSE 495'). c(elect_exclude, 'CSE 300'). c(elect_exclude, 'CSE 301'). c(elect_exclude, 'CSE 312').
 
 cse_upper_division(Cid) :- 
   atom_concat('CSE ', CourseNumstr, Cid),
@@ -65,12 +65,12 @@ req(elect) :- aggregate_all(count, distinct(Cid, elect_passed(Cid)), Counts), Co
 wit(elect, Cid) :- elect_passed(Cid).
 
 % Req 4. Calculus
-c(calc, 'AMS 151'). c(calc, 'AMS 161').
+c(calc1, 'AMS 151'). c(calc1, 'AMS 161').
 c(calc2, 'MAT 125'). c(calc2, 'MAT 126'). c(calc2, 'MAT 127').
 c(calc3, 'MAT 131'). c(calc3, 'MAT 132').
-s(calc, calc). s(calc, calc2). s(calc, calc3).
+s(calc, calc1). s(calc, calc2). s(calc, calc3).
 
-req(calc) :- passed_all(calc); passed_all(calc2); passed_all(calc3).
+req(calc) :- passed_all(calc1); passed_all(calc2); passed_all(calc3).
 
 % Req 5. Linear Algebra
 c(alg1, 'MAT 211').

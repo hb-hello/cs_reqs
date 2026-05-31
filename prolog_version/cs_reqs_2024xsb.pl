@@ -24,10 +24,6 @@ aggregate_all(sum(Exp), Goal, Sum) :-
 sum_acc([], S, S).
 sum_acc([V|Vs], A, S) :- A1 is A + V, sum_acc(Vs, A1, S).
 
-:- import concat_atom/2 from string.
-%atom_concat(Prefix, Postfix, Full) :-
-%  concat_atom([Prefix, Postfix], Full).
-
 measure_run_xsb(Goal) :-
   statistics(runtime, [_,_]),
   (call(Goal) -> Outcome = yes ; Outcome = no),
