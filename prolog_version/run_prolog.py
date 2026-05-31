@@ -1,116 +1,97 @@
 import os
 import re
-import time
+import sys
+import tempfile
 
 import pexpect
-import sys
-import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 _PL_FILE_SWI = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cs_reqs_2024swi.pl')
 _PL_FILE_XSB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cs_reqs_2024xsb.pl')
+XSB = 'xsb'
+SWI = 'swi'
 
+# requirement names shared between engines; each maps to req(Name) and wit(Name, _)
+REQS = ['intro', 'adv', 'elect', 'sci', 'ethics', 'writing', 'calc', 'alg', 'sta']
 
-def _normalize_where(where):
-    key = str(where).strip().upper()
-    if key == 'SB':
-        return 'SBU'
-    return key
+def _taken_fact(t):
+    return f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{t.where}')"
 
-def extract_cpu_time(text):
-    for line in text.splitlines():
-        if "CPU time:" in line:
-            value = line.split("CPU time:")[1].split("s")[0].strip()
-            return float(value)
-    return None
+def _credits_at_sb(t123, t23):
+    return (t123 >= 24 and t23 >= 18,
+            [f'items123 = {int(t123)}', f'items23 = {int(t23)}'])
 
-# ── public API ────────────────────────────────────────────────────────────────
-
-def _parse_prolog_list(text):
-    """Parse a Prolog list written via write/1, e.g. ['CSE 114','CSE 373'] → list of strings."""
-    m = re.search(r'\[([^\]]*)\]', text)
-    if not m:
-        return []
-    inner = m.group(1).strip()
-    if not inner:
-        return []
-    items = re.findall(r"'([^']*)'|([^\s,]+)", inner)
-    return [a or b for a, b in items if a or b]
-
-
-def run_prolog(taken, engine='xsb', swi_with_witness=False, return_timing=False):
-    if engine == 'swi':
+def run_prolog(taken, engine=XSB, return_timing=False):
+    assert engine in {XSB, SWI}, f"Unknown Prolog engine: {engine}"
+    if engine == SWI:
         return run_swi(taken, return_timing=return_timing)
+    return run_xsb(taken, return_timing=return_timing)
 
-    child = pexpect.spawn('xsb', encoding='utf-8', timeout=20)
-    prompt_re = r'\|\s*\?-\s*'
-    child.expect(prompt_re)
+def run_xsb(taken, return_timing=False):
+    pl_dir = os.path.dirname(os.path.abspath(__file__))
+    prompt = r'\|\s*\?-\s*'
+    child = pexpect.spawn(XSB, encoding='utf-8', timeout=20, cwd=pl_dir)
+    child.expect(prompt)
 
-    def run_cmd(command):
-        child.sendline(command)
-        child.expect(prompt_re)
+    def run(cmd):
+        child.sendline(cmd)
+        child.expect(prompt)
         return child.before.strip()
 
-    def query_truth(goal):
-        output = run_cmd(f"({goal} -> write(yes) ; write(no)).")
-        return 'yes' in output
+    def truth(goal):
+        # XSB writes "yes" or "no" as the last word based on whether the goal
+        # succeeded. once/1 forces a single solution so there's no "More?" prompt.
+        return run(f"once({goal}).").endswith('yes')
 
-    xsb_load_path = os.path.splitext(_PL_FILE_XSB)[0].replace('\\', '/')
-    run_cmd(f"['{xsb_load_path}'].")
-    run_cmd("retractall(taken(_,_,_,_,_)).")
+    def parse_list(out):
+        # extract the first [...] in the output as a list of atoms.
+        m = re.search(r'\[([^\]]*)\]', out)
+        if not m or not m.group(1).strip(): return []
+        return [a or b for a, b in re.findall(r"'([^']*)'|([^\s,]+)", m.group(1))]
 
-    for t in taken:
-        where = _normalize_where(t.where)
-        fact = f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{where}')"
-        run_cmd(f"assertz({fact}).")
+    # load encoding, clear old taken/5, assert new facts via a temp file
+    # (long inline assertz lines are too slow via pty echo).
+    run(f"['{os.path.splitext(_PL_FILE_XSB)[0]}'].")
+    run("retractall(taken(_,_,_,_,_)).")
+    if taken:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.P') as f:
+            for t in taken: f.write(f":- assert({_taken_fact(t)}).\n")
+            f.flush()
+            run(f"['{os.path.splitext(f.name)[0]}'].")
 
-    u = run_cmd("measure_run_xsb(all_requirements).")
-    print(u)
-    prolog_eval_s = extract_cpu_time(u)
-    ok = query_truth('all_requirements')
+    # measure_run_xsb prints `result(yes|no)` and `CPU time: <s> s`; parse both.
+    degree_out = run("measure_run_xsb(degree).")
+    ok = 'result(yes)' in degree_out
+    cpu = re.search(r'CPU time:\s*([\d.eE+-]+)', degree_out)
+    prolog_eval_s = float(cpu.group(1)) if cpu else None
 
-    # collect per-requirement witnesses
-    req_predicates = {
-        'intro':   'intro_req',
-        'adv':     'advanced_req',
-        'elect':   'elective_req',
-        'sci':     'sci_subseq_req',
-        'ethics':  "passed('CSE 312')",
-        'writing': "passed('CSE 300')",
-        'calc':    'calc_req',
-        'alg':     'alg_req',
-        'sta':     'sta_req',
-    }
+    # per-req: truth + witness list
     checked = {}
-    for key, pred in req_predicates.items():
-        sat = query_truth(pred)
-        wit_out = run_cmd(f"findall(Id, wit({key}, Id), Ids), writeq(Ids), fail.")
-        courses = _parse_prolog_list(wit_out)
-        checked[key] = (sat, courses)
+    for name in REQS:
+        sat = truth(f'req({name})')
+        wits = parse_list(run(f"findall(Id, wit({name}, Id), Ids), writeq(Ids), fail."))
+        checked[name] = (sat, wits)
 
-    t123_out = run_cmd("credits_at_sb_cat123(T), write(credit_total(T)), fail.")
-    t23_out  = run_cmd("credits_at_sb_cat23(T), write(credit_total(T)), fail.")
-    t123_m = re.search(r'credit_total\(([\d.]+)\)', t123_out)
-    t23_m  = re.search(r'credit_total\(([\d.]+)\)', t23_out)
-    t123 = float(t123_m.group(1)) if t123_m else 0.0
-    t23  = float(t23_m.group(1))  if t23_m  else 0.0
-    checked['credits_at_SB'] = (t123 >= 24 and t23 >= 18,
-                                 [f'items123 = {int(t123)}', f'items23 = {int(t23)}'])
+    # credits totals -> witness for credits_at_SB
+    def credits(query):
+        m = re.search(r'credit_total\(([\d.]+)\)', run(query))
+        return float(m.group(1)) if m else 0.0
+    t123 = credits("items123_credits(T), write(credit_total(T)), fail.")
+    t23  = credits("items23_credits(T), write(credit_total(T)), fail.")
+    checked['credits_at_SB'] = _credits_at_sb(t123, t23)
     checked['degree'] = (ok, [])
 
     child.sendline('halt.')
     child.expect(pexpect.EOF)
 
     if return_timing:
-        return {'ok': ok, 'prolog_eval_s': prolog_eval_s, 'engine': 'xsb', 'checked': checked}
+        return {'ok': ok, 'prolog_eval_s': prolog_eval_s, 'engine': XSB, 'checked': checked}
     return checked
 
 
 def run_swi(taken, return_timing=False):
-    facts = (
-        f"taken('{t.id}', {t.credits}, '{t.grade}', ({t.when[0]},{t.when[1]}), '{_normalize_where(t.where)}')"
-        for t in taken
-    )
+    facts = [_taken_fact(t) for t in taken]
 
     import janus_swi as janus
     janus.query_once("style_check(-singleton)")
@@ -122,114 +103,40 @@ def run_swi(taken, return_timing=False):
     for f in facts:
         janus.query_once(f"assertz({f})")
 
-    reqs = {'intro':   'intro_req()',
-             'adv':    'advanced_req()',
-             'elect':  'elective_req()',
-             'sci':    'sci_subseq_req()',
-             'ethics': "passed('CSE 312')",
-             'writing':"passed('CSE 300')",
-             'calc':   'calc_req()',
-             'alg':    'alg_req()',
-             'sta':    'sta_req()'}
     checked = {}
-    for name, pred in reqs.items():
-        sat = janus.query_once(pred).get('truth', False)
+    for name in REQS:
+        sat = janus.query_once(f'req({name})').get('truth', False)
         courses = []
         with janus.query(f"wit({name}, Q)") as results:
             for d in results:
                 if 'Q' in d:
                     courses.append(d['Q'])
         checked[name] = (sat, courses)
-    checked['degree'] = (janus.query_once("all_requirements()").get('truth', False), [])
+    checked['degree'] = (janus.query_once("degree()").get('truth', False), [])
 
-    t123 = janus.query_once("credits_at_sb_cat123(T)")['T']
-    t23  = janus.query_once("credits_at_sb_cat23(T)")['T']
-    checked['credits_at_SB'] = (t123 >= 24 and t23 >= 18,
-                                 [f'items123 = {int(t123)}', f'items23 = {int(t23)}'])
+    t123 = janus.query_once("items123_credits(T)")['T']
+    t23  = janus.query_once("items23_credits(T)")['T']
+    checked['credits_at_SB'] = _credits_at_sb(t123, t23)
 
-    # benchmark how long it takes to add in all taken data and check all_requirements
-    janus.query_once("retractall(taken(_,_,_,_,_))")
-
-    # 1. Define a heavy Prolog goal
-    prolog_eval_s = float(janus.query_once("measure_run_swi(all_requirements, T).")['T'])
-    goal = "all_requirements()"
-
-    # 2. Get Start Time
-    start_stats = janus.query_once("statistics(cputime, T)")
-    start_time = start_stats['T']
-
-    # 3. Run the Goal
-
-    for f in facts:
-        janus.query_once(f"assertz({f})")
-    
-    janus.query_once(goal)
-
-    # 4. Get End Time
-    end_stats = janus.query_once("statistics(cputime, T)")
-    end_time = end_stats['T']
-
-    # 5. Calculate and print CPU time
-    cpu_time = end_time - start_time
+    prolog_eval_s = float(janus.query_once("measure_run_swi(degree, T).")['T'])
 
     if return_timing:
-        return {
-            'ok': checked.get('degree', (False, []))[0],
-            'prolog_eval_s': prolog_eval_s,
-            'engine': 'swi',
-            'checked': checked,
-        }
+        return {'ok': checked['degree'][0], 'prolog_eval_s': prolog_eval_s, 'engine': SWI, 'checked': checked}
     return checked
 
 
-# def collect_wit
-    
-
 if __name__ == '__main__':
-    import sys
     from collections import namedtuple
-    from pprint import pprint
-    FULL = {
-        'CSE 114', 'CSE 214', 'CSE 216', 'CSE 215', 'CSE 220',                  ## intro
-        'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',       ## adv
-        'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
-        'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',                  ## calc, sta, alg
-        'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
-        'CSE 300', 'CSE 312',                                                   ## writing, ethics
-    }
     Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
-    # taken = [
-    #     Taken('CSE 114', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 214', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 216', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 215', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 220', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('CSE 303', 3, 'A', (2024,2), 'SBU'),
-    #     # Taken('PHY 131', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('PHY 132', 3, 'A', (2024,2), 'SBU'),
-    #     Taken('PHY 133', 3, 'A', (2024,2), 'SBU'),
-    # ]
 
     some = {
-        'CSE 114', 'CSE 214', 'CSE 216', #'CSE 215', 'CSE 220',                  ## intro
+        'CSE 114', 'CSE 214', 'CSE 216',                                        ## intro (missing CSE 215, CSE 220)
         'CSE 303', 'CSE 310', 'CSE 316', 'CSE 320', 'CSE 373', 'CSE 416',       ## adv
-        # 'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
-        # 'MAT 131', 'MAT 132', 'AMS 210', 'AMS 301', 'AMS 310',                  ## calc, sta, alg
-        # 'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
-        # 'CSE 300', 'CSE 312',                                                   ## writing, ethics
+        'CSE 360', 'CSE 361', 'CSE 351', 'CSE 352', 'CSE 353', 'CSE 355',       ## elect
+        'PHY 131', 'PHY 132', 'PHY 133', 'AST 203',                             ## sci
     }
+    taken = [Taken(cid, 3, 'A', (2024, 2), 'SB') for cid in some]
 
-    taken = [Taken(cid, 3, 'A', (2024,2), 'SB') for cid in some]
-    # engine = sys.argv[1] if len(sys.argv) > 1 else 'xsb'
-
-    # taken = {Taken(id='CHE 133', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 360', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 216', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CSE 215', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 316', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 310', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 361', credits=3, grade='A', when=(2025, 2), where='SB'), Taken(id='CSE 416', credits=3, grade=None, when=(2025, 4), where='SB'), Taken(id='AMS 161', credits=0, grade='A', when=(2022, 4), where='AP'), Taken(id='PHY 131', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='CSE 373', credits=3, grade='A', when=(2024, 4), where='SB'), Taken(id='AMS 301', credits=3, grade='A', when=(2023, 2), where='SB'), Taken(id='CHE 132', credits=4, grade=None, when=(2025, 4), where='SB'), Taken(id='CSE 114', credits=3, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 214', credits=4, grade='A', when=(2022, 4), where='SB'), Taken(id='CSE 220', credits=4, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 303', credits=3, grade='A', when=(2023, 4), where='SB'), Taken(id='CSE 300', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='AMS 310', credits=3, grade='A', when=(2022, 4), where='SB'), Taken(id='CHE 131', credits=4, grade='A', when=(2022, 4), where='AP'), Taken(id='CSE 312', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CSE 320', credits=3, grade='A', when=(2024, 2), where='SB'), Taken(id='CHE 132', credits=4, grade='D', when=(2025, 2), where='SB'), Taken(id='AMS 210', credits=3, grade='A', when=(2022, 4), where='SB')}
-
-    try:
-        # print(run_prolog(taken, 'xsb', swi_with_witness=True, return_timing=True))
-        print(run_prolog(taken, 'swi', swi_with_witness=True, return_timing=True))
-        # pprint(run_prolog(taken, 'swi', swi_with_witness=True, return_timing=True))
-    except Exception as e:
-        print(repr(e))
-    # pprint(run_prolog(taken, 'xsb', return_timing=True))
-    # run_swi(taken)
+    engine = sys.argv[1] if len(sys.argv) > 1 else XSB
+    print(run_prolog(taken, engine, return_timing=True))
 

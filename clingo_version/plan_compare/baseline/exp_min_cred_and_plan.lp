@@ -2,10 +2,12 @@
 #include "../kb_allreq.lp".
 
 % baseline, same as in cse_req_clingo.lp
-{plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- offered_in_range(Cid), include(Cid).
-{plan(Cid, Sem) : offered(Cid, Sem)} <= 1 :- offered_in_range(Cid),
-											not taken_id(Cid), not exclude(Cid).
-{plan_credits(Cid, Cr) : credits(Cid, Cr)} == 1 :- plan(Cid, _).
+{plan_course(Cid)} :- offered_in_range(Cid), not taken_id(Cid), not exclude(Cid).
+plan_course(Cid) :- offered_in_range(Cid), include(Cid).
+
+{plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- plan_course(Cid).
+
+plan_credits(Cid, Cr) :- plan(Cid, _), Cr = #min { C : credits(Cid, C) }.
 
 taken(Cid, Cr, "None", Sem, "SB") :- plan(Cid, Sem), plan_credits(Cid, Cr).
 

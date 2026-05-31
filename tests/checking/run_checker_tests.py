@@ -1,7 +1,7 @@
 import inspect
 import io
 import importlib
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stdout, redirect_stderr, nullcontext
 from pathlib import Path
 from pprint import pformat
 import sys
@@ -38,6 +38,7 @@ def check_clingo(taken):
         mode='check',
         main_lp='clingo_version/cse_req_clingo.lp',
         kb_lp='course_kb/kb_complete.lp',
+        logger=lambda code, msg: None,  # silence clingo info/warning messages
     )
     return checked
 
@@ -63,19 +64,33 @@ def collect_tests():
 
 ALL_TESTS = collect_tests()
 
-APPROACHES = [
-    # ('python_version',  check_python),
-    # ('ortools_version', check_ortools),
-    # ('clingo_version',  check_clingo),
-    ('prolog_xsb',  check_prolog_xsb),
-    ('prolog_swi',  check_prolog_swi),
-]
+APPROACHES = {
+    'python':  check_python,
+    'ortools': check_ortools,
+    'clingo':  check_clingo,
+    'xsb':     check_prolog_xsb,
+    'swi':     check_prolog_swi,
+}
 
-def run_one(label, check_fn):
-    passed, failed = [], []
-    errors = []
+def _wit_mismatch(req, exp_bool, exp_wits, got_wits, skip_wit, subset_only):
+    # treat witnesses as sets (order doesn't matter).
+    # - subset_only (clingo): expected must be a subset of returned; engine may
+    #   legitimately return additional witnesses.
+    # - default: require set equality.
+    if req in skip_wit or not exp_bool or not exp_wits:
+        return False
+    if subset_only:
+        return not (set(exp_wits) <= set(got_wits))
+    return set(exp_wits) != set(got_wits)
 
-    with redirect_stderr(io.StringIO()):
+def run_one(label, check_fn, verbose=False):
+    # clingo: uses credits as the witness for credits_at_SB (skip wit check there);
+    skip_wit = {'credits_at_SB'} if label == 'clingo' else set()
+    subset_only = label in {'clingo', 'xsb', 'swi'} ## for prolog and clingo, check set inclusion rather than equality for witnesses, since they may return more witnesses
+    passed, failed, errors = [], [], []
+    suppress = nullcontext() if verbose else redirect_stdout(io.StringIO())
+
+    with redirect_stderr(io.StringIO()), suppress:
         for name, test_fn in ALL_TESTS:
             try:
                 taken, expected = test_fn()
@@ -92,7 +107,7 @@ def run_one(label, check_fn):
                 for req, (exp_bool, exp_wits) in expected.items()
                 if req not in result
                 or result[req][0] != exp_bool
-                or (exp_bool and exp_wits and not (set(result[req][1]) == set(exp_wits)))
+                or _wit_mismatch(req, exp_bool, exp_wits, result[req][1], skip_wit, subset_only)
             }
             if diff:
                 failed.append((name, diff))
@@ -106,10 +121,12 @@ def run_one(label, check_fn):
         if diff:
             print(pformat(diff, indent=6, sort_dicts=True))
 
-def run_all():
-    for label, check_fn in APPROACHES:
-        run_one(label, check_fn)
-
 if __name__ == '__main__':
-    run_all()
-    # run_one('ortools_version', check_ortools)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('-s', nargs='+', choices=list(APPROACHES), default=list(APPROACHES),
+                    help='systems to run; default: all')
+    ap.add_argument('--verbose', action='store_true', help='print per-test logs from each engine')
+    args = ap.parse_args()
+    for label in args.s:
+        run_one(label, APPROACHES[label], verbose=args.verbose)

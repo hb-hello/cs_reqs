@@ -5,7 +5,7 @@
 % {plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- offered_in_range(Cid), include(Cid).
 % {plan(Cid, Sem) : offered(Cid, Sem)} <= 1 :- offered_in_range(Cid),
 % 											not taken_id(Cid), not exclude(Cid).
-{ plan_course(Cid) } :- offered_in_range(Cid), not taken_id(Cid), not exclude(Cid).
+{plan_course(Cid)} :- offered_in_range(Cid), not taken_id(Cid), not exclude(Cid).
 plan_course(Cid) :- offered_in_range(Cid), include(Cid).
 
 {plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- plan_course(Cid).
@@ -18,10 +18,10 @@ taken(Cid, Cr, "None", Sem, "SB") :- plan(Cid, Sem), plan_credits(Cid, Cr).
 :- plan(_, Sem),
 	#sum { Cr, Cid : plan(Cid, Sem), plan_credits(Cid, Cr) } > sem_max_credits.
 
-max_sem_plan(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }.
+max_sem(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }.
 
 #minimize { 1@1, Cid : plan(Cid, _); 
-            Sem@2   : max_sem_plan(Sem)}.
+            Sem@2   : max_sem(Sem)}.
 
 %* compare with baseline, faster in all cases except sem_4 and sem_1 (similar in sem_1).
 python benchmarks/clingo_planning_bm.py -e baseline -t 300 -r 2

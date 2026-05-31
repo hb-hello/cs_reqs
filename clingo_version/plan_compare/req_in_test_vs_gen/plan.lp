@@ -8,6 +8,6 @@ taken(Cid, Cr, "None", Sem, "SB") :- plan(Cid, Sem), plan_credits(Cid, Cr).
 :- plan(_, Sem),
    #sum {Cr, Cid: plan(Cid, Sem), plan_credits(Cid, Cr)} > sem_max_credits.
 
-max_sem_plan(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }.
-#minimize { Sem@2 : max_sem_plan(Sem) }.
+max_sem(Sem) :- plan(_, Sem), Sem = #max { Sem1 : plan(_, Sem1) }.
+#minimize { Sem@2 : max_sem(Sem) }.
 #minimize { 1@1, Cid : plan(Cid, _) }.

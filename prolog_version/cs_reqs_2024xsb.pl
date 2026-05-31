@@ -1,6 +1,4 @@
-:- import memberchk/2 from basics.
-:- import length/2 from lists.
-:- import concat_atom/2 from string.
+:- import memberchk/2, member/2, length/2 from basics.
 :- dynamic taken/5.
 
 :- op(1150,fx,(discontiguous)).
@@ -10,20 +8,23 @@ atom_number(Atom, Num) :-
     atom_codes(Atom, Codes),
     number_codes(Num, Codes).
 
-aggregate_all(sum(Exp),Goal,Agg) :-
-    findall(Exp,Goal,ExpList),
-    sum_exp_list(ExpList,0,Agg).
+distinct(X,Goal) :-
+    findall(X,Goal,List),
+    sort(List,SList),
+    member(X,SList).
 
-sum_exp_list([],S,S).
-sum_exp_list([E|Es],S0,S) :-
-    S1 is E+S0,
-    sum_exp_list(Es,S1,S).
+aggregate_all(count, Goal, Counts) :-
+    findall(_, Goal, Results),
+    length(Results, Counts).
 
-upperdivCS(Id) :- 
-  concat_atom(['CSE ', CourseNumstr], Id),
-  atom_number(CourseNumstr, CourseNumInt),
-  CourseNumInt >= 300.
+aggregate_all(sum(Exp), Goal, Sum) :-
+    findall(Exp, Goal, Vs),
+    sum_acc(Vs, 0, Sum).
 
+sum_acc([], S, S).
+sum_acc([V|Vs], A, S) :- A1 is A + V, sum_acc(Vs, A1, S).
+
+:- import concat_atom/2 from string.
 %atom_concat(Prefix, Postfix, Full) :-
 %  concat_atom([Prefix, Postfix], Full).
 
@@ -35,4 +36,3 @@ measure_run_xsb(Goal) :-
   write('CPU time: '), write(T), writeln(' s').
 
 :- include('cs_reqs_2024swi.pl').
-

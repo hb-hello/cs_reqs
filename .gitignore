@@ -21,3 +21,4 @@ course_kb/unsup.txt
 .VSCodeCounter/
 benchmarks/clingo_bm_results/
 .nvim.lua
+*.xwam

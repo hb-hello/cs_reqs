@@ -168,8 +168,9 @@ def run(
     ctrl_args: list[str] = None,  ## extra control arguments, including constants (start_sem, end_sem, max_credits).
     on_model = None,        ## callback for model found
     timeout: int = 10 * 60,
+    logger = None,          ## clingo (code, msg) callback; pass lambda c,m: None to silence
 ):
-  ctrl = clingo.Control(ctrl_args)
+  ctrl = clingo.Control(ctrl_args, logger=logger) if logger else clingo.Control(ctrl_args)
 
   for f in lp_files:
     ctrl.load(f)
@@ -221,16 +222,17 @@ def run_clingo(
     kb_lp=KB_LP,        ## path to kb lp file
     timeout=10 * 60,    ## timeout in seconds
     heuristics:str = None,
+    logger = None,      ## clingo (code, msg) callback; pass lambda c,m: None to silence
     **inputs            ## taken_set, must_include, must_exclude, etc.
     ) -> ClingoResult:
   input_facts, ctrl_args = build_inputs(mode, heuristics, **inputs)
-  
+
   assert mode in {'check', 'plan'}, f"Invalid mode: {mode}"
   lp_files = [kb_lp, main_lp] if mode == 'plan' else [kb_lp, main_lp]
 
   ground_targets = [('base', []), (mode, [])]
   model_parser = ModelParser(**inputs)
-  
+
   clingo_stats = run(
     lp_files=lp_files,
     program_str=input_facts+heuristics if heuristics else input_facts,
@@ -238,6 +240,7 @@ def run_clingo(
     ctrl_args=ctrl_args,
     on_model=model_parser.on_model,
     timeout=timeout,
+    logger=logger,
   )
 
   return model_parser.finalize(clingo_stats)

@@ -1,6 +1,3 @@
-#include "../base.lp".
-#include "../kb_allreq.lp".
-
 % baseline, same as in cse_req_clingo.lp
 {plan(Cid, Sem) : offered(Cid, Sem)} == 1 :- offered_in_range(Cid), include(Cid).
 {plan(Cid, Sem) : offered(Cid, Sem)} <= 1 :- offered_in_range(Cid),

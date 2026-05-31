@@ -1,15 +1,13 @@
 import argparse
 import csv
 import json
+import re
 import subprocess
-from collections import defaultdict
 from pathlib import Path
-from statistics import mean
 from clingo_version.run_clingo import run_planner_benchmark, run_planner_with_heuristics
 from benchmarks.run_bm import plan_cases
 
-import matplotlib.pyplot as plt
-import numpy as np
+from benchmarks.plot_clingo_result import plot_metrics
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN_COMPARE_DIR = ROOT / 'clingo_version' / 'plan_compare'
@@ -139,62 +137,6 @@ def write_csv(rows, out_csv: Path):
     writer.writerows(rows)
 
 
-def plot_metrics(rows, out_dir: Path):
-  out_dir.mkdir(parents=True, exist_ok=True)
-  if not rows:
-    return
-
-  metric_keys = [
-    key for key in ROW_FIELDS
-    if key not in {'experiment', 'program', 'test', 'run'}
-  ]
-
-  buckets = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-  tests = set()
-  programs = set()
-  for row in rows:
-    test = row['test']
-    program = row['program']
-    tests.add(test)
-    programs.add(program)
-    for metric in metric_keys:
-      val = row.get(metric)
-      if val is None:
-        continue
-      try:
-        buckets[test][program][metric].append(float(val))
-      except (TypeError, ValueError):
-        continue
-
-  tests = sorted(tests)
-  programs = sorted(programs)
-  width = 0.8 / max(1, len(programs))
-  center = (len(programs) - 1) / 2
-
-  for metric_key in metric_keys:
-    x = np.arange(len(tests))
-    fig, ax = plt.subplots(figsize=(max(10, len(tests) * 0.75), 5))
-    for i, program in enumerate(programs):
-      y_vals = [
-        mean(buckets[test][program][metric_key])
-        if buckets[test][program][metric_key] else 0.0
-        for test in tests
-      ]
-      offset = (i - center) * width
-      ax.bar(x + offset, y_vals, width, label=program, alpha=0.9)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(tests, rotation=35, ha='right')
-    ax.set_ylabel(metric_key)
-    ax.set_title(metric_key)
-    ax.legend()
-    ax.grid(axis='y', alpha=0.3)
-
-    fig.tight_layout()
-    fig.savefig(out_dir / f'{metric_key}.png', dpi=150)
-    plt.close(fig)
-
-
 def main():
   parser = argparse.ArgumentParser(description='Benchmark plan_compare experiments and plot metrics.')
   parser.add_argument('--repeats', '-r', type=int, default=1, help='Number of runs per test/program')
@@ -220,8 +162,18 @@ def main():
     
   out_dir = RESULTS_ROOT / args.name
   if out_dir.exists():
-    print(f"Output directory {out_dir} already exists. Please choose a different name or remove it.")
-    return
+    base_name = args.name
+    counter = 1
+    match = re.match(r"^(.*?)-(\d+)$", args.name)
+    if match:
+      base_name = match.group(1)
+      counter = int(match.group(2)) + 1
+    while True:
+      candidate = RESULTS_ROOT / f"{base_name}-{counter}"
+      if not candidate.exists():
+        out_dir = candidate
+        break
+      counter += 1
 
   print("Selected programs:", ", ".join(sorted({lp.stem for lp in test_programs})))
   print("Results will be saved to:", out_dir)

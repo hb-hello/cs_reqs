@@ -1,29 +1,29 @@
 #_ code/comments not used, to leave out
 from pprint import pprint  ## for printing witness dictionary
-from collections import namedtuple
-#_ from typing import NamedTuple, Tuple
+from collections import namedtuple  ## for Taken
 from itertools import chain, combinations  ## for pow
 
+#_ make set s immutable, needed in Python for s to be itself a member of a set
+#_ def fset(s): return frozenset(s)
+
 ## power set of set s ## overriding python pow(base, exponents, modulus)
-def pow(s): ## take set s, return set of subsets of s
+def pow(s):  ## take set s, return set of subsets of s
   return set(frozenset(t) for t in chain.from_iterable( 
     combinations(s, r) for r in range(len(s) + 1) ))
 
-#_ from enum import Enum
-#_ Grade = Enum('Grade', 'A A- B+ B B- C+ C C- D+ D F I I/F NC NR P Q R S U W')
 
 ## https://www.stonybrook.edu/sb/bulletin/current-fall24/policiesandregulations/records_registration/grading_system.php
 
 # Grading and the Grading System
 
-def C_or_higher(grade): return grade in {'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'}
-
 # The term "letter grade" refers to A through F and in certain
-# circumstances to S grades.  ## what circumstance?
+# circumstances to S grades.  ### what circumstance?
 ## def letter_grade(grade): return 'A' <= grade <= 'F'  ## not need to be used
 
-# The following grades are not calculated into the g.p.a.: 
-# P, NC, NR, R, S, U, W.  ## Also I.
+#_ def is_C_or_up(grade): return grade in {'A','A-', 'B+','B','B-', 'C+','C'}
+def is_C_or_up(grade): return grade[0] <= 'C'
+#_ def is_D_or_up(grade): return grade[0] <= 'D'
+
 # For the purpose of determining grade point average, grades are assigned
 # point values as follows:
 grade_points = {
@@ -40,19 +40,16 @@ def GPA(weighted_grades):  ## list of (credits, grade) pairs
                      for (cr,g) in weighted_grades if g in grade_points)
   sum_of_weights = sum(cr for (cr,g) in weighted_grades if g in grade_points)
   return weighted_sum / sum_of_weights if sum_of_weights != 0 else 0
+# The following grades are not calculated into the g.p.a.: 
+# P, NC, NR, R, S, U, W.  ### Also I.
 
-## whether a course id is upper-division, i.e., 300-level or above
-def upper_division(course_id): return int(course_id[4:]) >= 300
+## whether course id cid is upper-division, i.e., 300-level or above
+def upper_division(cid): return int(cid[4:]) >= 300
 
 
 ## a course taken, e.g., Taken('CSE 114', 4, 'A', (2024, 2), 'SB')
+## where numbers 1-4 for winter, spring, summer, fall semesters in order
 Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
-#_ class CourseTaken(NamedTuple):
-#_   id: str  ## e.g., 'CSE 114'
-#_   credits: int
-#_   grade: str
-#_   when: Tuple[int,int]  ## e.g., 2024,2  ## 1-4 for winter,spring,summer,fall
-#_   where: str  ## e.g., 'SB'
 
 
 ## https://www.stonybrook.edu/sb/bulletin/current-fall24/academicprograms/cse/degreesandrequirements.php
@@ -65,11 +62,8 @@ Taken = namedtuple('Taken', ['id', 'credits', 'grade', 'when', 'where'])
 ## for any requirement item 1-10 met, the witness is the set of courses used;
 ## otherwise, any helpful information could be give as the witness.
 
-#_ ## for a witness object, with subject attribute for whether it is satisfied
-#_ class Witness: pass
-#_ w = Witness()
 
-## witness dictionary, mapping each witness string name to it witness value
+## witness dictionary, mapping each witness string name to its witness value
 w = dict()
 def wit(name, value):
   w[name] = value  ## record witness value for name; overwrite only in sci_req
@@ -81,31 +75,28 @@ def ss_wit(s1name, s2):
   s1 = globals()[s1name]
   return s1 <= s2 and wit(s1name, True)
 
-#_ ## add witness set for set with at least k elements
-#_ def count_ge(s, k, sname):
-#_   return len(s) >= k and wit(sname, s)
-
 ## return witness if requirement item is in withness dictionary, otherwise
 ## return witness of subjects for subjects in the item; only called on item
 ## so that the return value is a set supporting sorted on elements.
-def get_wit(item): ## string name for the requirement item 
-  return (w[item] if item in w else
-    #_ [subj for subj in globals()[item] if subj in w] #@ only subj
+def get_wit(item):  ## string name for the requirement item 
+  return (w[item] if item in w else  ## elect,sci, ethics,writing, credits_at_SB
+    #_ [subj for subj in globals()[item] if subj in w]  ## only subj
     #_ [globals()[subj] for subj in globals()[item] if subj in w] ## crs by subj
-    ### todo: globals()[item] on ethics/writing: set of crs, not subj, luck ok:(
     {c for subj in globals()[item] if subj in w for c in globals()[subj]}
   )
 
-## return set of courses in string-name subjects in requirement item
-def courses(item): return {c for subj in item for c in globals()[subj]}
+
+## return set of courses in string-name subjects in requirement item,
+## for item being one of intro, adv, calc, alg, sta
+def cids(item): return {c for subj in item for c in globals()[subj]}
 
 
 ## Each _req function below returns whether a requirement in 1-10 is satisfied.
 ## taken/taken_ids is the set of courses/ids taken (req 7-8);
-## passed/passed_ids is those with of C or higher (requirements 1-6 and 9-10).
+## passed/passed_ids is those with C or higher (requirements 1-6 and 9-10).
 
 # 1. Required Introductory Courses
-prog = {'CSE 114', 'CSE 214', 'CSE 216'}  ## todo: change to tuple?
+prog = {'CSE 114', 'CSE 214', 'CSE 216'}  ## todo: change to tuple to be in set?
 prog2 = {'CSE 160', 'CSE 161', 'CSE 260', 'CSE 261'}  ## Honors
 dmath = {'CSE 215'}
 dmath2 = {'CSE 150'}  # Honors
@@ -138,16 +129,19 @@ def adv_req(passed_ids):
 # designated as non-technical in the course description (such as CSE 301).
 elect_exclude = {'CSE 475', 'CSE 495', 'CSE 300', 'CSE 301', 'CSE 312'}
 
-def elect_courses(passed):
-  return {c.id for c in passed if c.id[:3] == 'CSE' and upper_division(c.id)
-          and c.credits >= 3 and c.id not in courses(adv) | elect_exclude}
+def elect_cids(courses):  ## upper-division technical CSE, each with >=3 credits
+  return {c.id for c in courses if c.id[:3] == 'CSE' and upper_division(c.id)
+          and c.credits >= 3 and c.id not in cids(adv) | elect_exclude}
 
 def elect_req(passed):
-  s = elect_courses(passed)
+  s = elect_cids(passed)
   wit('elect', s if len(s) >= 4 else s|{'need 4 total'})
   return len(s) >= 4
 
 # 4. AMS 151, AMS 161 Applied Calculus I, II
+# Note: The following alternate calculus course sequences may be substituted 
+# for AMS 151, AMS 161 in major requirements or prerequisites: 
+# MAT 125, MAT 126, MAT 127, or MAT 131, MAT 132. 
 ### todo: 
 # Equivalency for MAT courses achieved through the Mathematics
 # Placement Examination is accepted to meet MAT course requirements.
@@ -170,9 +164,8 @@ def alg_req(passed_ids):
 
 # 6. Both of the following
 fmath =  {'AMS 301'}
-sta1 = {'AMS 310'}
-sta2 = {'AMS 311'}
-sta = {'fmath', 'sta', 'sta2'}
+sta1 = {'AMS 310'}; sta2 = {'AMS 311'}
+sta = {'fmath', 'sta1', 'sta2'}
 
 def sta_req(passed_ids):
   return (ss_wit('fmath', passed_ids) and 
@@ -182,10 +175,10 @@ def sta_req(passed_ids):
 # combinations:
 bio = {'BIO 201', 'BIO 204'}; bio2 = {'BIO 202', 'BIO 204'}
 bio3 = {'BIO 203', 'BIO 204'}
-che = {'CHE 131', 'CHE 133'}; che2 ={'CHE 152', 'CHE 154'}
-phy = {'PHY 126', 'PHY 133'}
-phy2 = {'PHY 131', 'PHY 133'}; phy3 = {'PHY 141', 'PHY 133'}
-sci_combs = [bio, bio2, bio3, che, che2, phy, phy2, phy3]  ## list/tuple/...
+che = {'CHE 131', 'CHE 133'}; che2 = {'CHE 152', 'CHE 154'}
+phy = {'PHY 126', 'PHY 133'}; phy2 = {'PHY 131', 'PHY 133'}
+phy3 = {'PHY 141', 'PHY 133'}
+sci_combs = [bio, bio2, bio3, che, che2, phy, phy2, phy3]  ## set'd be better
 
 ## subsumed by sci_req(taken) below
 ## def sci_comb_req(taken_ids):
@@ -201,23 +194,23 @@ sci_more = {'AST 203', 'AST 205',
             'PHY 125', 'PHY 127', 'PHY 132', 'PHY 134', 'PHY 142', 
             'PHY 251', 'PHY 252'} 
 
-def sci_courses(taken):
-  return {c for c in taken if c.id in set().union(*sci_combs) | sci_more}
+def sci_courses(courses):
+  return {c for c in courses if c.id in set().union(*sci_combs) | sci_more}
 
 #_ not sufficient to be correct:
-#_ def sci_cred_req(taken): return sum(c.credits for c in sci_courses(taken))>=9
+#_ def sci_cr_req(taken): return sum(c.credits for c in sci_courses(taken)) >= 9
 
-def sci_req(taken): ### subsumes sci_comb_req
-  taken_combs = [{c for c in taken if c.id in comb} 
+def sci_req(taken):  ## subsumes sci_comb_req
+  combs_taken = [{c for c in taken if c.id in comb} 
                  for comb in sci_combs if comb <= {c.id for c in taken}]
-  #_ some(t in taken_combs, s in pow({c for c in taken if c.id in sci_more}),
-  #_      has= t|s <= taken and sum(c.credits for c in t|s) >= 9 and 
+  #_ some(t in combs_taken, s in pow(sci_courses(taken) - t), has=
+  #_      sumof(c.credits, c in t|s) >= 9 and
   #_      GPA([(cr, g) for (_, cr, g, _, _) in t|s]) >= 2.0)
   wit('sci', {'need a lec/lab combo and more, with >=9 credits and >=2.0 GPA'})
-  return any(t|s <= taken and sum(c.credits for c in t|s) >= 9 and
+  return any(sum(c.credits for c in t|s) >= 9 and
              GPA([(cr, g) for (_, cr, g, _, _) in t|s]) >= 2.0
              and wit('sci', {c.id for c in t|s})
-             for t in taken_combs for s in pow(sci_courses(taken)-t))
+             for t in combs_taken for s in pow(sci_courses(taken) - t))
 
 # 9. Professional Ethics
 ethics = {'CSE 312'}
@@ -250,9 +243,9 @@ def writing_req(passed_ids):
 def credits_at_SB_req(taken):
 #_  item1_credits = ...
   items123_credits = sum(c.credits for c in taken if c.where == 'SB'
-       if c.id in courses(intro) | courses(adv) | elect_courses(taken))
+       if c.id in cids(intro) | cids(adv) | elect_cids(taken))
   items23_credits = sum(c.credits for c in taken if c.where == 'SB'
-                        if c.id in courses(adv) | elect_courses(taken))
+                        if c.id in cids(adv) | elect_cids(taken))
   wit('credits_at_SB', {'items123 = '+str(items123_credits),
                         'items23 = '+str(items23_credits)})
   return (items123_credits >= 24 and items23_credits >= 18)
@@ -272,21 +265,23 @@ def credits_at_SB_req(taken):
 ## whether the taken courses satisfy all requirements for BS major in CSE
 def degree_reqs(taken):
   taken_ids = {c.id for c in taken}
-  passed = {c for c in taken if C_or_higher(c.grade)}
+  passed = {c for c in taken if is_C_or_up(c.grade)}  ## used in items 1-6,9-10
+#_            if c.id in cids(intro) | cids(adv) | elect_cids(taken) | 
+#_            cids(calc) | cids(alg) | cids(sta) | ethics | writing }
   passed_ids = {c.id for c in passed}
-  checks = (intro_req(passed_ids), adv_req(passed_ids), elect_req(passed),
+  checks = [intro_req(passed_ids), adv_req(passed_ids), elect_req(passed),
             calc_req(passed_ids), alg_req(passed_ids), sta_req(passed_ids),
             sci_req(taken), ethics_req(passed_ids), writing_req(passed_ids),
-            credits_at_SB_req(taken))
-  items = ('intro', 'adv', 'elect', 'calc', 'alg', 'sta', 
-           'sci', 'ethics', 'writing', 'credits_at_SB')
+            credits_at_SB_req(taken)]
+  items = ['intro', 'adv', 'elect', 'calc', 'alg', 'sta', 
+           'sci', 'ethics', 'writing', 'credits_at_SB']
   checked = {item : (check, sorted(get_wit(item)))
              for item, check in zip(items,checks)}
   checked['degree'] = all(checks), []
   # print('---- checked, from running degree_reqs:')
   # pprint(checked)
   # print('----\n'+ '\n'.join(item + '\t ' + str(check) + ' ' + str(wit)
-  #                 for item, (check, wit) in checked.items()))
+  #                           for item, (check, wit) in checked.items()))
   return checked
 
 def test():
@@ -324,6 +319,6 @@ def run_tests():
       w = dict()
       print('--------', name, 'started:')
       testing(func)
-    print('--------', name, 'passed !!!')
+      print('--------', name, 'passed !!!')
 
 run_tests()
