@@ -147,11 +147,11 @@ def plan_courses(
         if cid in catalog:
             m[Cr(cid)] = h.credits
 
-    to_plan_from = catalog.keys() - (taken_ids | must_exclude)
-    to_plan_from &= course_offered_terms.keys()
+    to_plan = catalog.keys() - (taken_ids | must_exclude)
+    to_plan &= course_offered_terms.keys()
 
     # courses not in taken_ids and not plannable (not offered in any term) cannot be taken
-    for cid in catalog.keys() - to_plan_from - taken_ids:
+    for cid in catalog.keys() - to_plan - taken_ids:
         m[TakenId(cid)] = 0
 
     for cid, h in history.items():
@@ -159,7 +159,7 @@ def plan_courses(
         m[TakenId(cid)] = 1
         m[Sem(cid)] = sem_to_int(h.when, base)
 
-    for cid in to_plan_from | (must_exclude - taken_ids):
+    for cid in to_plan | (must_exclude - taken_ids):
         # grade is assigned iff course is taken (needed in both check/plan modes)
         m.iff(TakenId(cid), Grade(cid))
 
@@ -168,7 +168,7 @@ def plan_courses(
         # pre-compute offered semesters for each course
         offered_sems = {
             cid: [sem for sem in range(start_sem, end_sem + 1) if all_sems[sem - 1][1] in course_offered_terms[cid]]
-            for cid in to_plan_from & course_offered_terms.keys()
+            for cid in to_plan & course_offered_terms.keys()
         }
 
         for cid, sems in offered_sems.items():
@@ -176,7 +176,7 @@ def plan_courses(
             m.iff(TakenId(cid), Sem(cid))
 
         # can't take the course if it is not offered in any of the semesters
-        for cid in to_plan_from - offered_sems.keys():
+        for cid in to_plan - offered_sems.keys():
             m[TakenId(cid)] = 0
 
         # hardcoded must_exclude courses to zero
@@ -205,7 +205,7 @@ def plan_courses(
     m[B_plus_or_higher] = b_plus_or_higher
     m[D_or_higher] = d_or_higher
 
-    for cid in to_plan_from: m.iff(TakenId(cid), Cr(cid))
+    for cid in to_plan: m.iff(TakenId(cid), Cr(cid))
 
     reqs = {}
     # 1. Required Introductory Courses
@@ -370,11 +370,11 @@ def plan_courses(
     grades = {h.id: h.grade for h in taken}
 
     if check:
-        for cid in to_plan_from:  # ensure the solver can't plan any more courses
+        for cid in to_plan:  # ensure the solver can't plan any more courses
             m[TakenId(cid)] = 0
     else:
         # prereqs / coreqs / antireqs via allreqs
-        for cid in to_plan_from:
+        for cid in to_plan:
             if not catalog[cid].allreqs:
                 continue
             sat, cid_cond = m.reify_new(catalog[cid].allreqs, negated=(AntiReq,))
@@ -394,13 +394,13 @@ def plan_courses(
             if sem_credits: m.require(sum(sem_credits) <= CREDIT_LIMIT)
         
         # calculate total number of new courses taken
-        new_courses = sum(m[TakenId(cid)] for cid in to_plan_from)
+        new_courses = sum(m[TakenId(cid)] for cid in to_plan)
 
         # to minimize the grades possible
-        grade_sum = sum(m.apply(Grade(cid), points) for cid in to_plan_from)
+        grade_sum = sum(m.apply(Grade(cid), points) for cid in to_plan)
 
         # to minimize the number of semesters needed to graduate
-        last_sem = m.max_of(m[Sem(cid)] for cid in to_plan_from)
+        last_sem = m.max_of(m[Sem(cid)] for cid in to_plan)
 
         # minimizes the expressions in order of priority given
         m.minimize([last_sem, new_courses, grade_sum])
@@ -419,7 +419,7 @@ def plan_courses(
 
     planned = {}
     if not check:
-        planned = {cid: all_sems[sol.value(Sem(cid)) - 1] for cid in to_plan_from if sol.value(TakenId(cid)) == 1}
+        planned = {cid: all_sems[sol.value(Sem(cid)) - 1] for cid in to_plan if sol.value(TakenId(cid)) == 1}
         if debug_print:
             print(f"Status: {sol.status} — {len(set(planned.values()))} more semester(s)\n")
 
