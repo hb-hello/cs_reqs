@@ -221,6 +221,16 @@ class ORModel:
         ivars = [self.model.new_fixed_size_interval_var(self[slot], 1, f"ci_{i}") for i, (slot, _) in enumerate(pairs)]
         self.model.add_cumulative(ivars, [cost for _, cost in pairs], capacity)
 
+    def product(self, a, b):
+        if isinstance(a, int):
+            return a * b
+        if isinstance(b, int):
+            return b * a
+        hi = self._upper_bound(a) * self._upper_bound(b)
+        result = self.model.new_int_var(0, hi, f"prod_{id(a)}_{id(b)}")
+        self.model.add_multiplication_equality(result, [a, b])
+        return result
+
     def require(self, expr, name=None):
         if name is None:
             self._req_counter += 1
@@ -478,22 +488,34 @@ class ORModel:
             scale *= 100_000
         self.model.maximize(expr)
 
+    def _expr_bounds(self, expr):
+        if isinstance(expr, int):
+            return expr, expr
+        if isinstance(expr, cp_model.IntVar):
+            d = list(expr.proto.domain)
+            return d[0], d[-1]
+        # IntAffine: coeff * var + offset
+        d = list(expr.expression.proto.domain)
+        lo = d[0] * expr.coefficient + expr.offset
+        hi = d[-1] * expr.coefficient + expr.offset
+        return (lo, hi) if expr.coefficient >= 0 else (hi, lo)
+
     # map a domain predicate through func via element lookup; iff= holds only when bv is true
     def apply(self, pred, func, iff=None):
+        if isinstance(func, dict):
+            func = func.__getitem__
         declared_values = self._declared_values(pred)
         domain_values = self._effective_values(pred)
         declared_set = set(declared_values)
         mapped_values = [func(v) if v in declared_set else 0 for v in domain_values]
-        mapped = self.model.new_int_var(min(mapped_values), max(mapped_values), f"apply_{pred}_mapped")
+        bounds = [self._expr_bounds(v) for v in mapped_values]
+        lo, hi = min(b[0] for b in bounds), max(b[1] for b in bounds)
+        mapped = self.model.new_int_var(lo, hi, f"apply_{pred}_mapped")
         for v, out in zip(domain_values, mapped_values):
             self.model.add(mapped == out).only_enforce_if(self.eq(pred, v))
         if iff is not None:
             bv = self._var(iff)
-            result = self.model.new_int_var(
-                min(0, min(mapped_values)),
-                max(0, max(mapped_values)),
-                f"apply_{pred}",
-            )
+            result = self.model.new_int_var(min(0, lo), max(0, hi), f"apply_{pred}")
             self.model.add(result == mapped).only_enforce_if(bv)
             self.model.add(result == 0).only_enforce_if(bv.negated())
             return result

@@ -34,6 +34,12 @@ from course_kb.course_kb import (
 )
 from course_kb.build_kb import ASTDecoder
 
+# ── Grade encoding ─────────────────────────────────────────────
+GRADES = sorted(grade_points.keys(), key=grade_points.get)
+int_grade = {grade: i for i, grade in enumerate(GRADES, start=1)}
+grade_of_int = {i: grade for grade, i in int_grade.items()}
+points = {i: int(grade_points[g] * 100) for g, i in int_grade.items()}
+
 # ── Course record & catalog ────────────────────────────────────
 
 
@@ -236,7 +242,7 @@ def semester_range(start, end_or_count=MAX_SEMS_ALLOWED):
 # credits is either a single int or a (min_credits, max_credits) list,
 # in the latter case we take the max_credits
 def _parse_credits(credits):
-    return credits[-1] if isinstance(credits, list) else credits
+    return (credits[0], credits[-1]) if isinstance(credits, list) else credits
 
 
 def _load_kb(path):

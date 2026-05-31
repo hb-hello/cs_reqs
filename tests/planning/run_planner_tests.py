@@ -94,8 +94,9 @@ def run_ortools(history, attrs=None):
         return {'degree': (False, [])}, set(), {}, {}, False, ['INFEASIBLE']
 
     # OR-Tools credits are the catalog credits for planned courses.
+    # For variable-credit courses, use the max of the range.
     from ortools_version.planner import CATALOG
-    plan_credits = {cid: CATALOG[cid].credits for cid in schedule}
+    plan_credits = {cid: (max(CATALOG[cid].credits) if isinstance(CATALOG[cid].credits, tuple) else CATALOG[cid].credits) for cid in schedule}
 
     checker_result, checker_ok = validate_with_checker(history, schedule, planned_credits=plan_credits)
     failed = [k for k, v in checker_result.items() if not v[0]]

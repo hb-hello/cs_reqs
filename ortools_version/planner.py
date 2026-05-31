@@ -20,6 +20,10 @@ from .course_catalog import (
     get_reqs,
     Requirement,
     grade_points,
+    GRADES,
+    int_grade,
+    grade_of_int,
+    points,
     semester_range,
     MAX_SEMS_ALLOWED,
     CREDIT_LIMIT,
@@ -34,10 +38,6 @@ from .course_catalog import (
     Coreq,
     AntiReq,
 )
-
-GRADES = sorted(grade_points.keys(), key=grade_points.get)
-int_grade = {grade: i for i, grade in enumerate(GRADES, start=1)}
-grade_of_int = {i: grade for grade, i in int_grade.items()}
 
 
 ## whether a class is upper-division, i.e., 300-level or above
@@ -57,15 +57,19 @@ class ReqWithDomain(Requirement):
         return self._domain if self._domain is not None else self.default_domain
 
 
+## predicate to represent grade that student has achieved in a course
 class Sem(ReqWithDomain):
-    pass  ## predicate to represent grade that student has achieved in a course
+    pass
 
 
+## predicate to represent grade that student has achieved in a course
 class Grade(ReqWithDomain):
-    pass  ## predicate to represent grade that student has achieved in a course
+    pass
 
 
-# class SciSubset(Requirement): pass # to track the sci subset
+## credits IntVar for variable-credit courses
+class Cr(ReqWithDomain):
+    pass
 
 
 # pre-process raw taken_ids: one entry per course, best known grade, ignoring in-progress (None) entries
@@ -117,8 +121,7 @@ def plan_courses(
     m = ORModel(ignore=(UnsupportedRequirement, Permission), plan=not check)
 
     # set up student requirements in the model
-    for student_req in student_reqs:
-        m[student_req] = 1
+    for student_req in student_reqs: m[student_req] = 1
 
     course_offered_terms = course_offered_terms or COURSE_OFFERED_TERMS
     catalog = course_catalog or CATALOG
@@ -130,18 +133,19 @@ def plan_courses(
     all_sems = list(semester_range(base, end_sem))
     Sem.default_domain = [i for i, _ in enumerate(all_sems, start=1)]
     start_sem = max(start_sem, base)
-    sems_to_plan = list(semester_range(start_sem, end_sem))
-    if end_sem is None and sems_to_plan:
-        end_sem = sems_to_plan[-1]
-
-    def int_sem(sem):
-        return sem_to_int(sem, base)
-
-    def decode_sem(encoded):
-        return all_sems[encoded - 1]
+    if end_sem is None: end_sem = list(semester_range(start_sem, end_sem))[-1]
+    start_sem, end_sem = sem_to_int(start_sem, base), sem_to_int(end_sem, base)
 
     history = {h.id: h for h in taken}
     taken_ids = {h.id for h in taken}
+
+    for cid, course in catalog.items():
+        cr = history[cid].credits if cid in history else course.credits
+        lo, hi = cr if isinstance(cr, tuple) else (cr, cr)
+        m.set_domain(Cr(cid), list(range(lo, hi + 1)))
+    for cid, h in history.items():
+        if cid in catalog:
+            m[Cr(cid)] = h.credits
 
     to_plan_from = catalog.keys() - (taken_ids | must_exclude)
     to_plan_from &= course_offered_terms.keys()
@@ -153,7 +157,7 @@ def plan_courses(
     for cid, h in history.items():
         m[Grade(cid)] = int_grade[h.grade]
         m[TakenId(cid)] = 1
-        m[Sem(cid)] = int_sem(h.when)
+        m[Sem(cid)] = sem_to_int(h.when, base)
 
     for cid in to_plan_from | (must_exclude - taken_ids):
         # grade is assigned iff course is taken (needed in both check/plan modes)
@@ -163,7 +167,7 @@ def plan_courses(
     if not check:
         # pre-compute offered semesters for each course
         offered_sems = {
-            cid: [int_sem(sem) for sem in semester_range(start_sem, end_sem) if sem[1] in course_offered_terms[cid]]
+            cid: [sem for sem in range(start_sem, end_sem + 1) if all_sems[sem - 1][1] in course_offered_terms[cid]]
             for cid in to_plan_from & course_offered_terms.keys()
         }
 
@@ -201,8 +205,7 @@ def plan_courses(
     m[B_plus_or_higher] = b_plus_or_higher
     m[D_or_higher] = d_or_higher
 
-    # use actual credits earned from taken_ids if available, else for future courses get credits from the catalog
-    credits = lambda c: history[c].credits if c in history else catalog[c].credits
+    for cid in to_plan_from: m.iff(TakenId(cid), Cr(cid))
 
     reqs = {}
     # 1. Required Introductory Courses
@@ -220,7 +223,6 @@ def plan_courses(
             Or(And(*map(C_or_higher, dmath)), And(*map(C_or_higher, dmath2))),
             And(*map(C_or_higher, sys)),
         ),
-        # "intro",
     )
 
     # 2. Required Advanced Courses
@@ -247,10 +249,13 @@ def plan_courses(
     elect_exclude = {"CSE 475", "CSE 495", "CSE 300", "CSE 301", "CSE 312"}
 
     ## list of eligible electives
+    def cat_credits(c):
+        cr = catalog[c].credits
+        return cr[-1] if isinstance(cr, tuple) else cr
+
     electives = {
-        c
-        for c in catalog
-        if c[:3] == "CSE" and upper_division(c) and credits(c) >= 3 and c not in adv_courses | elect_exclude
+        c for c in catalog
+        if c[:3] == "CSE" and upper_division(c) and cat_credits(c) >= 3 and c not in adv_courses | elect_exclude
     }
 
     # reqs["elect"] = or_model.at_least(sum(or_model.resolve(PassedId(c)) for c in electives), 4)
@@ -323,11 +328,14 @@ def plan_courses(
     sci_ids = sorted(set().union(*sci_combs) | sci_more)
 
     sci_grade_points = sum(
-        m.apply(Grade(cid), lambda g, cr=credits(cid): int(grade_points[grade_of_int[g]] * 100) * cr, iff=TakenId(cid))
+        m.product(
+            m.apply(Grade(cid), points),
+            m[Cr(cid)],
+        )
         for cid in sci_ids
     )
     # unique_credit_total: counts each sci course once (for 9-credit min and GPA denominator)
-    sci_credits = sum(m[TakenId(cid)] * credits(cid) for cid in sci_ids)
+    sci_credits = sum(m.product(m[TakenId(cid)], m[Cr(cid)]) for cid in sci_ids)
 
     # The grade point average for the courses in Requirements 7 and 8 must be
     # at least 2.00.
@@ -354,8 +362,8 @@ def plan_courses(
     items23_courses = (adv_courses | electives) - transfer_ids
     reqs["credits_at_SB"] = m.require(
         And(
-            sum(m[C_or_higher(c)] * credits(c) for c in items123_courses) >= 24,
-            sum(m[C_or_higher(c)] * credits(c) for c in items23_courses) >= 18,
+            sum(m.product(m[C_or_higher(c)], m[Cr(c)]) for c in items123_courses) >= 24,
+            sum(m.product(m[C_or_higher(c)], m[Cr(c)]) for c in items23_courses) >= 18,
         )
     )
 
@@ -365,30 +373,6 @@ def plan_courses(
         for cid in to_plan_from:  # ensure the solver can't plan any more courses
             m[TakenId(cid)] = 0
     else:
-        # prereqs / coreqs / antireqs
-        # for cid in to_plan_from:
-        #     if catalog[cid].prereq:
-        #         prereq, leaves = m.reify(catalog[cid].prereq, with_leaves=True)
-        #         m.implies(TakenId(cid), prereq)
-        #         for leaf, chosen in leaves.items():
-        #             if isinstance(leaf, Coregister): m.implies(chosen, m[Sem(cid_from(leaf))] == m[Sem(cid)])
-        #             else: m.implies(chosen, m[Sem(cid_from(leaf))] < m[Sem(cid)])
-        #     if catalog[cid].coreq:
-        #         coreq, leaves = m.reify(catalog[cid].coreq, with_leaves=True)
-        #         m.implies(TakenId(cid), coreq)
-        #         for leaf, chosen in leaves.items():
-        #             m.implies(chosen, m[Sem(cid_from(leaf))] == m[Sem(cid)])
-        #     if catalog[cid].pre_or_coreq:
-        #         pre_or_coreq, leaves = m.reify(catalog[cid].pre_or_coreq, with_leaves=True)
-        #         m.implies(TakenId(cid), pre_or_coreq)
-        #         for leaf, chosen in leaves.items():
-        #             m.implies(chosen, m[Sem(cid_from(leaf))] <= m[Sem(cid)])
-        #     if catalog[cid].anti_req:
-        #         anti_req, leaves = m.reify(catalog[cid].anti_req, with_leaves=True)
-        #         m.implies(TakenId(cid), anti_req)
-        #         for leaf, chosen in leaves.items():
-        #             m.implies(chosen, m[Sem(cid_from(leaf))] < m[Sem(cid)])
-
         # prereqs / coreqs / antireqs via allreqs
         for cid in to_plan_from:
             if not catalog[cid].allreqs:
@@ -405,24 +389,15 @@ def plan_courses(
 
         # enforce credit limit per semester using the same encoded semester domain
         # to avoid comparing against semesters that are outside Semester.domain.
-        # for sem in range(int_sem(start_sem), int_sem(end_sem) + 1):
-        #     sem_credits = [credits(cid) * m.eq(Sem(cid), sem) for cid in to_plan_from]
-        #     if sem_credits:
-        #         m.require(sum(sem_credits) <= CREDIT_LIMIT)
-        m.constrain_slots(
-            slots=(Sem(cid) for cid in to_plan_from),
-            costs=(credits(cid) * m[TakenId(cid)] for cid in to_plan_from),
-            capacity=CREDIT_LIMIT,
-        )
-
+        for sem in range(start_sem, end_sem + 1):
+            sem_credits = [m.product(m[Cr(cid)], m.eq(Sem(cid), sem)) for cid in offered_sems if sem in offered_sems[cid]]
+            if sem_credits: m.require(sum(sem_credits) <= CREDIT_LIMIT)
+        
         # calculate total number of new courses taken
         new_courses = sum(m[TakenId(cid)] for cid in to_plan_from)
 
         # to minimize the grades possible
-        grade_sum = sum(
-            m.apply(Grade(cid), lambda g: int(grade_points[grade_of_int[g]] * 100), iff=TakenId(cid))
-            for cid in to_plan_from
-        )
+        grade_sum = sum(m.apply(Grade(cid), points) for cid in to_plan_from)
 
         # to minimize the number of semesters needed to graduate
         last_sem = m.max_of(m[Sem(cid)] for cid in to_plan_from)
@@ -432,8 +407,7 @@ def plan_courses(
 
     # run the solver
     sol = m.solve()
-    if debug_print:
-        sol.print_metrics()
+    if debug_print: sol.print_metrics()
 
     if sol.obj is None:
         print("No solution:", sol.status)
@@ -445,7 +419,7 @@ def plan_courses(
 
     planned = {}
     if not check:
-        planned = {cid: decode_sem(sol.value(Sem(cid))) for cid in to_plan_from if sol.value(TakenId(cid)) == 1}
+        planned = {cid: all_sems[sol.value(Sem(cid)) - 1] for cid in to_plan_from if sol.value(TakenId(cid)) == 1}
         if debug_print:
             print(f"Status: {sol.status} — {len(set(planned.values()))} more semester(s)\n")
 
@@ -457,8 +431,9 @@ def plan_courses(
     checked = {
         name: (bool(sol.value(v)), sorted({cid_from(leaf) for leaf in sol.chosen(v)})) for name, v in reqs.items()
     }
-    items123_cr = sum(credits(c) for c in items123_courses if sol.value(c_or_higher(c)))
-    items23_cr = sum(credits(c) for c in items23_courses if sol.value(c_or_higher(c)))
+
+    items123_cr = sum(sol.value(m[Cr(c)]) for c in items123_courses if sol.value(c_or_higher(c)))
+    items23_cr = sum(sol.value(m[Cr(c)]) for c in items23_courses if sol.value(c_or_higher(c)))
     checked["credits_at_SB"] = {f"items123 = {items123_cr}", f"items23 = {items23_cr}"}
 
     checked["degree"] = (all(v for v, _ in checked.values()), [])
@@ -468,7 +443,7 @@ def plan_courses(
         additional = sorted(c for c in planned if c not in witnessed)
         checked["additional"] = (True, additional)
         if debug_print:
-            print_schedule(planned, grades, credits)
+            print_schedule(planned, grades, lambda c: sol.value(m[Cr(c)]))
 
     if debug_print:
         pprint(checked)
@@ -476,8 +451,7 @@ def plan_courses(
     return checked, planned, sol.metrics()
 
 
-def fmt(cid, grades):
-    return f"{cid} ({grades[cid]})" if cid in grades else cid
+def fmt(cid, grades): return f"{cid} ({grades[cid]})" if cid in grades else cid
 
 
 if __name__ == "__main__":
