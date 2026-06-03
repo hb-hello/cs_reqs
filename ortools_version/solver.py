@@ -231,7 +231,7 @@ class ORModel:
         self.model.add_multiplication_equality(result, [a, b])
         return result
 
-    def require(self, expr, name=None):
+    def add(self, expr, name=None):
         if name is None:
             self._req_counter += 1
             name = f"_req_{self._req_counter}"
@@ -331,7 +331,7 @@ class ORModel:
 
         return expr, leaves
 
-    def reify_new(self, expr, path_classes=None, leaf_map=None, negated=()):
+    def traverse(self, expr, path_classes=None, leaf_map=None, negated=()):
         if leaf_map is None:
             leaf_map = {}
         if path_classes is None:
@@ -343,7 +343,7 @@ class ORModel:
             return expr, leaf_map
 
         if isinstance(expr, negated):
-            child_v, leaf_map = self.reify_new(expr.arguments[0], path_classes | {type(expr)}, leaf_map, negated)
+            child_v, leaf_map = self.traverse(expr.arguments[0], path_classes | {type(expr)}, leaf_map, negated)
             return (child_v.negated() if child_v is not None else None), leaf_map
 
         if isinstance(expr, Requirement):
@@ -357,7 +357,7 @@ class ORModel:
                     self.model.add(self[expr] > 0).only_enforce_if(sel)
                     leaf_map[key] = sel
                 return leaf_map[key], leaf_map
-            return self.reify_new(inner, new_classes, leaf_map, negated)
+            return self.traverse(inner, new_classes, leaf_map, negated)
 
         if isinstance(expr, cp_model.BoundedLinearExpression):
             self._req_counter += 1
@@ -366,7 +366,7 @@ class ORModel:
             for var in expr.vars:
                 req = self._vars.inverse.get(var)
                 if req is not None and isinstance(req, Requirement):
-                    sel, leaf_map = self.reify_new(req, path_classes, leaf_map, negated)
+                    sel, leaf_map = self.traverse(req, path_classes, leaf_map, negated)
                     contrib = self._make_contribution(req, sel) if sel is not None else var
                 else:
                     contrib = var
@@ -382,7 +382,7 @@ class ORModel:
             for op in expr.operands:
                 if isinstance(op, self.ignore):
                     continue
-                child_v, leaf_map = self.reify_new(op, path_classes, leaf_map, negated)
+                child_v, leaf_map = self.traverse(op, path_classes, leaf_map, negated)
                 if child_v is not None:
                     ops.append(child_v)
 
@@ -501,7 +501,7 @@ class ORModel:
         return (lo, hi) if expr.coefficient >= 0 else (hi, lo)
 
     # map a domain predicate through func via element lookup; iff= holds only when bv is true
-    def apply(self, pred, func, iff=None):
+    def select(self, func, pred, iff=None):
         if isinstance(func, dict):
             func = func.__getitem__
         declared_values = self._declared_values(pred)
